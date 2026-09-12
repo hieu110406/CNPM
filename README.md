@@ -1,12 +1,71 @@
----
-config:
-  layout: fixed
----
-flowchart TB
-    ROOT["📁 src"] --> ASSETS["assets"] & COMPONENTS["components"] & CONFIG["config"] & CONTEXT["context"] & DATA["data"] & HOOKS["hooks"] & LAYOUTS["layouts"] & PAGES["pages"] & ROUTES["routes"] & SERVICES["services"] & STYLES["styles"] & TYPES["types"] & UTILS["utils"]
-    COMPONENTS --> COMMON["common"] & LAYOUT["layout"] & AUDIO["audio"] & MAP["map"]
-    PAGES --> TOURIST["tourist"] & OWNER["owner"] & ADMIN["admin"] & AUTH["auth"] & TOURIST_PAGE["HomePage\nPoiDetailPage\nOfflinePage"] & OWNER_PAGE["OwnerPortal\nVerificationPendingPage"] & ADMIN_PAGE["DashboardPage\nPoiApprovalPage"] & AUTH_PAGE["LoginPage\nUnauthorizedPage"]
-    SERVICES --> API["api"] & DB["db"] & LOCATION["location"] & AUDIO_S["audio"] & OFFLINE["offline"]
-    ROUTES --> APP["AppRoutes"] & PROTECTED["ProtectedRoute"]
-    CONTEXT --> AUTH_C["AuthContext"] & LANG["LanguageContext"] & OFFLINE_C["OfflineContext"]
-    HOOKS --> GEO["useGeolocation"] & GEOFENCE["useGeofence"] & AUDIO_H["useAudioPlayer"] & OFFLINE_H["useOfflinePack"]
+```mermaid
+mindmap
+  root((Project))
+    public
+      sw.js
+      manifest.webmanifest
+      pmtiles
+    src
+      assets
+        images
+        icons
+      components
+        common
+        layout
+        audio
+        map
+      config
+        constants.ts
+        maptiler.ts
+      context
+        AuthContext.tsx
+        LanguageContext.tsx
+        OfflineContext.tsx
+      data
+        mockPois.ts
+      hooks
+        useGeolocation.ts
+        useGeofence.ts
+        useAudioPlayer.ts
+        useOfflinePack.ts
+      layouts
+        TouristLayout.tsx
+        OwnerLayout.tsx
+        AdminLayout.tsx
+      pages
+        tourist
+          HomePage.tsx
+          PoiDetailPage.tsx
+          OfflinePage.tsx
+        owner
+          OwnerPortal.tsx
+          VerificationPendingPage.tsx
+        admin
+          DashboardPage.tsx
+          PoiApprovalPage.tsx
+        auth
+          LoginPage.tsx
+          UnauthorizedPage.tsx
+      routes
+        AppRoutes.tsx
+        ProtectedRoute.tsx
+      services
+        api
+        db
+        location
+        audio
+        offline
+      styles
+        index.css
+      types
+        poi.ts
+        auth.ts
+        offline.ts
+      utils
+        sha256.ts
+        formatters.ts
+    .env
+    index.html
+    vite.config.ts
+    tsconfig.json
+```

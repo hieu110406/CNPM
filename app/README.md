@@ -1,16 +1,77 @@
-# React + Vite
+# App Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Đây là phần frontend của dự án theo hướng phát triển tương lai. Mục tiêu là giữ project rõ ràng, dễ mở rộng và dễ quản lý theo từng module chức năng.
 
-Currently, two official plugins are available:
+## Cấu trúc dự kiến
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```text
+app/
+├── public/
+│   ├── images/
+│   ├── icons/
+│   └── favicon.ico
+├── src/
+│   ├── app/
+│   │   ├── routes/
+│   │   ├── store/
+│   │   └── providers/
+│   ├── assets/
+│   │   ├── images/
+│   │   ├── icons/
+│   │   └── fonts/
+│   ├── components/
+│   │   ├── common/
+│   │   ├── layout/
+│   │   ├── map/
+│   │   ├── audio/
+│   │   └── ui/
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── map/
+│   │   └── profile/
+│   ├── pages/
+│   │   ├── HomePage.jsx
+│   │   ├── AboutPage.jsx
+│   │   └── NotFoundPage.jsx
+│   ├── services/
+│   │   ├── api/
+│   │   ├── authService.js
+│   │   └── mapService.js
+│   ├── hooks/
+│   │   ├── useAuth.js
+│   │   └── useMap.js
+│   ├── utils/
+│   │   ├── formatDate.js
+│   │   └── helpers.js
+│   ├── config/
+│   │   ├── constants.js
+│   │   └── env.js
+│   ├── styles/
+│   │   ├── globals.css
+│   │   └── variables.css
+│   ├── data/
+│   │   └── mockData.js
+│   ├── App.jsx
+│   ├── App.css
+│   ├── main.jsx
+│   └── index.css
+├── index.html
+├── package.json
+├── vite.config.js
+└── README.md
+```
 
-## React Compiler
+## Mô tả ngắn
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `features/` : các module theo chức năng nghiệp vụ
+- `components/` : component dùng chung và UI tái sử dụng
+- `pages/` : các màn hình chính của app
+- `services/` : xử lý API và logic liên quan dữ liệu
+- `hooks/` : custom hook cho app
+- `utils/` : helper, format, xử lý dữ liệu
+- `styles/` : CSS và theme chuẩn hóa
 
-## Expanding the ESLint configuration
+## Lưu ý
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Đây là cấu trúc chuẩn hóa cho dự án tương lai, phù hợp để phát triển lâu dài. Khi app đang triển khai, có thể chưa cần theo đúng 100% ngay từ đầu, nhưng nên giữ nguyên hướng tổ chức này để dễ mở rộng.

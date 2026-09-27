@@ -1,39 +1,80 @@
 // MapLegend.jsx
-// Panel "Chú thích" — click 1 loại để lọc marker theo loại đó (toggle).
+// Chú thích bản đồ tương tác: Bấm để lọc các loại địa điểm, hiển thị số lượng từng loại
 
 import React from "react";
-import { TYPE_META } from "./mapData";
+import { Layers, RotateCcw } from "lucide-react";
+import { TYPE_META, MARKERS } from "./mapData";
 
 export default function MapLegend({ typeFilter, onToggleType }) {
+  // Đếm số lượng marker theo từng loại
+  const counts = React.useMemo(() => {
+    const res = {};
+    MARKERS.forEach((m) => {
+      res[m.type] = (res[m.type] || 0) + 1;
+    });
+    return res;
+  }, []);
+
   return (
-    <div>
-      <p className="mb-2 text-sm font-semibold text-slate-800">Chú thích</p>
-      <div className="space-y-1.5">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <Layers size={13} className="text-emerald-600" />
+          Phân loại địa điểm
+        </p>
+
+        {typeFilter && (
+          <button
+            onClick={() => onToggleType(null)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+          >
+            <RotateCcw size={11} />
+            Bỏ lọc
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-1">
         {Object.entries(TYPE_META).map(([key, meta]) => {
           const Icon = meta.icon;
           const active = typeFilter === key;
+          const count = counts[key] || 0;
+
           return (
             <button
               key={key}
               onClick={() => onToggleType(active ? null : key)}
-              className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
-                active ? "bg-emerald-50" : "hover:bg-slate-50"
+              className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-all duration-200 ${
+                active
+                  ? "bg-emerald-100/70 font-semibold text-emerald-950 shadow-2xs ring-1 ring-emerald-600/30"
+                  : "text-slate-600 hover:bg-slate-100/70"
               }`}
             >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-2xs transition-transform duration-200"
+                  style={{
+                    backgroundColor: meta.color,
+                    boxShadow: active ? `0 2px 8px ${meta.color}55` : "none",
+                  }}
+                >
+                  <Icon size={14} />
+                </span>
+                <span className="truncate">{meta.label}</span>
+              </div>
+
               <span
-                className="flex h-6 w-6 items-center justify-center rounded-full text-white"
-                style={{ backgroundColor: meta.color }}
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                  active
+                    ? "bg-emerald-700 text-white"
+                    : "bg-slate-200/60 text-slate-500"
+                }`}
               >
-                <Icon size={12} />
+                {count}
               </span>
-              <span className="text-slate-600">{meta.label}</span>
             </button>
           );
         })}
-        <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-slate-600">
-          <span className="h-1.5 w-6 rounded-full bg-[#e8ddc7]" />
-          Đường đi
-        </div>
       </div>
     </div>
   );

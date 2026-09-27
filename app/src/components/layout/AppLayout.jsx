@@ -1,16 +1,24 @@
 // components/layout/AppLayout.jsx
-// Thêm "relative" cho hàng Sidebar+content để MapSidePanel (drawer) có thể
-// định vị "absolute" đúng trong phạm vi này. Forward onMenuClick xuống Header.
+// Bố cục toàn màn hình ứng dụng: Header trên cùng, Sidebar bên trái, nội dung bản đồ ở giữa
 
 import React from "react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
-export default function AppLayout({ headerSlot, activeNavKey, onNavigate, onMenuClick, children }) {
+export default function AppLayout({
+  headerSlot,
+  activeNavKey,
+  onNavigate,
+  onMenuClick,
+  isPanelOpen,
+  children,
+}) {
   return (
-    <div className="flex h-[720px] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white font-sans shadow-sm">
-      <Header onMenuClick={onMenuClick}>{headerSlot}</Header>
-      <div className="relative flex flex-1 overflow-hidden">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-slate-900 font-sans antialiased select-none">
+      <Header onMenuClick={onMenuClick} isPanelOpen={isPanelOpen}>
+        {headerSlot}
+      </Header>
+      <div className="relative flex flex-1 overflow-hidden bg-[#eaf4ec]">
         <Sidebar activeKey={activeNavKey} onNavigate={onNavigate} />
         {children}
       </div>

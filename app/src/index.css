@@ -1,3 +1,6 @@
+@import "tailwindcss";
+
+/* giữ lại phần reset cũ nếu muốn, bỏ comment nó ra */
 html,
 body,
 #root {

@@ -1,0 +1,450 @@
+/* ==========================================================================
+   layout.css — Style riêng cho bố cục (AppLayout, Header, Sidebar)
+   Nguồn: index.css (font, reset, scrollbar) + App.css (cấu trúc sidebar/header/main)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
+
+/* ---------- Biến màu ---------- */
+:root {
+  --c-emerald-950: #022c22;
+  --c-emerald-900: #064e3b;
+  --c-emerald-800: #065f46;
+  --c-emerald-700: #047857;
+  --c-emerald-600: #059669;
+  --c-emerald-500: #10b981;
+  --c-emerald-400: #34d399;
+  --c-emerald-300: #6ee7b7;
+  --c-emerald-200: #a7f3d0;
+  --c-emerald-100: #d1fae5;
+  --c-emerald-50: #ecfdf5;
+  --c-amber-300: #fcd34d;
+  --c-amber-400: #fbbf24;
+  --c-amber-500: #f59e0b;
+  --c-slate-900: #0f172a;
+  --c-slate-600: #475569;
+  --c-slate-400: #94a3b8;
+  --c-slate-100: #f1f5f9;
+  --c-slate-50: #f8fafc;
+  --c-map-bg: #eaf4ec;
+
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  --sidebar-width: 76px;
+}
+
+/* ---------- Reset & nền (từ index.css) ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+select {
+  font-family: inherit;
+}
+
+/* ---------- Thanh cuộn (từ index.css) ---------- */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.2);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.4);
+}
+
+/* ==========================================================================
+   APP LAYOUT
+   ========================================================================== */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--c-slate-900);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.app-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  background: var(--c-map-bg);
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+.app-header {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 45%, #047857 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -4px rgba(0, 0, 0, 0.15);
+  user-select: none;
+}
+
+/* Vệt sáng trang trí */
+.app-header__glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+}
+
+.app-header__glow--top {
+  top: -48px;
+  left: 25%;
+  width: 256px;
+  height: 144px;
+  background: rgba(52, 211, 153, 0.15);
+  filter: blur(64px);
+}
+
+.app-header__glow--bottom {
+  bottom: -40px;
+  right: 80px;
+  width: 192px;
+  height: 128px;
+  background: rgba(94, 234, 212, 0.1);
+  filter: blur(40px);
+}
+
+/* ---------- Thương hiệu ---------- */
+.brand {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__logo {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  transition: transform 0.2s;
+}
+
+.brand__logo:hover {
+  transform: scale(1.05);
+}
+
+.brand__status {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  width: 12px;
+  height: 12px;
+}
+
+.brand__status-ping {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--c-emerald-400);
+  opacity: 0.75;
+  animation: brand-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.brand__status-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--c-emerald-500);
+  border: 1px solid #fff;
+}
+
+@keyframes brand-ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.brand__text {
+  line-height: 1.25;
+}
+
+.brand__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+
+.brand__badge {
+  display: none;
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--c-emerald-200);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  backdrop-filter: blur(4px);
+}
+
+.brand__subtitle {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(167, 243, 208, 0.8);
+}
+
+/* ---------- Ô tìm kiếm ---------- */
+.header-search {
+  flex: 1;
+  max-width: 576px;
+  margin: 0 8px;
+}
+
+/* ---------- Cụm hành động bên phải ---------- */
+.header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-chip {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--c-emerald-100);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  backdrop-filter: blur(12px);
+}
+
+.header-chip strong {
+  color: #fff;
+}
+
+.header-chip__icon--clock {
+  color: var(--c-emerald-300);
+}
+
+.header-chip__icon--weather {
+  color: var(--c-amber-300);
+}
+
+.btn-ticket {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-emerald-950);
+  background: linear-gradient(to right, var(--c-amber-400), var(--c-amber-500));
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ticket:hover {
+  filter: brightness(1.1);
+}
+
+.btn-ticket:active {
+  transform: scale(0.95);
+}
+
+.btn-ticket__label--full {
+  display: none;
+}
+
+.btn-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--c-emerald-100);
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-menu:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-menu.is-active {
+  color: var(--c-emerald-900);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  width: var(--sidebar-width);
+  padding: 12px 0;
+  background: rgba(255, 255, 255, 0.8);
+  border-right: 1px solid var(--c-slate-100);
+  backdrop-filter: blur(4px);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--c-slate-400);
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  color: var(--c-slate-600);
+  background: var(--c-slate-50);
+}
+
+.nav-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.nav-item:hover .nav-item__icon {
+  background: var(--c-slate-100);
+}
+
+.nav-item.is-active {
+  color: var(--c-emerald-700);
+  background: var(--c-emerald-50);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.nav-item.is-active .nav-item__icon {
+  color: var(--c-emerald-700);
+  background: #d1fae5;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* ==========================================================================
+   RESPONSIVE (mobile-first)
+   ========================================================================== */
+@media (min-width: 640px) {
+  .header-actions {
+    gap: 12px;
+  }
+
+  .brand__title {
+    font-size: 18px;
+  }
+
+  .btn-ticket__label--short {
+    display: none;
+  }
+
+  .btn-ticket__label--full {
+    display: inline;
+  }
+}
+
+@media (min-width: 768px) {
+  .brand__badge {
+    display: inline-block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .header-chip--weather {
+    display: flex;
+  }
+}
+
+@media (min-width: 1280px) {
+  .header-chip--hours {
+    display: flex;
+  }
+}

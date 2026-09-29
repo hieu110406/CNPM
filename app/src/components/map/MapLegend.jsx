@@ -1,12 +1,11 @@
 // MapLegend.jsx
-// Chú thích bản đồ tương tác: Bấm để lọc các loại địa điểm, hiển thị số lượng từng loại
+// Chú thích bản đồ tương tác: bấm để lọc các loại địa điểm, hiển thị số lượng từng loại
 
 import React from "react";
 import { Layers, RotateCcw } from "lucide-react";
 import { TYPE_META, MARKERS } from "./mapData";
 
 export default function MapLegend({ typeFilter, onToggleType }) {
-  // Đếm số lượng marker theo từng loại
   const counts = React.useMemo(() => {
     const res = {};
     MARKERS.forEach((m) => {
@@ -16,25 +15,22 @@ export default function MapLegend({ typeFilter, onToggleType }) {
   }, []);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between px-1">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
-          <Layers size={13} className="text-emerald-600" />
+    <div className="legend">
+      <div className="legend__head">
+        <p className="panel-title">
+          <Layers size={13} className="ic-emerald" />
           Phân loại địa điểm
         </p>
 
         {typeFilter && (
-          <button
-            onClick={() => onToggleType(null)}
-            className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
-          >
+          <button onClick={() => onToggleType(null)} className="legend__reset">
             <RotateCcw size={11} />
             Bỏ lọc
           </button>
         )}
       </div>
 
-      <div className="space-y-1">
+      <div className="legend__list">
         {Object.entries(TYPE_META).map(([key, meta]) => {
           const Icon = meta.icon;
           const active = typeFilter === key;
@@ -44,15 +40,11 @@ export default function MapLegend({ typeFilter, onToggleType }) {
             <button
               key={key}
               onClick={() => onToggleType(active ? null : key)}
-              className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-left text-xs transition-all duration-200 ${
-                active
-                  ? "bg-emerald-100/70 font-semibold text-emerald-950 shadow-2xs ring-1 ring-emerald-600/30"
-                  : "text-slate-600 hover:bg-slate-100/70"
-              }`}
+              className={`legend-item ${active ? "is-active" : ""}`}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="legend-item__left">
                 <span
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-2xs transition-transform duration-200"
+                  className="legend-item__icon"
                   style={{
                     backgroundColor: meta.color,
                     boxShadow: active ? `0 2px 8px ${meta.color}55` : "none",
@@ -60,18 +52,10 @@ export default function MapLegend({ typeFilter, onToggleType }) {
                 >
                   <Icon size={14} />
                 </span>
-                <span className="truncate">{meta.label}</span>
+                <span className="legend-item__label">{meta.label}</span>
               </div>
 
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                  active
-                    ? "bg-emerald-700 text-white"
-                    : "bg-slate-200/60 text-slate-500"
-                }`}
-              >
-                {count}
-              </span>
+              <span className="legend-item__count">{count}</span>
             </button>
           );
         })}

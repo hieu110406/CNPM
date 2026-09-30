@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Thảo Cầm Viên Sài Gòn",
+    "slug": "thao-cam-vien-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#022c22"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.thaocamvien.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#022c22"
+      },
+      "package": "com.thaocamvien.mobile"
+    }
+  }
+}

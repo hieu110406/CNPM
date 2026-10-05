@@ -1,191 +1,186 @@
 // MapInfoCard.jsx
-// Thẻ thông tin chi tiết địa điểm: emoji đại diện, audio thuyết minh, giờ cho ăn, fun fact & chỉ đường
+// Thẻ thông tin chi tiết địa điểm: emoji đại diện, audio thuyết minh, giờ cho ăn, pop-up xem ảnh chi tiết & chỉ đường
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Clock,
-  Sparkles,
-  Headphones,
   Play,
   Pause,
   Navigation,
   Share2,
   Heart,
-  Volume2,
+  ExternalLink,
 } from "lucide-react";
 import { TYPE_META } from "./mapData";
+import AnimalDetailModal from "./AnimalDetailModal";
+
+const TOTAL_SECONDS = 45;
+const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
 export default function MapInfoCard({ marker, onClose }) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [prevId, setPrevId] = useState(marker?.id);
 
-  useEffect(() => {
+  // Đồng bộ reset state khi chuyển sang marker khác
+  if (marker?.id !== prevId) {
+    setPrevId(marker?.id);
     setIsPlayingAudio(false);
     setAudioProgress(0);
-  }, [marker?.id]);
+    setIsModalOpen(false);
+  }
 
   useEffect(() => {
-    let interval;
-    if (isPlayingAudio) {
-      interval = setInterval(() => {
-        setAudioProgress((prev) => {
-          if (prev >= 100) {
-            setIsPlayingAudio(false);
-            return 0;
-          }
-          return prev + 2;
-        });
-      }, 200);
-    }
+    if (!isPlayingAudio) return;
+    const interval = setInterval(() => {
+      setAudioProgress((prev) => {
+        if (prev >= 100) {
+          setIsPlayingAudio(false);
+          return 0;
+        }
+        return prev + 2;
+      });
+    }, 200);
     return () => clearInterval(interval);
   }, [isPlayingAudio]);
 
   if (!marker) return null;
 
   const meta = TYPE_META[marker.type] || TYPE_META.animal;
+  const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);
 
   return (
-    <div className="info-card">
-      {/* Banner đầu thẻ, màu theo loại địa điểm */}
-      <div
-        className="info-card__banner"
-        style={{
-          background: `linear-gradient(135deg, ${meta.bgLight}, #ffffff)`,
-          borderBottom: `1px solid ${meta.border}`,
-        }}
-      >
-        <div className="info-card__banner-left">
-          <div
-            className="info-card__avatar"
-            style={{
-              backgroundColor: meta.color,
-              boxShadow: `0 4px 12px ${meta.color}35`,
-            }}
-          >
+    <>
+      <div className="info-card">
+        <div
+          className="info-card__banner"
+          style={{
+            background: `linear-gradient(135deg, ${meta.color}, ${meta.color}b3)`,
+          }}
+        >
+          <span className="info-card__watermark" aria-hidden="true">
             {marker.emoji}
-          </div>
-          <div>
-            <div className="info-card__tags">
-              <span
-                className="info-card__type"
-                style={{ backgroundColor: meta.color }}
-              >
-                {meta.label}
-              </span>
-              {marker.zone && <span className="info-card__zone">{marker.zone}</span>}
-            </div>
-            <h3 className="info-card__name">{marker.name}</h3>
-          </div>
+          </span>
+          <span className="info-card__type">{meta.label}</span>
+          <button onClick={onClose} className="info-card__close" aria-label="Đóng">
+            <X size={14} />
+          </button>
         </div>
 
-        <button onClick={onClose} className="info-card__close" aria-label="Đóng">
-          <X size={15} />
-        </button>
-      </div>
+        <div className="info-card__body">
+          <div className="info-card__avatar">{marker.emoji}</div>
 
-      <div className="info-card__body">
-        <p className="info-card__desc">{marker.desc}</p>
-
-        {(marker.feedingTime || marker.openingHours) && (
-          <div className="info-card__time">
-            <Clock size={14} className="info-card__time-icon" />
-            <div className="info-card__time-text">
-              {marker.feedingTime && (
-                <p className="info-card__feeding">
-                  🍖 Giờ cho ăn: <span>{marker.feedingTime}</span>
-                </p>
-              )}
-              {marker.openingHours && (
-                <p className="info-card__opening">Mở cửa: {marker.openingHours}</p>
-              )}
-            </div>
+          <div>
+            <h3 className="info-card__name">{marker.name}</h3>
+            {marker.zone && <p className="info-card__zone">{marker.zone}</p>}
           </div>
-        )}
 
-        {marker.funFact && (
-          <div className="info-card__fact">
-            <Sparkles size={14} className="info-card__fact-icon" />
-            <p>
-              <strong>Bạn có biết? </strong>
-              {marker.funFact}
-            </p>
-          </div>
-        )}
+          <p className="info-card__desc">{marker.desc}</p>
 
-        {marker.audioAvailable && (
-          <div className="audio">
-            <div className="audio__head">
-              <span className="audio__title">
-                <Volume2 size={15} className="ic-emerald" />
-                Thuyết minh giọng đọc AI
-              </span>
-              <span className="audio__time">
-                00:{audioProgress < 10 ? `0${Math.floor(audioProgress * 0.45)}` : Math.floor(audioProgress * 0.45)} / 00:45
-              </span>
+          {/* Nút mở Pop-up xem chi tiết đầy đủ & hình ảnh */}
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="info-card__more"
+            title="Mở bảng thông tin chi tiết và album hình ảnh"
+          >
+            <span>Xem chi tiết & hình ảnh</span>
+            <ExternalLink size={12} />
+          </button>
+
+          {/* Giờ hoạt động: luôn hiện gọn */}
+          {(marker.feedingTime || marker.openingHours) && (
+            <div className="info-card__time">
+              <Clock size={14} className="info-card__time-icon" />
+              <div>
+                {marker.feedingTime && (
+                  <p>
+                    🍖 Giờ cho ăn: <b>{marker.feedingTime}</b>
+                  </p>
+                )}
+                {marker.openingHours && (
+                  <p>
+                    Mở cửa: <b>{marker.openingHours}</b>
+                  </p>
+                )}
+              </div>
             </div>
+          )}
 
-            <div className="audio__track">
-              <div className="audio__bar" style={{ width: `${audioProgress}%` }} />
-            </div>
-
-            <div className="audio__foot">
+          {marker.audioAvailable && (
+            <div className="audio">
               <button
                 onClick={() => setIsPlayingAudio(!isPlayingAudio)}
                 className="audio__play"
+                aria-label={isPlayingAudio ? "Tạm dừng" : "Nghe thuyết minh"}
               >
                 {isPlayingAudio ? (
-                  <>
-                    <Pause size={13} /> Tạm dừng
-                  </>
+                  <Pause size={12} fill="currentColor" />
                 ) : (
-                  <>
-                    <Play size={13} /> Nghe thuyết minh
-                  </>
+                  <Play size={12} fill="currentColor" />
                 )}
               </button>
 
-              <span className="audio__lang">
-                <Headphones size={13} /> Tiếng Việt (chuẩn)
+              <div className="audio__main">
+                <span className="audio__title">Nghe thuyết minh</span>
+                <div className="audio__track">
+                  <div className="audio__bar" style={{ width: `${audioProgress}%` }} />
+                </div>
+              </div>
+
+              <span className="audio__time">
+                {isPlayingAudio || audioProgress > 0 ? fmt(elapsed) : fmt(TOTAL_SECONDS)}
               </span>
             </div>
+          )}
+
+          <div className="info-card__actions">
+            <button
+              onClick={() => alert(`Bắt đầu dẫn đường đến: ${marker.name}`)}
+              className="info-card__nav"
+            >
+              <Navigation size={13} />
+              Chỉ đường tới đây
+            </button>
+
+            <button
+              onClick={() => setIsLiked(!isLiked)}
+              className={`info-card__icon-btn ${isLiked ? "is-liked" : ""}`}
+              title="Lưu vào danh sách yêu thích"
+            >
+              <Heart size={15} fill={isLiked ? "currentColor" : "none"} />
+            </button>
+
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: marker.name, text: marker.desc });
+                } else {
+                  navigator.clipboard?.writeText(window.location.href);
+                  alert("Đã sao chép liên kết chia sẻ địa điểm!");
+                }
+              }}
+              className="info-card__icon-btn"
+              title="Chia sẻ địa điểm"
+            >
+              <Share2 size={15} />
+            </button>
           </div>
-        )}
-
-        <div className="info-card__actions">
-          <button
-            onClick={() => alert(`Bắt đầu dẫn đường đến: ${marker.name}`)}
-            className="info-card__nav"
-          >
-            <Navigation size={14} />
-            Chỉ đường tới đây
-          </button>
-
-          <button
-            onClick={() => setIsLiked(!isLiked)}
-            className={`info-card__icon-btn ${isLiked ? "is-liked" : ""}`}
-            title="Lưu vào danh sách yêu thích"
-          >
-            <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
-          </button>
-
-          <button
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: marker.name, text: marker.desc });
-              } else {
-                navigator.clipboard?.writeText(window.location.href);
-                alert("Đã sao chép liên kết chia sẻ địa điểm!");
-              }
-            }}
-            className="info-card__icon-btn"
-            title="Chia sẻ địa điểm"
-          >
-            <Share2 size={16} />
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Pop-up chi tiết phóng to giữa màn hình */}
+      {isModalOpen && typeof document !== "undefined" && createPortal(
+        <AnimalDetailModal
+          marker={marker}
+          onClose={() => setIsModalOpen(false)}
+        />,
+        document.body
+      )}
+    </>
   );
 }

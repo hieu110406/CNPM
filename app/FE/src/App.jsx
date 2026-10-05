@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import ZooMap from "./components/map";
 import AdminLogin from "./components/admin";
 import { SettingsProvider } from "./context/SettingsContext";
+import OfflineNotice from "./components/ui/OfflineNotice";
 
 function AppContent() {
   // Trạng thái màn hình hiện tại: "map" | "admin"
@@ -61,6 +62,7 @@ function AppContent() {
 export default function App() {
   return (
     <SettingsProvider>
+      <OfflineNotice />
       <AppContent />
     </SettingsProvider>
   );

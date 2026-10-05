@@ -1,10 +1,9 @@
 // components/layout/Header.jsx
-// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, nút mua vé
+// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin
 
-import React from "react";
-import { Ticket, Menu, Clock, CloudSun } from "lucide-react";
+import { Menu, Clock, CloudSun, ShieldCheck } from "lucide-react";
 
-export default function Header({ children, onMenuClick, isPanelOpen }) {
+export default function Header({ children, onMenuClick, isPanelOpen, onNavigateAdmin }) {
   return (
     <header className="app-header">
       <div className="app-header__glow app-header__glow--top" />
@@ -44,14 +43,16 @@ export default function Header({ children, onMenuClick, isPanelOpen }) {
           <span>TP.HCM <strong>31°C</strong></span>
         </div>
 
-        <button
-          onClick={() => alert("Chuyển đến trang mua vé trực tuyến Thảo Cầm Viên")}
-          className="btn-ticket"
-        >
-          <Ticket size={14} strokeWidth={2.5} />
-          <span className="btn-ticket__label--full">Mua vé online</span>
-          <span className="btn-ticket__label--short">Vé</span>
-        </button>
+        {onNavigateAdmin && (
+          <button
+            onClick={onNavigateAdmin}
+            title="Đăng nhập Quản trị viên"
+            className="btn-admin-header"
+          >
+            <ShieldCheck size={15} />
+            <span>Admin</span>
+          </button>
+        )}
 
         <button
           onClick={onMenuClick}
@@ -63,4 +64,4 @@ export default function Header({ children, onMenuClick, isPanelOpen }) {
       </div>
     </header>
   );
-}
+}

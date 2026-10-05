@@ -19,7 +19,7 @@ const HIGHLIGHT_GROUPS_LOOKUP = Object.fromEntries(
   HIGHLIGHT_GROUPS.map((g) => [g.id, g])
 );
 
-export default function ZooMap({ mapImageSrc = zooMapImage }) {
+export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("gate_main");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -96,6 +96,15 @@ export default function ZooMap({ mapImageSrc = zooMapImage }) {
       activeNavKey="map"
       isPanelOpen={isPanelOpen}
       onMenuClick={() => setIsPanelOpen(!isPanelOpen)}
+      onNavigate={(key) => {
+        if (key === "admin") {
+          if (onNavigateAdmin) {
+            onNavigateAdmin();
+          } else {
+            window.location.hash = "admin";
+          }
+        }
+      }}
       headerSlot={
         <MapSearchBar
           query={query}

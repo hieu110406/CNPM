@@ -9,6 +9,7 @@ import {
   Home as HomeIcon,
   UtensilsCrossed,
   Info as InfoIcon,
+  ShieldCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -43,6 +44,14 @@ export default function Sidebar({ activeKey = "map", onNavigate }) {
           onClick={() => onNavigate?.(item.key)}
         />
       ))}
+      <div style={{ marginTop: "auto", width: "100%", paddingTop: "8px" }}>
+        <NavItem
+          icon={ShieldCheck}
+          label="Admin"
+          active={activeKey === "admin"}
+          onClick={() => onNavigate?.("admin")}
+        />
+      </div>
     </aside>
   );
 }

@@ -43,8 +43,6 @@ export default function MapSearchBar({
           </button>
         ) : (
           <div className="search__kbd">
-            <span>⌘</span>
-            <span>K</span>
           </div>
         )}
       </div>

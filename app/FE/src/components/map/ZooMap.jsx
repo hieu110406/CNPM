@@ -13,6 +13,7 @@ import MapInfoCard from "./MapInfoCard";
 import { MARKERS, HIGHLIGHT_GROUPS, FILTER_CATEGORIES } from "./mapData";
 import zooMapImage from "../../assets/map/zoo_map.png";
 import { Sparkles, Layers, ChevronRight, X } from "lucide-react";
+import { useSettings } from "../../context/SettingsContext";
 import "./map.css";
 
 const HIGHLIGHT_GROUPS_LOOKUP = Object.fromEntries(
@@ -20,6 +21,7 @@ const HIGHLIGHT_GROUPS_LOOKUP = Object.fromEntries(
 );
 
 export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
+  const { t } = useSettings();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("gate_main");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -139,7 +141,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
           {!isPanelOpen && (
             <button onClick={() => setIsPanelOpen(true)} className="btn-explore glass">
               <Sparkles size={14} className="ic-amber" />
-              <span>Khám phá khu vực</span>
+              <span>{t("exploreBtn")}</span>
               <ChevronRight size={14} />
             </button>
           )}
@@ -174,7 +176,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
         <div className="right-panel__head">
           <div className="right-panel__title-row">
             <h2 className="right-panel__title">
-              <span>🧭</span> Hướng Dẫn Tham Quan
+              <span>🧭</span> {t("rightPanelTitle")}
             </h2>
             <button
               onClick={() => setIsPanelOpen(false)}
@@ -191,7 +193,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
               className={`tab ${rightPanelTab === "zones" ? "is-active" : ""}`}
             >
               <Sparkles size={13} className="tab__icon--zones" />
-              Khu nổi bật
+              {t("tabZones")}
             </button>
 
             <button
@@ -199,7 +201,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
               className={`tab ${rightPanelTab === "legend" ? "is-active" : ""}`}
             >
               <Layers size={13} className="tab__icon--legend" />
-              Chú thích ({MARKERS.length})
+              {t("tabLegend")} ({MARKERS.length})
             </button>
           </div>
         </div>

@@ -4,8 +4,9 @@
 import React, { useState, useEffect } from "react";
 import ZooMap from "./components/map";
 import AdminLogin from "./components/admin";
+import { SettingsProvider } from "./context/SettingsContext";
 
-function App() {
+function AppContent() {
   // Trạng thái màn hình hiện tại: "map" | "admin"
   const [currentView, setCurrentView] = useState(() => {
     const hash = window.location.hash.toLowerCase();
@@ -57,4 +58,10 @@ function App() {
   return <ZooMap onNavigateAdmin={() => navigateTo("admin")} />;
 }
 
-export default App;
+export default function App() {
+  return (
+    <SettingsProvider>
+      <AppContent />
+    </SettingsProvider>
+  );
+}

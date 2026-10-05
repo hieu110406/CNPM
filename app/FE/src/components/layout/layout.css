@@ -3,7 +3,7 @@
    Nguồn: index.css (font, reset, scrollbar) + App.css (cấu trúc sidebar/header/main)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
 
 /* ---------- Biến màu ---------- */
 :root {
@@ -30,6 +30,7 @@
 
   --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
+  --font-scale: 100%;
 
   --sidebar-width: 76px;
 }
@@ -39,6 +40,10 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  font-size: var(--font-scale, 100%);
 }
 
 html,
@@ -334,9 +339,17 @@ select {
   transition: all 0.2s;
 }
 
+.btn-menu svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .btn-menu:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-menu:hover svg {
+  transform: rotate(45deg);
 }
 
 .btn-menu.is-active {
@@ -369,6 +382,45 @@ select {
 
 .btn-admin-header:active {
   transform: scale(0.96);
+}
+
+.btn-guide-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.btn-guide-header:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-guide-header.is-active {
+  color: var(--c-emerald-950);
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.btn-guide-header:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 640px) {
+  .btn-guide-header__text {
+    display: none;
+  }
 }
 
 /* ==========================================================================

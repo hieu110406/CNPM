@@ -15,11 +15,14 @@ import {
 } from "lucide-react";
 import { TYPE_META } from "./mapData";
 import AnimalDetailModal from "./AnimalDetailModal";
+import { useSettings } from "../../context/SettingsContext"; // chỉnh đường dẫn cho đúng
 
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
 export default function MapInfoCard({ marker, onClose }) {
+  const { t } = useSettings();
+
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -51,6 +54,10 @@ export default function MapInfoCard({ marker, onClose }) {
   if (!marker) return null;
 
   const meta = TYPE_META[marker.type] || TYPE_META.animal;
+  const typeLabel = t(`types.${marker.type}`, t(`filters.${marker.type}`, meta.label));
+  const markerName = t(`markers.${marker.id}.name`, marker.name);
+  const markerZone = marker.zone ? t(`markers.${marker.id}.zone`, marker.zone) : "";
+  const markerDesc = t(`markers.${marker.id}.desc`, marker.desc);
   const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);
 
   return (
@@ -65,8 +72,12 @@ export default function MapInfoCard({ marker, onClose }) {
           <span className="info-card__watermark" aria-hidden="true">
             {marker.emoji}
           </span>
-          <span className="info-card__type">{meta.label}</span>
-          <button onClick={onClose} className="info-card__close" aria-label="Đóng">
+          <span className="info-card__type">{typeLabel}</span>
+          <button
+            onClick={onClose}
+            className="info-card__close"
+            aria-label={t("map.infoCard.close", "Đóng")}
+          >
             <X size={14} />
           </button>
         </div>
@@ -75,20 +86,19 @@ export default function MapInfoCard({ marker, onClose }) {
           <div className="info-card__avatar">{marker.emoji}</div>
 
           <div>
-            <h3 className="info-card__name">{marker.name}</h3>
-            {marker.zone && <p className="info-card__zone">{marker.zone}</p>}
+            <h3 className="info-card__name">{markerName}</h3>
+            {markerZone && <p className="info-card__zone">{markerZone}</p>}
           </div>
 
-          <p className="info-card__desc">{marker.desc}</p>
+          <p className="info-card__desc">{markerDesc}</p>
 
           {/* Nút mở Pop-up xem chi tiết đầy đủ & hình ảnh */}
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
             className="info-card__more"
-            title="Mở bảng thông tin chi tiết và album hình ảnh"
           >
-            <span>Xem chi tiết & hình ảnh</span>
+            <span>{t("map.infoCard.viewDetails", "Xem chi tiết & hình ảnh")}</span>
             <ExternalLink size={12} />
           </button>
 
@@ -99,12 +109,12 @@ export default function MapInfoCard({ marker, onClose }) {
               <div>
                 {marker.feedingTime && (
                   <p>
-                    🍖 Giờ cho ăn: <b>{marker.feedingTime}</b>
+                    🍖 {t("map.infoCard.feedingTime", "Giờ cho ăn")}: <b>{marker.feedingTime}</b>
                   </p>
                 )}
                 {marker.openingHours && (
                   <p>
-                    Mở cửa: <b>{marker.openingHours}</b>
+                    {t("map.infoCard.openingHours", "Mở cửa")}: <b>{marker.openingHours}</b>
                   </p>
                 )}
               </div>
@@ -116,7 +126,11 @@ export default function MapInfoCard({ marker, onClose }) {
               <button
                 onClick={() => setIsPlayingAudio(!isPlayingAudio)}
                 className="audio__play"
-                aria-label={isPlayingAudio ? "Tạm dừng" : "Nghe thuyết minh"}
+                aria-label={
+                  isPlayingAudio
+                    ? t("map.infoCard.pause", "Tạm dừng")
+                    : t("map.infoCard.audioTitle", "Nghe thuyết minh")
+                }
               >
                 {isPlayingAudio ? (
                   <Pause size={12} fill="currentColor" />
@@ -126,7 +140,9 @@ export default function MapInfoCard({ marker, onClose }) {
               </button>
 
               <div className="audio__main">
-                <span className="audio__title">Nghe thuyết minh</span>
+                <span className="audio__title">
+                  {t("map.infoCard.audioTitle", "Nghe thuyết minh")}
+                </span>
                 <div className="audio__track">
                   <div className="audio__bar" style={{ width: `${audioProgress}%` }} />
                 </div>
@@ -140,17 +156,21 @@ export default function MapInfoCard({ marker, onClose }) {
 
           <div className="info-card__actions">
             <button
-              onClick={() => alert(`Bắt đầu dẫn đường đến: ${marker.name}`)}
+              onClick={() =>
+                alert(
+                  `${t("map.infoCard.navigateAlert", "Bắt đầu dẫn đường đến:")} ${markerName}`
+                )
+              }
               className="info-card__nav"
             >
               <Navigation size={13} />
-              Chỉ đường tới đây
+              {t("map.infoCard.navigate", "Chỉ đường tới đây")}
             </button>
 
             <button
               onClick={() => setIsLiked(!isLiked)}
               className={`info-card__icon-btn ${isLiked ? "is-liked" : ""}`}
-              title="Lưu vào danh sách yêu thích"
+              title={t("map.infoCard.favorite", "Lưu vào danh sách yêu thích")}
             >
               <Heart size={15} fill={isLiked ? "currentColor" : "none"} />
             </button>
@@ -158,14 +178,14 @@ export default function MapInfoCard({ marker, onClose }) {
             <button
               onClick={() => {
                 if (navigator.share) {
-                  navigator.share({ title: marker.name, text: marker.desc });
+                  navigator.share({ title: markerName, text: markerDesc });
                 } else {
                   navigator.clipboard?.writeText(window.location.href);
-                  alert("Đã sao chép liên kết chia sẻ địa điểm!");
+                  alert(t("map.infoCard.copied", "Đã sao chép liên kết chia sẻ địa điểm!"));
                 }
               }}
               className="info-card__icon-btn"
-              title="Chia sẻ địa điểm"
+              title={t("map.infoCard.share", "Chia sẻ địa điểm")}
             >
               <Share2 size={15} />
             </button>
@@ -174,13 +194,12 @@ export default function MapInfoCard({ marker, onClose }) {
       </div>
 
       {/* Pop-up chi tiết phóng to giữa màn hình */}
-      {isModalOpen && typeof document !== "undefined" && createPortal(
-        <AnimalDetailModal
-          marker={marker}
-          onClose={() => setIsModalOpen(false)}
-        />,
-        document.body
-      )}
+      {isModalOpen &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <AnimalDetailModal marker={marker} onClose={() => setIsModalOpen(false)} />,
+          document.body
+        )}
     </>
   );
 }

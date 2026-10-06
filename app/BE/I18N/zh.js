@@ -35,9 +35,26 @@ const ZH = {
       animal: "动物区",
       plant: "植物区",
       gate: "出入口",
+      building: "建筑与大门",
+      entertainment: "游乐与娱乐",
+      restaurant: "餐饮与咖啡",
+      restroom: "洗手间",
       service: "便利服务",
+      medical: "医疗救护站",
+      photo: "拍照打卡点",
       wc: "洗手间",
       fun: "娱乐游乐",
+    },
+    types: {
+      animal: "动物区",
+      plant: "植物区",
+      building: "建筑与大门",
+      entertainment: "游乐与娱乐",
+      restaurant: "餐饮与咖啡",
+      restroom: "洗手间",
+      service: "便利服务",
+      medical: "医疗救护站",
+      photo: "拍照打卡点",
     },
 
     // =========================
@@ -91,6 +108,27 @@ const ZH = {
     },
 
     // =========================
+    // MAP
+    // =========================
+    map: {
+      infoCard: {
+        close: "关闭",
+        viewDetails: "查看详情与照片",
+        viewMore: "查看详情",
+        didYouKnow: "您知道吗？",
+        feedingTime: "投喂时间",
+        openingHours: "开放时间",
+        audioTitle: "收听语音解说",
+        pause: "暂停",
+        navigate: "前往此地",
+        navigateAlert: "开始导航至：",
+        favorite: "收藏此地点",
+        share: "分享地点",
+        copied: "已复制地点链接！",
+      },
+    },
+
+    // =========================
     // VISITOR GUIDE
     // =========================
     guide: {
@@ -107,6 +145,37 @@ const ZH = {
     // =========================
     system: {
       offline: "您当前处于离线模式。",
+    },
+
+    // =========================
+    // MARKERS (地点)
+    // =========================
+    markers: {
+      gate_main: {
+        name: "正门（A门）",
+        zone: "主入口",
+        desc: "阮秉谦路2号（第一郡）。售票处与游客接待中心。",
+      },
+      den_hung: {
+        name: "雄王殿与历史博物馆",
+        zone: "历史文化遗迹区",
+        desc: "极具特色的传统宫廷建筑与历史文化名胜。",
+      },
+      elephant: {
+        name: "亚洲象",
+        zone: "大型动物区",
+        desc: "性格温顺的亚洲象群，设有宽敞阴凉的活动场地与天然浴池。",
+      },
+      giraffe: {
+        name: "长颈鹿",
+        zone: "稀树草原区",
+        desc: "在开阔的绿茵草场上悠闲漫步的优雅长颈鹿。",
+      },
+      bengal_tiger: {
+        name: "孟加拉虎",
+        zone: "猛兽区",
+        desc: "生活在葱郁天然假山生态区中的威严猛虎。",
+      },
     },
   };
 

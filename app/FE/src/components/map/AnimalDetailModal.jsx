@@ -21,18 +21,23 @@ import {
 } from "lucide-react";
 import { getMarkerDetails } from "./animalMediaData";
 import { TYPE_META } from "./mapData";
+import { useSettings } from "../../context/SettingsContext";
 import "./animalModal.css";
 
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
 export default function AnimalDetailModal({ marker, onClose }) {
+  const { t } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
 
   const details = getMarkerDetails(marker);
+  const markerName = t(`markers.${marker?.id}.name`, marker?.name);
+  const markerZone = marker?.zone ? t(`markers.${marker?.id}.zone`, marker?.zone) : "";
+  const markerDesc = t(`markers.${marker?.id}.desc`, marker?.desc);
 
   // Đóng bằng phím Escape
   useEffect(() => {
@@ -170,12 +175,12 @@ export default function AnimalDetailModal({ marker, onClose }) {
                 className="animal-modal-badge"
                 style={{ backgroundColor: meta.color, color: "#fff" }}
               >
-                {marker.emoji} {meta.label}
+                {marker.emoji} {t(`types.${marker.type}`, meta.label)}
               </span>
 
-              {marker.zone && (
+              {markerZone && (
                 <span className="animal-modal-badge animal-modal-badge--zone">
-                  📍 {marker.zone}
+                  📍 {markerZone}
                 </span>
               )}
 
@@ -192,7 +197,7 @@ export default function AnimalDetailModal({ marker, onClose }) {
 
             <div className="animal-modal-title-row">
               <h2 id="animal-modal-title" className="animal-modal-title">
-                {marker.name}
+                {markerName}
               </h2>
               {details.scientificName && (
                 <span className="animal-modal-scientific">
@@ -201,7 +206,7 @@ export default function AnimalDetailModal({ marker, onClose }) {
               )}
             </div>
 
-            <p className="animal-modal-desc">{marker.desc}</p>
+            <p className="animal-modal-desc">{markerDesc}</p>
           </div>
 
           {/* Audio thuyết minh */}

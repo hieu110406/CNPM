@@ -35,9 +35,26 @@ const FR = {
       animal: "Animaux",
       plant: "Plantes",
       gate: "Entrées",
-      service: "Services",
+      building: "Bâtiments & Entrées",
+      entertainment: "Loisirs & Jeux",
+      restaurant: "Restaurants & Cafés",
+      restroom: "Toilettes",
+      service: "Services & Tram",
+      medical: "Poste de secours",
+      photo: "Points photo",
       wc: "Toilettes",
       fun: "Loisirs",
+    },
+    types: {
+      animal: "Zone Animale",
+      plant: "Zone Botanique",
+      building: "Bâtiments & Entrées",
+      entertainment: "Loisirs & Jeux",
+      restaurant: "Restaurants & Cafés",
+      restroom: "Toilettes",
+      service: "Services & Tram",
+      medical: "Poste de secours",
+      photo: "Points photo",
     },
 
     // =========================
@@ -94,6 +111,27 @@ const FR = {
     },
 
     // =========================
+    // MAP
+    // =========================
+    map: {
+      infoCard: {
+        close: "Fermer",
+        viewDetails: "Voir détails & photos",
+        viewMore: "Voir détails",
+        didYouKnow: "Le saviez-vous ?",
+        feedingTime: "Heure du repas",
+        openingHours: "Horaires",
+        audioTitle: "Écouter la narration",
+        pause: "Pause",
+        navigate: "Itinéraire",
+        navigateAlert: "Navigation vers :",
+        favorite: "Ajouter aux favoris",
+        share: "Partager le lieu",
+        copied: "Lien copié !",
+      },
+    },
+
+    // =========================
     // VISITOR GUIDE
     // =========================
     guide: {
@@ -110,6 +148,37 @@ const FR = {
     // =========================
     system: {
       offline: "Vous êtes en mode hors ligne.",
+    },
+
+    // =========================
+    // MARKERS (LIEUX)
+    // =========================
+    markers: {
+      gate_main: {
+        name: "Entrée principale (Porte A)",
+        zone: "Entrée principale",
+        desc: "2, rue Nguyen Binh Khiem, 1er arr. Billetterie et accueil des visiteurs.",
+      },
+      den_hung: {
+        name: "Temple des rois Hùng & Musée d'Histoire",
+        zone: "Zone historique et culturelle",
+        desc: "Site patrimonial et culturel à l'architecture royale traditionnelle remarquable.",
+      },
+      elephant: {
+        name: "Éléphant d'Asie",
+        zone: "Zone des grands animaux",
+        desc: "Troupeau d'éléphants d'Asie profitant d'un grand enclos ombragé et d'un bassin naturel.",
+      },
+      giraffe: {
+        name: "Girafe",
+        zone: "Zone Savane",
+        desc: "Élégantes girafes se déplaçant librement dans un espace ouvert verdoyant.",
+      },
+      bengal_tiger: {
+        name: "Tigre du Bengale",
+        zone: "Zone des prédateurs",
+        desc: "Tigres majestueux préservés dans un habitat rocheux naturel boisé.",
+      },
     },
   };
 

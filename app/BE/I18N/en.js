@@ -35,9 +35,26 @@ const EN = {
       animal: "Animals",
       plant: "Plants",
       gate: "Gates",
-      service: "Services",
+      building: "Buildings & Gates",
+      entertainment: "Fun & Entertainment",
+      restaurant: "Restaurants & Cafés",
+      restroom: "Restrooms",
+      service: "Services & Tram",
+      medical: "Medical & First Aid",
+      photo: "Photo Spots",
       wc: "Restrooms",
       fun: "Activities",
+    },
+    types: {
+      animal: "Animal Zone",
+      plant: "Plant Zone",
+      building: "Buildings & Gates",
+      entertainment: "Fun & Entertainment",
+      restaurant: "Restaurants & Cafés",
+      restroom: "Restrooms",
+      service: "Services & Tram",
+      medical: "Medical & First Aid",
+      photo: "Photo Spots",
     },
 
     // =========================
@@ -92,6 +109,28 @@ const EN = {
         close: "Save & Close",
       },
     },
+    //==========================
+    // MAP
+    //==========================
+    
+      map: {
+        infoCard: {
+          gate:"Gate",
+          close: "Close",
+          viewDetails: "View details & photos",
+          viewDetailsTitle: "Open the detailed info panel and photo album",
+          feedingTime: "Feeding time",
+          openingHours: "Opening hours",
+          audioTitle: "Listen to narration",
+          pause: "Pause",
+          play: "Play narration",
+          navigate: "Get directions",
+          navigateAlert: "Starting navigation to: {{name}}",
+          favoriteTitle: "Save to favorites",
+          shareTitle: "Share location",
+          copied: "Share link copied!",
+        },
+      },
 
     // =========================
     // VISITOR GUIDE
@@ -110,6 +149,57 @@ const EN = {
     // =========================
     system: {
       offline: "You are in offline mode.",
+    },
+
+    // =========================
+    // MARKERS (LOCATIONS)
+    // =========================
+    markers: {
+      gate_main: {
+        name: "Main Gate (Gate A)",
+        zone: "Main Entrance",
+        desc: "No. 2 Nguyen Binh Khiem, Ben Nghe Ward, Dist. 1. Ticket booth & reception desk.",
+      },
+      gate_c: {
+        name: "Gate C (Nguyen Thi Minh Khai)",
+        zone: "Secondary Entrance",
+        desc: "Entrance from Nguyen Thi Minh Khai St., convenient for buses & pedestrians.",
+      },
+      gate_d: {
+        name: "Gate D",
+        zone: "Secondary Entrance",
+        desc: "Northwest entrance near Thi Nghe River.",
+      },
+      den_hung: {
+        name: "Hung Kings Temple & History Museum",
+        zone: "Historical Heritage Zone",
+        desc: "Historical, cultural, and distinctive traditional royal architectural site.",
+      },
+      elephant: {
+        name: "Asian Elephant",
+        zone: "Big Animals Zone",
+        desc: "Friendly Asian elephants with a spacious yard and natural bath pool.",
+      },
+      giraffe: {
+        name: "Giraffe",
+        zone: "Savanna Zone",
+        desc: "Graceful tall giraffes roaming freely in an open grassland habitat.",
+      },
+      bengal_tiger: {
+        name: "Bengal Tiger",
+        zone: "Predators Zone",
+        desc: "Majestic tigers conserved in a lush green natural rocky enclosure.",
+      },
+      flamingo: {
+        name: "Greater Flamingo",
+        zone: "Water Birds Zone",
+        desc: "Flock of pink flamingos wading gracefully along the clear lake shore.",
+      },
+      botanical_garden: {
+        name: "Botanical Garden & Orchids",
+        zone: "Flora Zone",
+        desc: "Centuries-old rare tropical trees and vibrant orchid collection.",
+      },
     },
   };
 

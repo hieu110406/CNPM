@@ -384,37 +384,59 @@ select {
   transform: scale(0.96);
 }
 
+/* ---------- Nút Bảng Hướng Dẫn Header ---------- */
 .btn-guide-header {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: #ffffff;
   background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 9999px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
   backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .btn-guide-header:hover {
   background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.38);
   transform: translateY(-1px);
-}
-
-.btn-guide-header.is-active {
-  color: var(--c-emerald-950);
-  background: #ffffff;
-  border-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
 }
 
 .btn-guide-header:active {
   transform: scale(0.96);
+}
+
+.btn-guide-header.is-active {
+  color: var(--c-emerald-950, #064e3b);
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.btn-guide-header__icon {
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.btn-guide-header:hover .btn-guide-header__icon {
+  transform: rotate(20deg);
+}
+
+.btn-guide-header.is-active .btn-guide-header__icon {
+  color: var(--c-emerald-600, #059669);
+}
+
+.btn-guide-header__text {
+  line-height: 1;
 }
 
 @media (max-width: 640px) {

@@ -51,31 +51,37 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
         {/* Chuyển đổi ngôn ngữ nhanh */}
         <LanguageSwitcher />
 
+        {/* Nút Đăng nhập / Chuyển tới Quản trị viên */}
         {onNavigateAdmin && (
           <button
+            type="button"
             onClick={onNavigateAdmin}
             title="Đăng nhập Quản trị viên"
             className="btn-admin-header"
+            aria-label="Đăng nhập Quản trị viên"
           >
             <ShieldCheck size={15} />
-            <span>{t("adminBtn")}</span>
+            <span>{t("adminBtn") || "Quản trị"}</span>
           </button>
         )}
 
         {/* Nút bật/tắt bảng hướng dẫn tham quan */}
         {onMenuClick && (
           <button
+            type="button"
             onClick={onMenuClick}
             title={isPanelOpen ? "Thu gọn bảng hướng dẫn" : "Mở bảng hướng dẫn & khu nổi bật"}
             className={`btn-guide-header ${isPanelOpen ? "is-active" : ""}`}
+            aria-label="Hướng dẫn tham quan"
           >
-            <Compass size={15} />
-            <span className="btn-guide-header__text">{t("guideBtn")}</span>
+            <Compass size={16} className="btn-guide-header__icon" />
+            <span className="btn-guide-header__text">{t("guideBtn") || "Hướng dẫn"}</span>
           </button>
         )}
 
         {/* Nút Mở Cài đặt hệ thống (Ngôn ngữ, Phông chữ...) */}
         <button
+          type="button"
           onClick={openSettings}
           title={t("settingsTitle")}
           className="btn-menu"
@@ -87,4 +93,3 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
     </header>
   );
 }
-

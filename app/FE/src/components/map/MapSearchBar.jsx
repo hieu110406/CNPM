@@ -4,6 +4,7 @@
 import React, { useRef, useEffect } from "react";
 import { Search, X, Sparkles, Navigation } from "lucide-react";
 import { TYPE_META } from "./mapData";
+import { useSettings } from "../../context/SettingsContext";
 
 export default function MapSearchBar({
   query,
@@ -11,6 +12,7 @@ export default function MapSearchBar({
   results,
   onSelectResult,
 }) {
+  const { t } = useSettings();
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function MapSearchBar({
           ref={inputRef}
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Tìm voi, hổ, hươu cao cổ, nhà hàng, WC..."
+          placeholder={t("searchPlaceholder")}
           className="search__input"
         />
 

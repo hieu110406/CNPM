@@ -98,6 +98,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
       activeNavKey="map"
       isPanelOpen={isPanelOpen}
       onMenuClick={() => setIsPanelOpen(!isPanelOpen)}
+      onNavigateAdmin={onNavigateAdmin}
       onNavigate={(key) => {
         if (key === "admin") {
           if (onNavigateAdmin) {

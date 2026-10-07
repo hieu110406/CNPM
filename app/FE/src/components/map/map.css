@@ -485,286 +485,227 @@
   color: #1e293b;
 }
 
-/* ==========================================================================
-   MAP INFO CARD
-   ========================================================================== */
+/* ===== MAP INFO CARD (COMPACT) ===== */
 .info-card {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: 16px;
+  left: 16px;
   z-index: 30;
-  width: 352px;
-  max-width: calc(100vw - 3rem);
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 24px;
-  box-shadow: var(--sh-2xl);
-  backdrop-filter: blur(24px);
-  animation: slideInSpring 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 288px;
+  max-width: calc(100vw - 2rem);
+  max-height: min(450px, calc(100% - 32px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.2), 0 4px 12px rgba(0, 0, 0, 0.06);
+  animation: slideInSpring 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.info-card::-webkit-scrollbar {
+  width: 4px;
+}
+.info-card::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
 }
 
 @keyframes slideInSpring {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* background + borderBottom của banner set inline theo loại địa điểm */
 .info-card__banner {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px 12px;
+  height: 60px;
+  padding: 8px 10px;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
 }
 
-.info-card__banner-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.info-card__avatar {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  font-size: 24px;
-  border-radius: 16px;
-  box-shadow: var(--sh-sm);
-  transition: transform 0.2s;
-}
-
-.info-card__avatar:hover {
-  transform: scale(1.05);
-}
-
-.info-card__tags {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.info-card__watermark {
+  position: absolute;
+  right: 6px;
+  bottom: -10px;
+  font-size: 52px;
+  line-height: 1;
+  opacity: 0.18;
+  filter: grayscale(1) brightness(2);
+  pointer-events: none;
 }
 
 .info-card__type {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   padding: 2px 8px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #fff;
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
   border-radius: 9999px;
-  box-shadow: var(--sh-xs);
-}
-
-.info-card__zone {
-  font-size: 11px;
-  font-weight: 500;
-  color: #64748b;
-}
-
-.info-card__name {
-  margin-top: 2px !important;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .info-card__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: #94a3b8;
-  background: #f1f5f9;
+  width: 26px;
+  height: 26px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.3);
   border-radius: 9999px;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
-.info-card__close:hover {
-  background: #e2e8f0;
-  color: #334155;
-}
+.info-card__close:hover { background: rgba(255, 255, 255, 0.5); }
 
 .info-card__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.info-card__avatar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-top: -30px;
+  font-size: 28px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: var(--sh-lg);
+}
+.info-card__name {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #0f172a;
+}
+
+.info-card__zone {
+  margin-top: 1px !important;
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 .info-card__desc {
   font-size: 12px;
-  line-height: 1.625;
+  line-height: 1.45;
   color: #475569;
 }
+
+/* Nút xem chi tiết */
+.info-card__more {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.info-card__more:hover { color: #065f46; }
+.info-card__more svg { transition: transform 0.2s; }
+.info-card__more:hover svg { transform: translateX(3px); }
+
+
 
 .info-card__time {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
+  gap: 6px;
+  padding: 6px 9px;
+  font-size: 11.5px;
   color: #78350f;
-  background: rgba(255, 251, 235, 0.8);
-  border: 1px solid rgba(253, 230, 138, 0.6);
-  border-radius: 12px;
+  background: #fef3c7;
+  border-radius: 10px;
 }
 
-.info-card__time-icon {
-  flex-shrink: 0;
-  color: #d97706;
-}
-
-.info-card__time-text {
-  flex: 1;
-}
-
-.info-card__feeding {
-  font-weight: 600;
-  color: #451a03;
-}
-
-.info-card__feeding span {
-  font-weight: 500;
-  color: #92400e;
-}
-
-.info-card__opening {
-  font-size: 11px;
-  color: #92400e;
-}
+.info-card__time p { margin: 0; }
+.info-card__time-icon { flex-shrink: 0; color: #b45309; }
 
 .info-card__fact {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px;
-  font-size: 12px;
-  color: #064e3b;
-  background: rgba(236, 253, 245, 0.7);
-  border: 1px solid #d1fae5;
-  border-radius: 12px;
-}
-
-.info-card__fact-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: #059669;
-}
-
-.info-card__fact p {
-  line-height: 1.375;
+  gap: 6px;
+  padding: 6px 9px;
+  font-size: 11.5px;
+  line-height: 1.35;
   color: #065f46;
+  background: #ecfdf5;
+  border-radius: 10px;
 }
 
-.info-card__fact strong {
-  font-weight: 600;
-  color: #022c22;
-}
+.info-card__fact-icon { flex-shrink: 0; margin-top: 2px; color: #059669; }
 
-/* Trình phát audio */
+/* Audio */
 .audio {
-  padding: 12px;
-  background: rgba(248, 250, 252, 0.8);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.audio__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
+  gap: 8px;
+  padding: 5px 8px;
+  background: #f1f5f9;
+  border-radius: 14px;
 }
+
+.audio__play {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: #1c2b27;
+  border-radius: 9999px;
+  transition: transform 0.15s;
+}
+
+.audio__play:active { transform: scale(0.92); }
+
+.audio__main { flex: 1; min-width: 0; }
 
 .audio__title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.audio__time {
-  font-size: 10px;
-  font-weight: 500;
-  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .audio__track {
-  width: 100%;
-  height: 6px;
-  margin-top: 8px;
+  height: 3px;
+  margin-top: 4px;
   overflow: hidden;
-  background: #e2e8f0;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 .audio__bar {
   height: 100%;
-  background: #059669;
-  border-radius: 9999px;
-  transition: all 0.2s;
+  background: #1c2b27;
+  transition: width 0.2s linear;
 }
 
-.audio__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
+.audio__time {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
 }
 
-.audio__play {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  background: #047857;
-  border-radius: 9999px;
-  box-shadow: var(--sh-sm);
-  transition: all 0.2s;
-}
-
-.audio__play:hover {
-  background: #065f46;
-}
-
-.audio__play:active {
-  transform: scale(0.95);
-}
-
-.audio__lang {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #047857;
-}
-
-/* Hàng nút hành động */
+/* Nút hành động */
 .info-card__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-top: 4px;
+  gap: 6px;
 }
 
 .info-card__nav {
@@ -773,51 +714,39 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 10px 0;
+  height: 36px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #fff;
-  background: linear-gradient(to right, #059669, #0f766e);
-  border-radius: 12px;
-  box-shadow: var(--sh-md);
-  transition: all 0.2s;
+  background: #1c2b27;
+  border-radius: 9999px;
+  transition: transform 0.15s, background 0.2s;
 }
 
-.info-card__nav:hover {
-  filter: brightness(1.1);
-}
-
-.info-card__nav:active {
-  transform: scale(0.98);
-}
+.info-card__nav:hover { background: #111c19; }
+.info-card__nav:active { transform: scale(0.98); }
 
 .info-card__icon-btn {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: #64748b;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  transition: all 0.2s;
+  width: 36px;
+  height: 36px;
+  color: #1c2b27;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  transition: transform 0.15s, background 0.2s;
 }
 
-.info-card__icon-btn:hover {
-  background: #f8fafc;
-}
-
-.info-card__icon-btn:active {
-  transform: scale(0.9);
-}
+.info-card__icon-btn:hover { background: #e2e8f0; }
+.info-card__icon-btn:active { transform: scale(0.92); }
 
 .info-card__icon-btn.is-liked {
   color: #e11d48;
-  background: #fff1f2;
-  border-color: #fecdd3;
-  box-shadow: var(--sh-xs);
+  background: #ffe4e6;
 }
+
 
 /* ==========================================================================
    MAP LEGEND

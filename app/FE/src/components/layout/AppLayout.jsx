@@ -3,10 +3,14 @@
 
 import React from "react";
 import Header from "./Header";
+import SettingsModal from "../settings/SettingsModal";
 import "./layout.css";
 
 export default function AppLayout({
   headerSlot,
+  activeNavKey,
+  onNavigate,
+  onNavigateAdmin,
   onMenuClick,
   isPanelOpen,
   children,
@@ -16,12 +20,14 @@ export default function AppLayout({
       <Header
         onMenuClick={onMenuClick}
         isPanelOpen={isPanelOpen}
+        onNavigateAdmin={onNavigateAdmin || (() => onNavigate?.("admin"))}
       >
         {headerSlot}
       </Header>
       <div className="app-body">
         {children}
       </div>
+      <SettingsModal />
     </div>
   );
-}
+}

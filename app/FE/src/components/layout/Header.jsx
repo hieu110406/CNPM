@@ -1,11 +1,12 @@
 // components/layout/Header.jsx
-// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, hướng dẫn, cài đặt
+// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin, cài đặt
 
 import React from "react";
-import { Settings, Clock, CloudSun, Compass } from "lucide-react";
+import { Settings, Clock, CloudSun, ShieldCheck, Compass } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
+import LanguageSwitcher from "../language/LanguageSwitcher";
 
-export default function Header({ children, onMenuClick, isPanelOpen }) {
+export default function Header({ children, onMenuClick, isPanelOpen, onNavigateAdmin }) {
   const { openSettings, t } = useSettings();
 
   return (
@@ -46,6 +47,23 @@ export default function Header({ children, onMenuClick, isPanelOpen }) {
           <CloudSun size={13} className="header-chip__icon--weather" />
           <span>{t("weatherCity")}</span>
         </div>
+
+        {/* Chuyển đổi ngôn ngữ nhanh */}
+        <LanguageSwitcher />
+
+        {/* Nút Đăng nhập / Chuyển tới Quản trị viên */}
+        {onNavigateAdmin && (
+          <button
+            type="button"
+            onClick={onNavigateAdmin}
+            title="Đăng nhập Quản trị viên"
+            className="btn-admin-header"
+            aria-label="Đăng nhập Quản trị viên"
+          >
+            <ShieldCheck size={15} />
+            <span>{t("adminBtn") || "Quản trị"}</span>
+          </button>
+        )}
 
         {/* Nút bật/tắt bảng hướng dẫn tham quan */}
         {onMenuClick && (

@@ -4,6 +4,7 @@
 import React from "react";
 import { Settings, Clock, CloudSun, ShieldCheck, Compass } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
+import LanguageSwitcher from "../language/LanguageSwitcher";
 
 export default function Header({ children, onMenuClick, isPanelOpen, onNavigateAdmin }) {
   const { openSettings, t } = useSettings();
@@ -47,6 +48,9 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
           <span>{t("weatherCity")}</span>
         </div>
 
+        {/* Chuyển đổi ngôn ngữ nhanh */}
+        <LanguageSwitcher />
+
         {onNavigateAdmin && (
           <button
             onClick={onNavigateAdmin}
@@ -83,4 +87,4 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
     </header>
   );
 }
-
+

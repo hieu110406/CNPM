@@ -7,9 +7,6 @@ import "./layout.css";
 
 export default function AppLayout({
   headerSlot,
-  activeNavKey,
-  onNavigate,
-  onNavigateAdmin,
   onMenuClick,
   isPanelOpen,
   children,
@@ -19,7 +16,6 @@ export default function AppLayout({
       <Header
         onMenuClick={onMenuClick}
         isPanelOpen={isPanelOpen}
-        onNavigateAdmin={onNavigateAdmin || (() => onNavigate?.("admin"))}
       >
         {headerSlot}
       </Header>

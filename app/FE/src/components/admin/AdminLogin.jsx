@@ -14,9 +14,14 @@ import {
   CheckCircle2,
   Sparkles,
 } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAdminAuth } from "../../router/AdminAuthContext";
 import "./admin.css";
 
-export default function AdminLogin({ onBack, onLoginSuccess }) {
+export default function AdminLogin() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAdminAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -26,14 +31,8 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
   const [success, setSuccess] = useState("");
   const [showForgotModal, setShowForgotModal] = useState(false);
 
-  // Xử lý quay lại bản đồ (không router)
-  const handleBackToMap = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      window.location.hash = "";
-    }
-  };
+  // Quay lại trang bản đồ user
+  const handleBackToMap = () => navigate("/");
 
   // Điền mẫu nhanh cho việc thử nghiệm
   const handleQuickFill = () => {
@@ -65,18 +64,18 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
       setIsLoading(false);
 
       if (username === "admin" && password === "admin123") {
+        const userData = {
+          username: "admin",
+          role: "Quản trị viên cấp cao",
+          name: "Ban Quản Trị TCV",
+        };
+        login(userData);
         setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
         setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess({
-              username: "admin",
-              role: "Quản trị viên cấp cao",
-              name: "Ban Quản Trị TCV",
-            });
-          } else {
-            alert("Đăng nhập thành công với quyền Quản trị viên!");
-          }
-        }, 800);
+          // Redirect về trang muốn vào ban đầu hoặc dashboard
+          const from = location.state?.from?.pathname || "/admin/dashboard";
+          navigate(from, { replace: true });
+        }, 600);
       } else {
         setError("Tên đăng nhập hoặc mật khẩu không chính xác. (Gợi ý: admin / admin123)");
       }

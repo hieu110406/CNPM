@@ -1,13 +1,3 @@
-/* ==========================================================================
-   dashboard.css — Giao diện CMS Quản trị Minimalist White (Thảo Cầm Viên Sài Gòn)
-   Khớp PRD "Automated Audio Guide System":
-     UC4  Xác thực Admin (phiên JWT, MFA, audit log)
-     UC5  Quản lý POI & hạ tầng (VN/EN/CN, tọa độ GPS, bán kính geofence)
-     UC6  Quản lý Audio & AI (tải lên / AI TTS, xem trước, xuất bản)
-     UC7  Analytics & quản lý tài khoản Admin (vai trò, khóa/vô hiệu hóa)
-   Phong cách: Tối giản (Minimalist), Nền trắng sáng & tinh gọn, typography sắc nét.
-   ========================================================================== */
-
 /* ---------- 1. Design tokens ---------- */
 :root {
   --dash-bg:          #f8fafc;

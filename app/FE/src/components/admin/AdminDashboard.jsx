@@ -1,1020 +1,1319 @@
-// components/admin/AdminDashboard.jsx
-// Dashboard Quản trị viên Thảo Cầm Viên Sài Gòn
-// Quản lý tổng quan, cá thể thú, cây di sản, vé, điểm POI bản đồ & nhật ký vận hành
-
 import React, { useState, useMemo } from "react";
 import {
-  LayoutDashboard,
-  PawPrint,
-  Ticket,
-  MapPin,
-  Calendar,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Search,
-  Plus,
-  Trash2,
-  LogOut,
-  Compass,
-  Eye,
-  ShieldCheck,
-  BarChart3,
-  ArrowUpRight,
-  Activity,
-  Filter,
-  RefreshCw,
-  Trees,
-  Check,
-  X,
-  Sparkles,
-  ExternalLink,
-  ChevronDown,
+    LayoutDashboard, MapPin, Headphones, BarChart3, Users, ShieldCheck,
+    Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
+    CheckCircle2, Clock, Download, Upload, Sparkles, Play, Pause,
+    Languages, FileAudio, History, Activity, TrendingUp, ArrowUpRight,
+    Calendar, Edit3, Globe, ExternalLink, Eye, Volume2, KeyRound,
+    UserCog, PawPrint, TreePine, Info, Server, Zap, FileText, Mic,
+    RefreshCw, Save, Lock, Unlock,
 } from "lucide-react";
 import { MARKERS } from "../map/mapData";
 import "./dashboard.css";
 
-// Dữ liệu mẫu cá thể động & thực vật ban đầu
-const INITIAL_FLORA_FAUNA = [
-  {
-    id: "FF-001",
-    name: "Hổ Bengal Trắng (Panthera tigris)",
-    type: "animal",
-    category: "Thú săn mồi",
-    zone: "Khu Voi & Thú Lớn",
-    status: "healthy", // "healthy" | "monitoring" | "treatment"
-    age: "6 tuổi",
-    gender: "Đực",
-    diet: "Thịt bò & gà tươi (8kg/ngày)",
-    caretaker: "BS. Nguyễn Văn Hùng",
-    lastCheck: "Hôm nay, 08:30",
-  },
-  {
-    id: "FF-002",
-    name: "Voi Châu Á (Elephas maximus)",
-    type: "animal",
-    category: "Thú ăn cỏ lớn",
-    zone: "Khu Voi & Thú Lớn",
-    status: "healthy",
-    age: "24 tuổi",
-    gender: "Cái",
-    diet: "Cỏ voi, mía cây, chuối (150kg/ngày)",
-    caretaker: "Lê Văn Tuấn",
-    lastCheck: "Hôm qua, 16:00",
-  },
-  {
-    id: "FF-003",
-    name: "Hươu Cao Cổ (Giraffa camelopardalis)",
-    type: "animal",
-    category: "Thú ăn cỏ",
-    zone: "Đồng Cỏ Châu Phi",
-    status: "monitoring",
-    age: "4 tuổi",
-    gender: "Cái (Đang mang thai)",
-    diet: "Lá keo, cỏ tươi, củ quả bổ sung",
-    caretaker: "BS. Trần Thị Mai",
-    lastCheck: "Hôm nay, 09:15",
-  },
-  {
-    id: "FF-004",
-    name: "Hồng Hạc Mỹ (Phoenicopterus ruber)",
-    type: "animal",
-    category: "Loài chim quý",
-    zone: "Hồ Hồng Hạc",
-    status: "healthy",
-    age: "Đàn 18 cá thể",
-    gender: "Hỗn hợp",
-    diet: "Tảo spirulina, giáp xác nhỏ",
-    caretaker: "Phạm Quốc Bảo",
-    lastCheck: "03/10/2026",
-  },
-  {
-    id: "FF-005",
-    name: "Cây Sao Đen Cổ Thụ (Heritage Tree #14)",
-    type: "plant",
-    category: "Cây di sản 130 năm",
-    zone: "Trục đường chính Cổng Lê Duẩn",
-    status: "healthy",
-    age: "135 năm tuổi",
-    gender: "Thực vật",
-    diet: "Bón vi sinh định kỳ tháng 10",
-    caretaker: "Tổ Cây Xanh TCV",
-    lastCheck: "01/10/2026",
-  },
-  {
-    id: "FF-006",
-    name: "Vượn Má Vàng (Nomascus gabriellae)",
-    type: "animal",
-    category: "Linh trưởng đặc hữu",
-    zone: "Đảo Linh Trưởng",
-    status: "treatment",
-    age: "8 tuổi",
-    gender: "Đực",
-    diet: "Trái cây mềm, lá non, trứng gà",
-    caretaker: "BS. Nguyễn Văn Hùng",
-    lastCheck: "Hôm nay, 11:00 (Uống kháng sinh)",
-  },
+
+const LANGUAGES = [
+    { code: "vi", label: "Tiếng Việt", short: "VI" },
+    { code: "en", label: "English", short: "EN" },
+    { code: "zh", label: "中文", short: "ZH" },
 ];
 
-// Dữ liệu mẫu vé & giao dịch gần đây
-const RECENT_TICKETS = [
-  { id: "TCK-9482", type: "Vé Người Lớn (x2)", customer: "Hoàng Minh", time: "11:42", amount: "120.000đ", gate: "Cổng 1 (Nguyễn Bỉnh Khiêm)", method: "QR VNPAY" },
-  { id: "TCK-9481", type: "Vé Gia Đình Combo + Xe Điện", customer: "Nguyễn Thu Hà", time: "11:38", amount: "260.000đ", gate: "Cổng 2 (Nguyễn Thị Minh Khai)", method: "Momo" },
-  { id: "TCK-9480", type: "Vé Trẻ Em (x3)", customer: "Đoàn THCS Lê Quý Đôn", time: "11:35", amount: "120.000đ", gate: "Cổng 1 (Nguyễn Bỉnh Khiêm)", method: "Tiền mặt" },
-  { id: "TCK-9479", type: "Vé Người Lớn (x1)", customer: "David Miller", time: "11:29", amount: "60.000đ", gate: "Cổng 1 (Nguyễn Bỉnh Khiêm)", method: "Thẻ Visa" },
-  { id: "TCK-9478", type: "Vé Đoàn Tham Quan (x45)", customer: "Cty Du lịch Sài Gòn Tourist", time: "11:15", amount: "2.250.000đ", gate: "Cổng 1 (Nguyễn Bỉnh Khiêm)", method: "Chuyển khoản" },
+const CATEGORY_OPTIONS = [
+    { value: "animal", label: "Động vật" },
+    { value: "plant", label: "Thực vật" },
+    { value: "facility", label: "Cơ sở hạ tầng" },
+    { value: "service", label: "Dịch vụ" },
+    { value: "entrance", label: "Cổng vào" },
 ];
+
+const ROLE_OPTIONS = [
+    { value: "admin", label: "Admin", cls: "role-badge--super" },
+];
+
+/* --- POI mẫu (lấy từ MARKERS để đồng bộ với bản đồ du khách) --- */
+const buildInitialPois = () =>
+    (MARKERS || []).slice(0, 10).map((m, i) => ({
+        id: m.id || `POI-${String(i + 1).padStart(3, "0")}`,
+        name: m.name || `Điểm tham quan ${i + 1}`,
+        category: m.type || "animal",
+        zone: m.zone || "Khu trung tâm",
+        latitude: (10.7875 + (i % 4) * 0.0003).toFixed(6),
+        longitude: (106.7050 + Math.floor(i / 4) * 0.0004).toFixed(6),
+        geofenceRadius: 15 + (i % 4) * 5, // mét
+        isActive: true,
+        updatedAt: "21-09-2026",
+        translations: {
+            vi: m.name || "",
+            en: i % 3 === 0 ? "" : `Guide for ${m.name || "POI"}`,
+            zh: i % 2 === 0 ? "" : `导览：${m.name || "景点"}`,
+        },
+    }));
+
+/* --- Audio track mẫu (bám AUDIO_TRACK trong ERD) --- */
+const buildInitialAudio = (pois) => {
+    const rows = [];
+    let idx = 1;
+    pois.forEach((p, i) => {
+        LANGUAGES.forEach((l, j) => {
+            // Bỏ trống 1 vài ô để demo trạng thái "missing"
+            const missing = (i + j) % 5 === 0;
+            if (missing) return;
+            rows.push({
+                id: `AUD-${String(idx++).padStart(3, "0")}`,
+                poiId: p.id,
+                language: l.code,
+                source: (i + j) % 2 === 0 ? "upload" : "ai",
+                duration: 60 + ((i * 7 + j * 13) % 90),
+                sizeMb: +(0.8 + ((i + j) % 5) * 0.3).toFixed(2),
+                status: j === 2 && i % 3 === 0 ? "draft" : "published",
+                publishedAt: j === 2 && i % 3 === 0 ? null : "20-09-2026",
+            });
+        });
+    });
+    return rows;
+};
+
+
+const INITIAL_ADMINS = [
+    { id: "AD-001", name: "Nguyễn Trung Hiếu", email: "hieu.nguyen@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "21-09-2026 08:14" },
+    { id: "AD-002", name: "Huỳnh Lê Khánh Ly", email: "ly.huynh@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "21-09-2026 07:52" },
+    { id: "AD-003", name: "Nguyễn Hoàng Khởi", email: "khoi.nguyen@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "20-09-2026 17:30" },
+];
+
+/* --- Audit log mẫu (bám AUDIT_LOG) --- */
+const INITIAL_AUDIT = [
+    { id: 1, admin: "Nguyễn Trung Hiếu", type: "success", event: "Đăng nhập thành công", detail: "MFA hợp lệ • IP 113.161.x.x", time: "21-09-2026 08:14" },
+    { id: 2, admin: "Huỳnh Lê Khánh Ly", type: "change", event: "Cập nhật POI", detail: "POI-003 • thêm bản dịch tiếng Trung", time: "21-09-2026 08:02" },
+    { id: 3, admin: "Nguyễn Hoàng Khởi", type: "success", event: "Publish audio track", detail: "AUD-014 • EN • POI-002", time: "21-09-2026 07:58" },
+    { id: 4, admin: "Trần Minh Quân", type: "failed", event: "Đăng nhập thất bại (lần 5)", detail: "Khoá tài khoản 15 phút", time: "18-09-2026 09:05" },
+    { id: 5, admin: "Nguyễn Trung Hiếu", type: "lock", event: "Reset mật khẩu", detail: "AD-005 • link gửi qua email", time: "02-08-2026 14:25" },
+];
+
+/* --- Gói offline mẫu --- */
+const OFFLINE_PACKAGE = {
+    version: "v2026.09.21",
+    totalMb: 148.6,
+    limitMb: 150,
+    publishedAt: "21-09-2026",
+    downloads: { android: 1284, ios: 972, web: 305 },
+};
+
+/* =========================================================
+   1. COMPONENT
+   ========================================================= */
 
 export default function AdminDashboard({ user, onLogout, onGoToMap }) {
-  // Tab hiện tại: "overview" | "flora_fauna" | "tickets" | "poi" | "schedules"
-  const [currentTab, setCurrentTab] = useState("overview");
+    /* ---- State: điều hướng ---- */
+    const [currentTab, setCurrentTab] = useState("overview");
+    const [toast, setToast] = useState(null);
 
-  // Dữ liệu quản lý động thực vật
-  const [itemsList, setItemsList] = useState(INITIAL_FLORA_FAUNA);
-  const [searchItem, setSearchItem] = useState("");
-  const [filterType, setFilterType] = useState("all"); // "all" | "animal" | "plant"
-  const [showAddModal, setShowAddModal] = useState(false);
+    /* ---- UC5: POI ---- */
+    const [poiList, setPoiList] = useState(buildInitialPois);
+    const [poiSearch, setPoiSearch] = useState("");
+    const [poiCategory, setPoiCategory] = useState("all");
+    const [editingPoi, setEditingPoi] = useState(null); // null | object | "new"
+    const [poiLangTab, setPoiLangTab] = useState("vi");
+    const [poiForm, setPoiForm] = useState(null);
+    const [isTranslating, setIsTranslating] = useState(false);
 
-  // Form thêm cá thể mới
-  const [newForm, setNewForm] = useState({
-    name: "",
-    type: "animal",
-    category: "",
-    zone: "Khu Voi & Thú Lớn",
-    status: "healthy",
-    age: "",
-    diet: "",
-    caretaker: "BS. Nguyễn Văn Hùng",
-  });
+    /* ---- UC6: Audio ---- */
+    const [audioList, setAudioList] = useState(() => buildInitialAudio(buildInitialPois()));
+    const [audioPoiId, setAudioPoiId] = useState(() => buildInitialPois()[0]?.id);
+    const [aiScript, setAiScript] = useState("");
+    const [aiLang, setAiLang] = useState("vi");
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [previewTrack, setPreviewTrack] = useState(null);
 
-  // Quản lý POI bản đồ
-  const [poiList, setPoiList] = useState(() =>
-    MARKERS.map((m) => ({
-      ...m,
-      isOpen: true,
-      notes: "Hoạt động bình thường",
-    }))
-  );
+    /* ---- UC7: Analytics ---- */
+    const [range, setRange] = useState("7d");
+    const [exporting, setExporting] = useState(false);
 
-  // Tìm kiếm POI
-  const [poiSearch, setPoiSearch] = useState("");
+    /* ---- UC7: Admin accounts ---- */
+    const [adminList, setAdminList] = useState(INITIAL_ADMINS);
 
-  // Lọc danh sách động thực vật
-  const filteredItems = useMemo(() => {
-    return itemsList.filter((it) => {
-      const matchType = filterType === "all" || it.type === filterType;
-      const matchSearch =
-        it.name.toLowerCase().includes(searchItem.toLowerCase()) ||
-        it.zone.toLowerCase().includes(searchItem.toLowerCase()) ||
-        it.category.toLowerCase().includes(searchItem.toLowerCase());
-      return matchType && matchSearch;
-    });
-  }, [itemsList, filterType, searchItem]);
+    /* ---- UC4: Audit log ---- */
+    const [auditLogs] = useState(INITIAL_AUDIT);
 
-  // Xử lý bật/tắt trạng thái điểm POI trên bản đồ
-  const togglePoiStatus = (id) => {
-    setPoiList((prev) =>
-      prev.map((poi) =>
-        poi.id === id ? { ...poi, isOpen: !poi.isOpen } : poi
-      )
-    );
-  };
-
-  // Xử lý thêm cá thể mới
-  const handleAddItem = (e) => {
-    e.preventDefault();
-    if (!newForm.name.trim()) return;
-
-    const newItem = {
-      id: `FF-00${itemsList.length + 1}`,
-      name: newForm.name,
-      type: newForm.type,
-      category: newForm.category || (newForm.type === "animal" ? "Động vật" : "Cây cổ thụ"),
-      zone: newForm.zone,
-      status: newForm.status,
-      age: newForm.age || "Chưa xác định",
-      gender: newForm.type === "animal" ? "Chưa rõ" : "Thực vật",
-      diet: newForm.diet || "Chế độ tiêu chuẩn",
-      caretaker: newForm.caretaker,
-      lastCheck: "Vừa cập nhật",
+    /* ---- Helper ---- */
+    const showToast = (msg, tone = "ok") => {
+        setToast({ msg, tone });
+        setTimeout(() => setToast(null), 2600);
     };
 
-    setItemsList([newItem, ...itemsList]);
-    setShowAddModal(false);
-    setNewForm({
-      name: "",
-      type: "animal",
-      category: "",
-      zone: "Khu Voi & Thú Lớn",
-      status: "healthy",
-      age: "",
-      diet: "",
-      caretaker: "BS. Nguyễn Văn Hùng",
-    });
-  };
+    /* ---- Derived ---- */
+    const filteredPois = useMemo(() => {
+        return poiList.filter((p) => {
+            const okCat = poiCategory === "all" || p.category === poiCategory;
+            const kw = poiSearch.trim().toLowerCase();
+            const okKw =
+                !kw ||
+                p.name.toLowerCase().includes(kw) ||
+                p.id.toLowerCase().includes(kw) ||
+                p.zone.toLowerCase().includes(kw);
+            return okCat && okKw;
+        });
+    }, [poiList, poiSearch, poiCategory]);
 
-  // Xử lý xóa cá thể
-  const handleDeleteItem = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa dữ liệu cá thể này?")) {
-      setItemsList((prev) => prev.filter((it) => it.id !== id));
-    }
-  };
+    const audioByPoi = useMemo(
+        () => audioList.filter((a) => a.poiId === audioPoiId),
+        [audioList, audioPoiId]
+    );
 
-  return (
-    <div className="admin-dash">
-      {/* Vệt sáng trang trí nền */}
-      <div className="admin-dash__glow admin-dash__glow--1" />
-      <div className="admin-dash__glow admin-dash__glow--2" />
+    const currentAudioPoi = useMemo(
+        () => poiList.find((p) => p.id === audioPoiId),
+        [poiList, audioPoiId]
+    );
 
-      {/* Top Header Navigation */}
-      <header className="admin-dash__header">
-        <div className="admin-dash__brand">
-          <div className="admin-dash__logo">
-            <span>🐅</span>
-          </div>
-          <div>
-            <div className="admin-dash__brand-title">
-              Thảo Cầm Viên Sài Gòn
-              <span className="admin-dash__brand-badge">Admin Portal</span>
-            </div>
-            <p className="admin-dash__brand-sub">Trung tâm Điều hành &amp; Giám sát Dữ liệu Số</p>
-          </div>
-        </div>
+    /* =========================================================
+       UC5 — HÀNH ĐỘNG POI
+       ========================================================= */
+    const startCreatePoi = () => {
+        setPoiForm({
+            id: `POI-${String(poiList.length + 1).padStart(3, "0")}`,
+            name: "",
+            category: "animal",
+            zone: "",
+            latitude: "10.787500",
+            longitude: "106.705000",
+            geofenceRadius: 20,
+            isActive: true,
+            translations: { vi: "", en: "", zh: "" },
+        });
+        setEditingPoi("new");
+        setPoiLangTab("vi");
+    };
 
-        {/* Nút tác vụ nhanh Header */}
-        <div className="admin-dash__actions">
-          <button
-            onClick={onGoToMap}
-            className="admin-dash__btn-map"
-            title="Mở giao diện bản đồ du khách"
-          >
-            <Compass size={15} />
-            <span>Xem Bản Đồ Khách</span>
-            <ExternalLink size={12} className="opacity-70" />
-          </button>
+    const startEditPoi = (poi) => {
+        setPoiForm(JSON.parse(JSON.stringify(poi)));
+        setEditingPoi(poi.id);
+        setPoiLangTab("vi");
+    };
 
-          <div className="admin-dash__divider" />
+    const validatePoiForm = (f) => {
+        if (!f.name.trim()) return "Thiếu tên POI";
+        if (!f.zone.trim()) return "Thiếu phân khu";
+        if (!f.translations.vi.trim()) return "Thiếu mô tả tiếng Việt";
+        if (f.geofenceRadius < 5 || f.geofenceRadius > 200) return "Bán kính geofence phải trong khoảng 5–200m";
+        return null;
+    };
 
-          {/* User Profile Card */}
-          <div className="admin-dash__user">
-            <div className="admin-dash__avatar">
-              <ShieldCheck size={18} />
-            </div>
-            <div className="admin-dash__user-info">
-              <div className="admin-dash__user-name">{user?.name || "Ban Quản Trị TCV"}</div>
-              <div className="admin-dash__user-role">{user?.role || "Quản trị viên cấp cao"}</div>
-            </div>
-          </div>
+    const savePoi = () => {
+        const err = validatePoiForm(poiForm);
+        if (err) return showToast(err, "error");
+        if (editingPoi === "new") {
+            setPoiList((prev) => [poiForm, ...prev]);
+            showToast("Đã tạo POI mới (UC5)");
+        } else {
+            setPoiList((prev) => prev.map((p) => (p.id === poiForm.id ? poiForm : p)));
+            showToast("Đã cập nhật POI (UC5)");
+        }
+        setEditingPoi(null);
+        setPoiForm(null);
+    };
 
-          {/* Nút Đăng xuất */}
-          <button
-            onClick={onLogout}
-            className="admin-dash__btn-logout"
-            title="Đăng xuất khỏi hệ thống quản trị"
-          >
-            <LogOut size={16} />
-            <span>Đăng xuất</span>
-          </button>
-        </div>
-      </header>
+    const deletePoi = (id) => {
+        if (!window.confirm("Xoá POI này? Audio liên quan cũng sẽ bị gỡ khỏi gói offline.")) return;
+        setPoiList((prev) => prev.filter((p) => p.id !== id));
+        setAudioList((prev) => prev.filter((a) => a.poiId !== id));
+        showToast("Đã xoá POI", "error");
+    };
 
-      {/* Nội dung chính Dashboard */}
-      <div className="admin-dash__body">
-        {/* Sidebar Menu điều hướng */}
-        <aside className="admin-dash__sidebar">
-          <div className="admin-nav-group">
-            <div className="admin-nav-title">QUẢN TRỊ CHÍNH</div>
+    /* --- A1: AI-assisted translation (UC5 Alternative) --- */
+    const handleAiTranslate = () => {
+        const src = poiForm.translations.vi.trim();
+        if (!src) return showToast("Cần nhập mô tả tiếng Việt trước khi dịch", "error");
+        setIsTranslating(true);
+        // Giả lập gọi AI content service
+        setTimeout(() => {
+            setPoiForm((f) => ({
+                ...f,
+                translations: {
+                    ...f.translations,
+                    en: f.translations.en || `[AI draft EN] ${src}`,
+                    zh: f.translations.zh || `[AI 草稿 ZH] ${src}`,
+                },
+            }));
+            setIsTranslating(false);
+            showToast("AI đã sinh bản nháp EN/ZH — vui lòng rà soát lại");
+        }, 900);
+    };
 
-            <button
-              onClick={() => setCurrentTab("overview")}
-              className={`admin-nav-item ${currentTab === "overview" ? "is-active" : ""}`}
-            >
-              <LayoutDashboard size={18} />
-              <span>Tổng quan số liệu</span>
-            </button>
+    /* =========================================================
+       UC6 — HÀNH ĐỘNG AUDIO
+       ========================================================= */
+    const uploadAudio = (lang) => {
+        const dur = 60 + Math.floor(Math.random() * 60);
+        const newTrack = {
+            id: `AUD-${String(audioList.length + 1).padStart(3, "0")}`,
+            poiId: audioPoiId,
+            language: lang,
+            source: "upload",
+            duration: dur,
+            sizeMb: +(dur * 0.015).toFixed(2),
+            status: "draft",
+            publishedAt: null,
+        };
+        setAudioList((prev) => [...prev, newTrack]);
+        showToast(`Đã tải audio ${lang.toUpperCase()} (chờ publish)`);
+    };
 
-            <button
-              onClick={() => setCurrentTab("flora_fauna")}
-              className={`admin-nav-item ${currentTab === "flora_fauna" ? "is-active" : ""}`}
-            >
-              <PawPrint size={18} />
-              <span>Động &amp; Thực vật</span>
-              <span className="admin-nav-badge">{itemsList.length}</span>
-            </button>
+    const generateAiAudio = () => {
+        if (!aiScript.trim()) return showToast("Nhập kịch bản trước khi sinh audio AI", "error");
+        setIsGenerating(true);
+        setTimeout(() => {
+            const dur = 45 + Math.floor(aiScript.length / 6);
+            const newTrack = {
+                id: `AUD-${String(audioList.length + 1).padStart(3, "0")}`,
+                poiId: audioPoiId,
+                language: aiLang,
+                source: "ai",
+                duration: dur,
+                sizeMb: +(dur * 0.015).toFixed(2),
+                status: "draft",
+                publishedAt: null,
+            };
+            setAudioList((prev) => [...prev, newTrack]);
+            setIsGenerating(false);
+            setAiScript("");
+            showToast(`AI TTS đã sinh audio ${aiLang.toUpperCase()} — chờ publish`);
+        }, 1200);
+    };
 
-            <button
-              onClick={() => setCurrentTab("tickets")}
-              className={`admin-nav-item ${currentTab === "tickets" ? "is-active" : ""}`}
-            >
-              <Ticket size={18} />
-              <span>Vé &amp; Khách vào cổng</span>
-            </button>
+    const publishTrack = (id) => {
+        setAudioList((prev) =>
+            prev.map((a) => (a.id === id ? { ...a, status: "published", publishedAt: "21-09-2026" } : a))
+        );
+        showToast("Đã publish — audio vào gói offline");
+    };
 
-            <button
-              onClick={() => setCurrentTab("poi")}
-              className={`admin-nav-item ${currentTab === "poi" ? "is-active" : ""}`}
-            >
-              <MapPin size={18} />
-              <span>Điểm POI Bản đồ</span>
-              <span className="admin-nav-badge">{poiList.length}</span>
-            </button>
-          </div>
+    const removeTrack = (id) => {
+        setAudioList((prev) => prev.filter((a) => a.id !== id));
+        showToast("Đã gỡ audio track", "error");
+    };
 
-          <div className="admin-nav-group" style={{ marginTop: "24px" }}>
-            <div className="admin-nav-title">VẬN HÀNH &amp; HỆ THỐNG</div>
+    /* =========================================================
+       UC7 — EXPORT
+       ========================================================= */
+    const handleExport = (fmt) => {
+        setExporting(true);
+        setTimeout(() => {
+            setExporting(false);
+            showToast(`Đã xuất báo cáo ${fmt} (UC7)`);
+        }, 700);
+    };
 
-            <button
-              onClick={() => setCurrentTab("schedules")}
-              className={`admin-nav-item ${currentTab === "schedules" ? "is-active" : ""}`}
-            >
-              <Calendar size={18} />
-              <span>Lịch cho thú ăn &amp; Y tế</span>
-            </button>
+    /* =========================================================
+       RENDER
+       ========================================================= */
+    return (
+        <div className="admin-dash">
+            <div className="admin-dash__glow admin-dash__glow--1" />
+            <div className="admin-dash__glow admin-dash__glow--2" />
 
-            <div className="admin-dash__system-card">
-              <div className="admin-dash__system-head">
-                <span className="admin-dash__ping" />
-                <span>Hạ tầng IoT &amp; Bản đồ</span>
-              </div>
-              <div className="admin-dash__system-desc">
-                Hệ thống âm thanh thuyết minh và định vị GPS đang hoạt động bình thường (99.8%).
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Khung nội dung Tab */}
-        <main className="admin-dash__content custom-scrollbar">
-          {/* ================= TAB 1: TỔNG QUAN SỐ LIỆU ================= */}
-          {currentTab === "overview" && (
-            <div className="admin-tab-view animate-fade">
-              {/* Tiêu đề Tab */}
-              <div className="admin-tab-head">
-                <div>
-                  <h1 className="admin-tab-title">Tổng Quan Tình Hình Hoạt Động</h1>
-                  <p className="admin-tab-desc">
-                    Số liệu trực tuyến cập nhật lúc {new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} • Ngày {new Date().toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-                <div className="admin-tab-actions">
-                  <span className="admin-live-tag">
-                    <span className="admin-live-dot" /> Dữ liệu thời gian thực
-                  </span>
-                </div>
-              </div>
-
-              {/* Lưới Thẻ Thống Kê (KPI Cards) */}
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-card__head">
-                    <div className="stat-card__icon stat-card__icon--blue">
-                      <Users size={20} />
-                    </div>
-                    <span className="stat-card__trend stat-card__trend--up">
-                      <ArrowUpRight size={13} /> +14.2%
-                    </span>
-                  </div>
-                  <div className="stat-card__value">8,640</div>
-                  <div className="stat-card__label">Khách tham quan hôm nay</div>
-                  <div className="stat-card__foot">Đạt 108% mục tiêu cuối tuần</div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-card__head">
-                    <div className="stat-card__icon stat-card__icon--emerald">
-                      <TrendingUp size={20} />
-                    </div>
-                    <span className="stat-card__trend stat-card__trend--up">
-                      <ArrowUpRight size={13} /> +9.8%
-                    </span>
-                  </div>
-                  <div className="stat-card__value">432.5 tr</div>
-                  <div className="stat-card__label">Doanh thu vé ước tính</div>
-                  <div className="stat-card__foot">74% giao dịch qua cổng QR số</div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-card__head">
-                    <div className="stat-card__icon stat-card__icon--amber">
-                      <PawPrint size={20} />
-                    </div>
-                    <span className="stat-card__badge-sub">125 loài</span>
-                  </div>
-                  <div className="stat-card__value">1,380</div>
-                  <div className="stat-card__label">Cá thể động vật bảo tồn</div>
-                  <div className="stat-card__foot">5 ca đang chăm sóc y tế đặc biệt</div>
-                </div>
-
-                <div className="stat-card">
-                  <div className="stat-card__head">
-                    <div className="stat-card__icon stat-card__icon--green">
-                      <Trees size={20} />
-                    </div>
-                    <span className="stat-card__badge-sub">Di sản</span>
-                  </div>
-                  <div className="stat-card__value">2,600+</div>
-                  <div className="stat-card__label">Cây cổ thụ &amp; Thực vật quý</div>
-                  <div className="stat-card__foot">100% gắn chip NFC &amp; QR cứu hộ</div>
-                </div>
-              </div>
-
-              {/* Lưới biểu đồ và giám sát khu vực */}
-              <div className="dash-grid-2">
-                {/* Biểu đồ mật độ theo giờ */}
-                <div className="dash-card">
-                  <div className="dash-card__head">
+            {/* ============ HEADER ============ */}
+            <header className="admin-dash__header">
+                <div className="admin-dash__brand">
+                    <div className="admin-dash__logo"><span>🐅</span></div>
                     <div>
-                      <h3 className="dash-card__title">
-                        <BarChart3 size={17} className="text-emerald" />
-                        Mật Độ Khách Theo Khung Giờ (Hôm nay)
-                      </h3>
-                      <p className="dash-card__desc">Khung giờ cao điểm ghi nhận từ 09:00 - 11:30 sáng</p>
+                        <div className="admin-dash__brand-title">
+                            Thảo Cầm Viên Sài Gòn
+                            <span className="admin-dash__brand-badge">CMS • Audio Guide</span>
+                        </div>
+                        <p className="admin-dash__brand-sub">
+                            Hệ thống Thuyết minh Tự động Đa ngôn ngữ — Cổng Quản trị
+                        </p>
                     </div>
-                  </div>
-
-                  <div className="hourly-chart">
-                    {[
-                      { time: "07h", count: 420, percent: 35 },
-                      { time: "08h", count: 850, percent: 65 },
-                      { time: "09h", count: 1420, percent: 95, peak: true },
-                      { time: "10h", count: 1650, percent: 100, peak: true },
-                      { time: "11h", count: 1200, percent: 80 },
-                      { time: "12h", count: 680, percent: 45 },
-                      { time: "13h", count: 540, percent: 40 },
-                      { time: "14h", count: 890, percent: 68 },
-                      { time: "15h", count: 1150, percent: 78 },
-                      { time: "16h", count: 980, percent: 70 },
-                      { time: "17h", count: 450, percent: 35 },
-                    ].map((bar, i) => (
-                      <div key={i} className="hourly-col">
-                        <div className="hourly-col__track">
-                          <div
-                            className={`hourly-col__bar ${bar.peak ? "is-peak" : ""}`}
-                            style={{ height: `${bar.percent}%` }}
-                            title={`${bar.time}: ${bar.count} khách`}
-                          />
-                        </div>
-                        <span className="hourly-col__label">{bar.time}</span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
-                {/* Danh sách phân khu thu hút nhất */}
-                <div className="dash-card">
-                  <div className="dash-card__head">
-                    <div>
-                      <h3 className="dash-card__title">
-                        <Activity size={17} className="text-amber" />
-                        Khu Vực Thu Hút Nhất Bản Đồ
-                      </h3>
-                      <p className="dash-card__desc">Dựa trên lượt quét QR và tra cứu thuyết minh</p>
-                    </div>
-                  </div>
-
-                  <div className="zones-rank-list">
-                    {[
-                      { name: "Khu Voi & Thú Săn Mồi Lớn", views: "3,840 lượt", percent: 92, tag: "Cực đông", color: "#10b981" },
-                      { name: "Hồ Hồng Hạc & Đảo Linh Trưởng", views: "2,910 lượt", percent: 75, tag: "Đông", color: "#34d399" },
-                      { name: "Vườn Thú Thiếu Nhi & Trải Nghiệm", views: "2,450 lượt", percent: 64, tag: "Ổn định", color: "#60a5fa" },
-                      { name: "Khu Bò Sát & Thủy Cung", views: "1,820 lượt", percent: 48, tag: "Bình thường", color: "#f59e0b" },
-                      { name: "Trục Cây Cổ Thụ & Vườn Lan", views: "1,340 lượt", percent: 36, tag: "Yên tĩnh", color: "#a78bfa" },
-                    ].map((zone, idx) => (
-                      <div key={idx} className="zone-rank-item">
-                        <div className="zone-rank-item__row">
-                          <span className="zone-rank-name">
-                            <strong>#{idx + 1}</strong> {zone.name}
-                          </span>
-                          <span className="zone-rank-views">{zone.views}</span>
-                        </div>
-                        <div className="zone-rank-bar">
-                          <div
-                            className="zone-rank-bar__fill"
-                            style={{ width: `${zone.percent}%`, backgroundColor: zone.color }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Lịch sử vé mới vào cổng */}
-              <div className="dash-card" style={{ marginTop: "20px" }}>
-                <div className="dash-card__head">
-                  <div>
-                    <h3 className="dash-card__title">
-                      <Ticket size={17} className="text-emerald" />
-                      Giao Dịch Vé Mới Nhất
-                    </h3>
-                    <p className="dash-card__desc">Dữ liệu kết nối từ cổng soát vé thông minh</p>
-                  </div>
-                  <button onClick={() => setCurrentTab("tickets")} className="dash-card__link">
-                    Xem tất cả ({RECENT_TICKETS.length}) &rarr;
-                  </button>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Mã Vé</th>
-                        <th>Loại Vé</th>
-                        <th>Khách Hàng</th>
-                        <th>Thời Gian</th>
-                        <th>Số Tiền</th>
-                        <th>Cổng Vào</th>
-                        <th>Phương Thức</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {RECENT_TICKETS.map((tck) => (
-                        <tr key={tck.id}>
-                          <td><span className="code-badge">{tck.id}</span></td>
-                          <td><strong>{tck.type}</strong></td>
-                          <td>{tck.customer}</td>
-                          <td><span className="time-badge">{tck.time}</span></td>
-                          <td><span className="price-badge">{tck.amount}</span></td>
-                          <td>{tck.gate}</td>
-                          <td><span className="method-badge">{tck.method}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 2: ĐỘNG & THỰC VẬT ================= */}
-          {currentTab === "flora_fauna" && (
-            <div className="admin-tab-view animate-fade">
-              <div className="admin-tab-head">
-                <div>
-                  <h1 className="admin-tab-title">Quản Lý Động &amp; Thực Vật</h1>
-                  <p className="admin-tab-desc">
-                    Hồ sơ cá thể, tình trạng sức khỏe, chế độ dinh dưỡng và cán bộ phụ trách
-                  </p>
-                </div>
-                <div className="admin-tab-actions">
-                  <button onClick={() => setShowAddModal(true)} className="btn-primary-admin">
-                    <Plus size={16} />
-                    <span>Thêm Cá Thể Mới</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Bộ lọc & Tìm kiếm */}
-              <div className="admin-filter-bar">
-                <div className="admin-search-box">
-                  <Search size={16} className="text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Tìm theo tên loài, phân khu, danh mục..."
-                    value={searchItem}
-                    onChange={(e) => setSearchItem(e.target.value)}
-                  />
-                  {searchItem && (
-                    <button onClick={() => setSearchItem("")} className="clear-btn">
-                      <X size={14} />
+                <div className="admin-dash__actions">
+                    <button onClick={onGoToMap} className="admin-dash__btn-map" title="Mở giao diện bản đồ du khách">
+                        <Compass size={15} />
+                        <span>Xem Bản Đồ Khách</span>
+                        <ExternalLink size={12} className="opacity-70" />
                     </button>
-                  )}
-                </div>
-
-                <div className="admin-filter-tabs">
-                  <button
-                    onClick={() => setFilterType("all")}
-                    className={`filter-btn ${filterType === "all" ? "is-active" : ""}`}
-                  >
-                    Tất cả ({itemsList.length})
-                  </button>
-                  <button
-                    onClick={() => setFilterType("animal")}
-                    className={`filter-btn ${filterType === "animal" ? "is-active" : ""}`}
-                  >
-                    Động vật ({itemsList.filter((i) => i.type === "animal").length})
-                  </button>
-                  <button
-                    onClick={() => setFilterType("plant")}
-                    className={`filter-btn ${filterType === "plant" ? "is-active" : ""}`}
-                  >
-                    Cây di sản ({itemsList.filter((i) => i.type === "plant").length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Bảng danh sách động thực vật */}
-              <div className="dash-card">
-                <div className="table-responsive">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Mã ID</th>
-                        <th>Tên Loài / Thực Vật</th>
-                        <th>Phân Khu</th>
-                        <th>Tình Trạng Sức Khỏe</th>
-                        <th>Độ Tuổi</th>
-                        <th>Chế Độ Dinh Dưỡng</th>
-                        <th>Cán Bộ / Bác Sĩ</th>
-                        <th>Kiểm Tra Gần Nhất</th>
-                        <th style={{ textAlign: "right" }}>Thao Tác</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredItems.map((item) => (
-                        <tr key={item.id}>
-                          <td><span className="code-badge">{item.id}</span></td>
-                          <td>
-                            <div className="table-item-title">
-                              <span>{item.type === "animal" ? "🐾" : "🌳"}</span>
-                              <div>
-                                <div className="font-semibold text-slate-100">{item.name}</div>
-                                <div className="text-xs text-slate-400">{item.category}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>{item.zone}</td>
-                          <td>
-                            {item.status === "healthy" && (
-                              <span className="status-badge status-badge--healthy">
-                                <CheckCircle2 size={12} /> Khỏe mạnh
-                              </span>
-                            )}
-                            {item.status === "monitoring" && (
-                              <span className="status-badge status-badge--monitoring">
-                                <Clock size={12} /> Đang theo dõi
-                              </span>
-                            )}
-                            {item.status === "treatment" && (
-                              <span className="status-badge status-badge--treatment">
-                                <AlertCircle size={12} /> Cần điều trị
-                              </span>
-                            )}
-                          </td>
-                          <td>{item.age}</td>
-                          <td className="max-w-xs truncate" title={item.diet}>{item.diet}</td>
-                          <td><span className="caretaker-badge">{item.caretaker}</span></td>
-                          <td className="text-xs text-slate-400">{item.lastCheck}</td>
-                          <td style={{ textAlign: "right" }}>
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="btn-action-delete"
-                              title="Xóa hồ sơ cá thể"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 3: VÉ & KHÁCH VÀO CỔNG ================= */}
-          {currentTab === "tickets" && (
-            <div className="admin-tab-view animate-fade">
-              <div className="admin-tab-head">
-                <div>
-                  <h1 className="admin-tab-title">Quản Lý Vé &amp; Doanh Thu Tham Quan</h1>
-                  <p className="admin-tab-desc">
-                    Kiểm soát lượng khách ra vào cổng theo thời gian thực và tổng hợp doanh thu
-                  </p>
-                </div>
-              </div>
-
-              {/* Lưới tóm tắt vé */}
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-card__label">Vé Người Lớn (60k)</div>
-                  <div className="stat-card__value">5,240</div>
-                  <div className="stat-card__foot">314.400.000 đ</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card__label">Vé Trẻ Em (40k)</div>
-                  <div className="stat-card__value">2,850</div>
-                  <div className="stat-card__foot">114.000.000 đ</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card__label">Vé Đoàn / Trường Học</div>
-                  <div className="stat-card__value">480</div>
-                  <div className="stat-card__foot">24.000.000 đ (Ưu đãi)</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card__label">Tỷ Lệ Quét Cổng Tự Động</div>
-                  <div className="stat-card__value">98.4%</div>
-                  <div className="stat-card__foot">Không ùn tắc tại cửa kiểm soát</div>
-                </div>
-              </div>
-
-              {/* Bảng giao dịch */}
-              <div className="dash-card" style={{ marginTop: "20px" }}>
-                <div className="dash-card__head">
-                  <h3 className="dash-card__title">
-                    <Ticket size={17} className="text-emerald" />
-                    Lịch Sử Giao Dịch Chi Tiết
-                  </h3>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Mã Vé</th>
-                        <th>Loại Vé</th>
-                        <th>Khách Hàng</th>
-                        <th>Thời Gian</th>
-                        <th>Số Tiền</th>
-                        <th>Cổng Vào</th>
-                        <th>Phương Thức</th>
-                        <th>Trạng Thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {RECENT_TICKETS.map((tck) => (
-                        <tr key={tck.id}>
-                          <td><span className="code-badge">{tck.id}</span></td>
-                          <td><strong>{tck.type}</strong></td>
-                          <td>{tck.customer}</td>
-                          <td><span className="time-badge">{tck.time}</span></td>
-                          <td><span className="price-badge">{tck.amount}</span></td>
-                          <td>{tck.gate}</td>
-                          <td><span className="method-badge">{tck.method}</span></td>
-                          <td>
-                            <span className="status-badge status-badge--healthy">
-                              <Check size={12} /> Đã qua cổng
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 4: ĐIỂM POI BẢN ĐỒ ================= */}
-          {currentTab === "poi" && (
-            <div className="admin-tab-view animate-fade">
-              <div className="admin-tab-head">
-                <div>
-                  <h1 className="admin-tab-title">Quản Lý Điểm Tham Quan &amp; POI Trên Bản Đồ</h1>
-                  <p className="admin-tab-desc">
-                    Bật/tắt trạng thái mở cửa, cập nhật thông báo bảo trì trực tiếp lên bản đồ du khách
-                  </p>
-                </div>
-              </div>
-
-              <div className="dash-card">
-                <div className="table-responsive">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Mã POI</th>
-                        <th>Tên Địa Điểm</th>
-                        <th>Phân Loại</th>
-                        <th>Tọa Độ Bản Đồ (X, Y)</th>
-                        <th>Trạng Thái Hoạt Động</th>
-                        <th>Hành Động</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {poiList.map((poi) => (
-                        <tr key={poi.id}>
-                          <td><span className="code-badge">{poi.id}</span></td>
-                          <td>
-                            <div className="table-item-title">
-                              <span>{poi.icon || "📍"}</span>
-                              <div>
-                                <div className="font-semibold text-slate-100">{poi.name}</div>
-                                <div className="text-xs text-slate-400">{poi.zone}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td><span className="category-pill">{poi.type}</span></td>
-                          <td><code>X: {poi.x}% • Y: {poi.y}%</code></td>
-                          <td>
-                            <span
-                              className={`status-badge ${
-                                poi.isOpen ? "status-badge--healthy" : "status-badge--treatment"
-                              }`}
-                            >
-                              {poi.isOpen ? "Đang Mở Cửa Tham Quan" : "Tạm Đóng Bảo Trì"}
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => togglePoiStatus(poi.id)}
-                              className={`btn-toggle-poi ${poi.isOpen ? "is-open" : "is-closed"}`}
-                              title="Bấm để đổi trạng thái mở cửa / bảo trì"
-                            >
-                              {poi.isOpen ? "Đóng tạm thời" : "Mở cửa lại"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 5: LỊCH CHO THÚ ĂN & Y TẾ ================= */}
-          {currentTab === "schedules" && (
-            <div className="admin-tab-view animate-fade">
-              <div className="admin-tab-head">
-                <div>
-                  <h1 className="admin-tab-title">Lịch Trình Chăm Sóc &amp; Sự Kiện Công Khai</h1>
-                  <p className="admin-tab-desc">
-                    Lịch cho thú ăn công khai cho du khách xem và ca trực y tế trong ngày
-                  </p>
-                </div>
-              </div>
-
-              <div className="dash-grid-2">
-                {/* Khung giờ cho ăn */}
-                <div className="dash-card">
-                  <h3 className="dash-card__title">
-                    <Clock size={17} className="text-amber" />
-                    Lịch Cho Thú Ăn Hôm Nay (Du khách xem)
-                  </h3>
-
-                  <div className="schedule-list">
-                    {[
-                      { time: "09:00", name: "Cho Voi Ăn Mía & Tắm Voi", zone: "Khu Voi Châu Á", status: "completed" },
-                      { time: "10:30", name: "Cho Hổ Bengal Ăn Thịt Bò", zone: "Chuồng Cọp Trắng", status: "completed" },
-                      { time: "14:00", name: "Cho Hươu Cao Cổ Ăn Lá Keo", zone: "Đồng Cỏ Châu Phi", status: "upcoming" },
-                      { time: "15:30", name: "Cho Hà Mã Tắm & Ăn Dưa Hấu", zone: "Hồ Hà Mã", status: "upcoming" },
-                      { time: "16:15", name: "Cho Chim Nước & Bồ Nông Ăn Cá", zone: "Hồ Chim Trôi", status: "upcoming" },
-                    ].map((sch, i) => (
-                      <div key={i} className="schedule-item">
-                        <div className="schedule-time">{sch.time}</div>
-                        <div className="schedule-info">
-                          <div className="schedule-name">{sch.name}</div>
-                          <div className="schedule-zone">{sch.zone}</div>
+                    <div className="admin-dash__divider" />
+                    <div className="admin-dash__user">
+                        <div className="admin-dash__avatar"><ShieldCheck size={18} /></div>
+                        <div className="admin-dash__user-info">
+                            <div className="admin-dash__user-name">{user?.name || "Admin"}</div>
+                            <div className="admin-dash__user-role">{user?.role || "Admin"}</div>
                         </div>
-                        <span className={`status-badge ${sch.status === "completed" ? "status-badge--healthy" : "status-badge--monitoring"}`}>
-                          {sch.status === "completed" ? "Đã xong" : "Sắp diễn ra"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                    <button onClick={onLogout} className="admin-dash__btn-logout" title="Đăng xuất">
+                        <LogOut size={16} />
+                        <span>Đăng xuất</span>
+                    </button>
                 </div>
+            </header>
 
-                {/* Ca trực bác sĩ thú y */}
-                <div className="dash-card">
-                  <h3 className="dash-card__title">
-                    <Users size={17} className="text-emerald" />
-                    Ca Trực Bác Sĩ &amp; Đội Ngũ Cứu Hộ
-                  </h3>
+            {/* ============ BODY ============ */}
+            <div className="admin-dash__body">
+                {/* ---------- SIDEBAR ---------- */}
+                <aside className="admin-dash__sidebar">
+                    <div className="admin-nav-group">
+                        <div className="admin-nav-title">QUẢN TRỊ NỘI DUNG</div>
 
-                  <div className="schedule-list">
-                    {[
-                      { name: "BS. Nguyễn Văn Hùng", role: "Trưởng ca thú y", phone: "0903.***.112", status: "Đang trực" },
-                      { name: "BS. Trần Thị Mai", role: "Chuyên trách linh trưởng", phone: "0918.***.445", status: "Đang trực" },
-                      { name: "Lê Văn Tuấn", role: "Tổ trưởng chăm sóc thú lớn", phone: "0977.***.892", status: "Đang trực" },
-                      { name: "Tổ Cứu Hộ & Cây Xanh", role: "Ứng cứu khẩn cấp 24/7", phone: "Hotline 1900.****", status: "Sẵn sàng" },
-                    ].map((staff, i) => (
-                      <div key={i} className="schedule-item">
-                        <div className="staff-avatar">{staff.name[4]}</div>
-                        <div className="schedule-info">
-                          <div className="schedule-name">{staff.name}</div>
-                          <div className="schedule-zone">{staff.role} • {staff.phone}</div>
+                        <button onClick={() => setCurrentTab("overview")}
+                            className={`admin-nav-item ${currentTab === "overview" ? "is-active" : ""}`}>
+                            <LayoutDashboard size={18} /><span>Tổng quan</span>
+                        </button>
+
+                        <button onClick={() => setCurrentTab("poi")}
+                            className={`admin-nav-item ${currentTab === "poi" ? "is-active" : ""}`}>
+                            <MapPin size={18} /><span>POI &amp; Hạ tầng</span>
+                            <span className="admin-nav-badge">{poiList.length}</span>
+                        </button>
+
+                        <button onClick={() => setCurrentTab("audio")}
+                            className={`admin-nav-item ${currentTab === "audio" ? "is-active" : ""}`}>
+                            <Headphones size={18} /><span>Audio &amp; AI Content</span>
+                            <span className="admin-nav-badge">{audioList.length}</span>
+                        </button>
+                    </div>
+
+                    <div className="admin-nav-group" style={{ marginTop: 24 }}>
+                        <div className="admin-nav-title">GIÁM SÁT &amp; HỆ THỐNG</div>
+
+                        <button onClick={() => setCurrentTab("analytics")}
+                            className={`admin-nav-item ${currentTab === "analytics" ? "is-active" : ""}`}>
+                            <BarChart3 size={18} /><span>Phân tích &amp; Thống kê</span>
+                        </button>
+
+                        <button onClick={() => setCurrentTab("accounts")}
+                            className={`admin-nav-item ${currentTab === "accounts" ? "is-active" : ""}`}>
+                            <Users size={18} /><span>Tài khoản Admin</span>
+                            <span className="admin-nav-badge">{adminList.length}</span>
+                        </button>
+
+                        <button onClick={() => setCurrentTab("audit")}
+                            className={`admin-nav-item ${currentTab === "audit" ? "is-active" : ""}`}>
+                            <History size={18} /><span>Audit Log</span>
+                        </button>
+
+                        <div className="admin-dash__system-card">
+                            <div className="admin-dash__system-head">
+                                <span className="admin-dash__ping" />
+                                <span>Hạ tầng API &amp; Bản đồ</span>
+                            </div>
+                            <div className="admin-dash__system-desc">
+                                Geofence + Audio trigger đang chạy ổn định (99.8%).
+                                Gói offline publish lúc 06:00 hôm nay.
+                            </div>
                         </div>
-                        <span className="status-badge status-badge--healthy">
-                          <CheckCircle2 size={12} /> {staff.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                    </div>
+                </aside>
+
+                {/* ---------- CONTENT ---------- */}
+                <main className="admin-dash__content custom-scrollbar">
+
+                    {/* ================= TAB: OVERVIEW ================= */}
+                    {currentTab === "overview" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Tổng Quan Hệ Thống Audio Guide</h1>
+                                    <p className="admin-tab-desc">
+                                        Cập nhật {new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} • {new Date().toLocaleDateString("vi-VN")}
+                                    </p>
+                                </div>
+                                <span className="admin-live-tag">
+                                    <span className="admin-live-dot" /> Dữ liệu thời gian thực
+                                </span>
+                            </div>
+
+                            <div className="stats-grid">
+                                <div className="stat-card">
+                                    <div className="stat-card__head">
+                                        <div className="stat-card__icon stat-card__icon--blue"><Users size={20} /></div>
+                                        <span className="stat-card__trend stat-card__trend--up"><ArrowUpRight size={13} /> +14.2%</span>
+                                    </div>
+                                    <div className="stat-card__value">8,640</div>
+                                    <div className="stat-card__label">Lượt truy cập hôm nay</div>
+                                    <div className="stat-card__foot">Mobile 71% • Web 29%</div>
+                                </div>
+
+                                <div className="stat-card">
+                                    <div className="stat-card__head">
+                                        <div className="stat-card__icon stat-card__icon--emerald"><MapPin size={20} /></div>
+                                        <span className="stat-card__badge-sub">{poiList.length} POI</span>
+                                    </div>
+                                    <div className="stat-card__value">{poiList.filter((p) => p.isActive).length}</div>
+                                    <div className="stat-card__label">POI đang hoạt động</div>
+                                    <div className="stat-card__foot">
+                                        {poiList.filter((p) => LANGUAGES.every((l) => p.translations[l.code])).length} POI đủ 3 ngôn ngữ
+                                    </div>
+                                </div>
+
+                                <div className="stat-card">
+                                    <div className="stat-card__head">
+                                        <div className="stat-card__icon stat-card__icon--amber"><Headphones size={20} /></div>
+                                        <span className="stat-card__badge-sub">VI/EN/ZH</span>
+                                    </div>
+                                    <div className="stat-card__value">{audioList.filter((a) => a.status === "published").length}</div>
+                                    <div className="stat-card__label">Audio track đã publish</div>
+                                    <div className="stat-card__foot">
+                                        {audioList.filter((a) => a.status === "draft").length} bản nháp • {audioList.filter((a) => a.source === "ai").length} do AI sinh
+                                    </div>
+                                </div>
+
+                                <div className="stat-card">
+                                    <div className="stat-card__head">
+                                        <div className="stat-card__icon stat-card__icon--green"><Download size={20} /></div>
+                                        <span className="stat-card__badge-sub">{OFFLINE_PACKAGE.version}</span>
+                                    </div>
+                                    <div className="stat-card__value">
+                                        {(OFFLINE_PACKAGE.downloads.android + OFFLINE_PACKAGE.downloads.ios + OFFLINE_PACKAGE.downloads.web).toLocaleString()}
+                                    </div>
+                                    <div className="stat-card__label">Lượt tải gói offline</div>
+                                    <div className="stat-card__foot">Android • iOS • Web</div>
+                                </div>
+                            </div>
+
+                            <div className="dash-grid-2">
+                                {/* Language distribution */}
+                                <div className="dash-card">
+                                    <div className="dash-card__head">
+                                        <div>
+                                            <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ sử dụng</h3>
+                                            <p className="dash-card__desc">Dựa trên USAGE_LOG — language_code</p>
+                                        </div>
+                                    </div>
+                                    <div className="dash-card__body">
+                                        <div className="lang-dist__bar">
+                                            <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": "58%" }} />
+                                            <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": "27%" }} />
+                                            <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": "15%" }} />
+                                        </div>
+                                        <div className="lang-dist__legend">
+                                            {[
+                                                { c: "var(--lang-vi)", n: "Tiếng Việt (VI)", v: "58%" },
+                                                { c: "var(--lang-en)", n: "English (EN)", v: "27%" },
+                                                { c: "var(--lang-zh)", n: "中文 (ZH)", v: "15%" },
+                                            ].map((x, i) => (
+                                                <div key={i} className="lang-dist__item">
+                                                    <span className="lang-dist__swatch" style={{ "--c": x.c }} />
+                                                    <span className="lang-dist__name">{x.n}</span>
+                                                    <span className="lang-dist__val">{x.v}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* POI popularity */}
+                                <div className="dash-card">
+                                    <div className="dash-card__head">
+                                        <div>
+                                            <h3 className="dash-card__title"><Activity size={17} className="text-amber" /> Top POI được nghe nhiều nhất</h3>
+                                            <p className="dash-card__desc">Lượt auto-play + manual play 7 ngày qua</p>
+                                        </div>
+                                    </div>
+                                    <div className="zones-rank-list">
+                                        {[
+                                            { n: "Khu Voi Châu Á", v: "3,840", p: 92, c: "#10b981" },
+                                            { n: "Chuồng Hổ Bengal", v: "2,910", p: 75, c: "#34d399" },
+                                            { n: "Hồ Hồng Hạc", v: "2,450", p: 64, c: "#60a5fa" },
+                                            { n: "Đảo Linh Trưởng", v: "1,820", p: 48, c: "#f59e0b" },
+                                            { n: "Vườn Lan Cổ Thụ", v: "1,340", p: 36, c: "#a78bfa" },
+                                        ].map((z, i) => (
+                                            <div key={i} className="zone-rank-item">
+                                                <div className="zone-rank-item__row">
+                                                    <span className="zone-rank-name"><strong>#{i + 1}</strong> {z.n}</span>
+                                                    <span className="zone-rank-views">{z.v} lượt</span>
+                                                </div>
+                                                <div className="zone-rank-bar">
+                                                    <div className="zone-rank-bar__fill" style={{ width: `${z.p}%`, background: z.c }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Gói offline status */}
+                            <div className="dash-card" style={{ marginTop: 16 }}>
+                                <div className="dash-card__head">
+                                    <div>
+                                        <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline đang phát hành</h3>
+                                        <p className="dash-card__desc">Ngưỡng PRD: ≤ 150 MB</p>
+                                    </div>
+                                    <button onClick={() => setCurrentTab("analytics")} className="dash-card__link">
+                                        Xem chi tiết &rarr;
+                                    </button>
+                                </div>
+                                <div className="package-card">
+                                    <div className="package-card__row">
+                                        <span>Phiên bản: <strong>{OFFLINE_PACKAGE.version}</strong></span>
+                                        <span>Phát hành: {OFFLINE_PACKAGE.publishedAt}</span>
+                                    </div>
+                                    <div>
+                                        <div className="package-card__row">
+                                            <span>Dung lượng hiện tại</span>
+                                            <span className="package-card__size">{OFFLINE_PACKAGE.totalMb} / {OFFLINE_PACKAGE.limitMb} MB</span>
+                                        </div>
+                                        <div className={`meter ${OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb > 0.95 ? "is-danger" : ""}`}>
+                                            <div className="meter__fill" style={{ "--pct": `${(OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb) * 100}%` }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= TAB: POI (UC5) ================= */}
+                    {currentTab === "poi" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Quản Lý POI &amp; Hạ Tầng</h1>
+                                    <p className="admin-tab-desc">
+                                        UC5 — Tạo, cập nhật POI với toạ độ GPS, bán kính geofence và mô tả đa ngôn ngữ (VI/EN/ZH)
+                                    </p>
+                                </div>
+                                <div className="admin-tab-actions">
+                                    <button onClick={startCreatePoi} className="btn-primary-admin">
+                                        <Plus size={16} /><span>Thêm POI mới</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Filter bar */}
+                            <div className="admin-filter-bar">
+                                <div className="admin-search-box">
+                                    <Search size={16} className="text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm theo tên POI, mã, phân khu..."
+                                        value={poiSearch}
+                                        onChange={(e) => setPoiSearch(e.target.value)}
+                                    />
+                                    {poiSearch && (
+                                        <button className="clear-btn" onClick={() => setPoiSearch("")}><X size={14} /></button>
+                                    )}
+                                </div>
+                                <div className="admin-filter-tabs">
+                                    <button className={`filter-btn ${poiCategory === "all" ? "is-active" : ""}`}
+                                        onClick={() => setPoiCategory("all")}>Tất cả ({poiList.length})</button>
+                                    {CATEGORY_OPTIONS.map((c) => (
+                                        <button key={c.value}
+                                            className={`filter-btn ${poiCategory === c.value ? "is-active" : ""}`}
+                                            onClick={() => setPoiCategory(c.value)}>
+                                            {c.label} ({poiList.filter((p) => p.category === c.value).length})
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div className="dash-card">
+                                <div className="table-responsive">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã POI</th>
+                                                <th>Tên / Phân khu</th>
+                                                <th>Loại</th>
+                                                <th>GPS</th>
+                                                <th>Geofence</th>
+                                                <th>Đa ngôn ngữ</th>
+                                                <th>Trạng thái</th>
+                                                <th style={{ textAlign: "right" }}>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredPois.map((p) => {
+                                                const doneLangs = LANGUAGES.filter((l) => p.translations[l.code]);
+                                                return (
+                                                    <tr key={p.id}>
+                                                        <td><span className="code-badge">{p.id}</span></td>
+                                                        <td>
+                                                            <div className="table-item-title">
+                                                                <span>{p.category === "plant" ? "🌳" : p.category === "facility" ? "🏛️" : "🐾"}</span>
+                                                                <div>
+                                                                    <div className="font-semibold text-slate-100">{p.name}</div>
+                                                                    <div className="text-xs text-slate-400">{p.zone}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span className="category-pill">
+                                                                {CATEGORY_OPTIONS.find((c) => c.value === p.category)?.label || p.category}
+                                                            </span>
+                                                        </td>
+                                                        <td><code>{p.latitude}, {p.longitude}</code></td>
+                                                        <td><code>{p.geofenceRadius} m</code></td>
+                                                        <td>
+                                                            <div style={{ display: "flex", gap: 4 }}>
+                                                                {LANGUAGES.map((l) => {
+                                                                    const done = !!p.translations[l.code];
+                                                                    return (
+                                                                        <span key={l.code}
+                                                                            className={`lang-tab__dot ${done ? "is-complete" : ""}`}
+                                                                            data-lang={l.code}
+                                                                            title={`${l.label}: ${done ? "Đã có" : "Thiếu"}`}
+                                                                            style={{
+                                                                                display: "inline-block",
+                                                                                borderColor: done ? "var(--lang-vi)" : "#ef4444",
+                                                                                background: done
+                                                                                    ? l.code === "vi" ? "var(--lang-vi)"
+                                                                                        : l.code === "en" ? "var(--lang-en)"
+                                                                                            : "var(--lang-zh)"
+                                                                                    : "transparent",
+                                                                            }}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                                <span style={{ fontSize: 11, color: "var(--dash-text-3)", marginLeft: 4 }}>
+                                                                    {doneLangs.length}/3
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            {p.isActive
+                                                                ? <span className="status-badge status-badge--healthy"><CheckCircle2 size={12} /> Hoạt động</span>
+                                                                : <span className="status-badge status-badge--treatment"><AlertCircle size={12} /> Bảo trì</span>}
+                                                        </td>
+                                                        <td style={{ textAlign: "right" }}>
+                                                            <div className="table-actions">
+                                                                <button className="btn-action-edit" title="Sửa" onClick={() => startEditPoi(p)}>
+                                                                    <Edit3 size={15} />
+                                                                </button>
+                                                                <button className="btn-action-delete" title="Xoá" onClick={() => deletePoi(p.id)}>
+                                                                    <Trash2 size={15} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= TAB: AUDIO (UC6) ================= */}
+                    {currentTab === "audio" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Quản Lý Audio &amp; Nội dung AI</h1>
+                                    <p className="admin-tab-desc">
+                                        UC6 — Upload file ghi âm hoặc sinh audio bằng AI Text-to-Speech, rà soát rồi publish cho VI/EN/ZH
+                                    </p>
+                                </div>
+                                <div className="admin-tab-actions">
+                                    <select
+                                        value={audioPoiId}
+                                        onChange={(e) => setAudioPoiId(e.target.value)}
+                                        style={{
+                                            height: 40, padding: "0 12px", borderRadius: 8,
+                                            border: "1px solid var(--dash-border)",
+                                            background: "#fff", fontSize: 13, fontWeight: 600,
+                                            color: "var(--dash-text-1)",
+                                        }}
+                                    >
+                                        {poiList.map((p) => (
+                                            <option key={p.id} value={p.id}>{p.id} — {p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Thông tin POI đang chọn */}
+                            {currentAudioPoi && (
+                                <div className="admin-banner admin-banner--ok" style={{ marginBottom: 16 }}>
+                                    <Info size={16} />
+                                    <div>
+                                        <strong>{currentAudioPoi.name}</strong> — {currentAudioPoi.zone} • Geofence{" "}
+                                        {currentAudioPoi.geofenceRadius}m • {LANGUAGES.filter((l) => currentAudioPoi.translations[l.code]).length}/3 ngôn ngữ đã có mô tả
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3 language cards */}
+                            <div className="audio-grid">
+                                {LANGUAGES.map((lang) => {
+                                    const track = audioByPoi.find((a) => a.language === lang.code);
+                                    const isEmpty = !track;
+                                    return (
+                                        <div
+                                            key={lang.code}
+                                            className={`audio-track ${isEmpty ? "is-empty" : ""}`}
+                                            data-lang={lang.code}
+                                        >
+                                            <div className="audio-track__head">
+                                                <div className="audio-track__lang">
+                                                    <Globe size={16} />
+                                                    <span>{lang.label}</span>
+                                                </div>
+                                                <span className="audio-track__code">{lang.short}</span>
+                                            </div>
+
+                                            {isEmpty ? (
+                                                <>
+                                                    <div className="text-xs text-slate-400" style={{ marginBottom: 4 }}>
+                                                        Chưa có audio cho ngôn ngữ này.
+                                                    </div>
+                                                    <div className="audio-track__actions">
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)}>
+                                                            <Upload size={14} /> Upload file
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="audio-track__meta">
+                                                        <span><Clock size={12} /> {track.duration}s</span>
+                                                        <span><FileAudio size={12} /> {track.sizeMb} MB</span>
+                                                        <span><Mic size={12} /> {track.source === "ai" ? "AI TTS" : "Upload"}</span>
+                                                    </div>
+                                                    <div>
+                                                        {track.status === "published"
+                                                            ? <span className="status-badge status-badge--published"><CheckCircle2 size={12} /> Đã publish</span>
+                                                            : <span className="status-badge status-badge--draft"><Clock size={12} /> Bản nháp</span>}
+                                                    </div>
+                                                    <div className="audio-track__source">
+                                                        {track.publishedAt ? `Publish: ${track.publishedAt}` : "Chưa publish — chưa vào gói offline"}
+                                                    </div>
+
+                                                    {/* Preview player */}
+                                                    <div className="audio-player">
+                                                        <button
+                                                            className="audio-player__btn"
+                                                            onClick={() => setPreviewTrack(previewTrack?.id === track.id ? null : track)}
+                                                            title="Nghe thử"
+                                                        >
+                                                            {previewTrack?.id === track.id ? <Pause size={16} /> : <Play size={16} />}
+                                                        </button>
+                                                        <div className="audio-player__bar">
+                                                            <div className="audio-player__fill" style={{ "--progress": previewTrack?.id === track.id ? "35%" : "0%" }} />
+                                                        </div>
+                                                        <span className="audio-player__time">0:{String(track.duration).padStart(2, "0")}</span>
+                                                    </div>
+
+                                                    <div className="audio-track__actions">
+                                                        {track.status !== "published" && (
+                                                            <button className="btn-primary-admin" onClick={() => publishTrack(track.id)}>
+                                                                <Check size={14} /> Publish
+                                                            </button>
+                                                        )}
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)}>
+                                                            <RefreshCw size={14} /> Thay thế
+                                                        </button>
+                                                        <button className="btn-action-delete" onClick={() => removeTrack(track.id)} title="Gỡ">
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* AI Generator */}
+                            <div className="dash-card" style={{ marginTop: 20 }}>
+                                <div className="dash-card__head">
+                                    <div>
+                                        <h3 className="dash-card__title"><Sparkles size={17} className="text-amber" /> Sinh audio bằng AI Text-to-Speech</h3>
+                                        <p className="dash-card__desc">Áp dụng cho POI: <strong>{currentAudioPoi?.name}</strong></p>
+                                    </div>
+                                    <select
+                                        value={aiLang}
+                                        onChange={(e) => setAiLang(e.target.value)}
+                                        style={{
+                                            height: 34, padding: "0 10px", borderRadius: 8,
+                                            border: "1px solid var(--dash-border)", background: "#fff",
+                                            fontSize: 12.5, fontWeight: 600,
+                                        }}
+                                    >
+                                        {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="dash-card__body">
+                                    <div className="ai-note" style={{ marginBottom: 12 }}>
+                                        <Sparkles size={14} />
+                                        <div>
+                                            Nhập kịch bản thuyết minh — AI sẽ sinh audio với giọng đọc chuẩn ngôn ngữ đã chọn. Bản audio sau khi sinh sẽ ở trạng thái <strong>Bản nháp</strong>, cần rà soát trước khi publish.
+                                        </div>
+                                    </div>
+                                    <div className="script-box">
+                                        <textarea
+                                            rows={5}
+                                            placeholder="Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn. Đây là nơi sinh sống của..."
+                                            value={aiScript}
+                                            onChange={(e) => setAiScript(e.target.value)}
+                                            className="admin-modal__form"
+                                            style={{
+                                                width: "100%", padding: 12, borderRadius: 10,
+                                                border: "1px solid var(--dash-border)",
+                                                fontFamily: "inherit", fontSize: 13, resize: "vertical",
+                                            }}
+                                        />
+                                        <span className="script-box__count">{aiScript.length} ký tự</span>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating}>
+                                            {isGenerating ? <><span className="btn-spinner" /> Đang sinh...</> : <><Sparkles size={14} /> Sinh audio bằng AI</>}
+                                        </button>
+                                        <button className="btn-secondary-admin" onClick={() => setAiScript("")} disabled={isGenerating}>
+                                            Xoá kịch bản
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= TAB: ANALYTICS (UC7) ================= */}
+                    {currentTab === "analytics" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Phân Tích &amp; Thống Kê</h1>
+                                    <p className="admin-tab-desc">UC7 — Theo dõi lượt dùng, phân bổ ngôn ngữ, mức độ phổ biến POI và tải gói offline</p>
+                                </div>
+                                <div className="admin-tab-actions">
+                                    <div className="admin-filter-tabs">
+                                        {["1d", "7d", "30d", "custom"].map((r) => (
+                                            <button key={r}
+                                                className={`filter-btn ${range === r ? "is-active" : ""}`}
+                                                onClick={() => setRange(r)}>
+                                                {r === "1d" ? "Hôm nay" : r === "7d" ? "7 ngày" : r === "30d" ? "30 ngày" : "Tuỳ chọn"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button className="btn-export" onClick={() => handleExport("PDF")} disabled={exporting}>
+                                        <FileText size={14} /> PDF
+                                    </button>
+                                    <button className="btn-export" onClick={() => handleExport("Excel")} disabled={exporting}>
+                                        <Download size={14} /> Excel
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* KPIs */}
+                            <div className="stats-grid">
+                                <div className="stat-card">
+                                    <div className="stat-card__icon stat-card__icon--blue"><TrendingUp size={20} /></div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>52,384</div>
+                                    <div className="stat-card__label">Tổng lượt nghe audio</div>
+                                    <div className="stat-card__foot">7 ngày gần nhất</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-card__icon stat-card__icon--emerald"><Activity size={20} /></div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>2,140</div>
+                                    <div className="stat-card__label">Người dùng hoạt động (DAU)</div>
+                                    <div className="stat-card__foot">+9.2% so với tuần trước</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-card__icon stat-card__icon--amber"><Download size={20} /></div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
+                                        {(OFFLINE_PACKAGE.downloads.android + OFFLINE_PACKAGE.downloads.ios + OFFLINE_PACKAGE.downloads.web).toLocaleString()}
+                                    </div>
+                                    <div className="stat-card__label">Lượt tải offline package</div>
+                                    <div className="stat-card__foot">Android • iOS • Web</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-card__icon stat-card__icon--purple"><Zap size={20} /></div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>1.6s</div>
+                                    <div className="stat-card__label">Độ trễ audio trung bình</div>
+                                    <div className="stat-card__foot">Mục tiêu PRD: &lt; 2s</div>
+                                </div>
+                            </div>
+
+                            <div className="dash-grid-2">
+                                {/* Language distribution */}
+                                <div className="dash-card">
+                                    <div className="dash-card__head">
+                                        <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ</h3>
+                                    </div>
+                                    <div className="dash-card__body">
+                                        <div className="lang-dist__bar">
+                                            <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": "58%" }} />
+                                            <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": "27%" }} />
+                                            <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": "15%" }} />
+                                        </div>
+                                        <div className="lang-dist__legend">
+                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-vi)" }} /><span className="lang-dist__name">Tiếng Việt</span><span className="lang-dist__val">58%</span></div>
+                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-en)" }} /><span className="lang-dist__name">English</span><span className="lang-dist__val">27%</span></div>
+                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-zh)" }} /><span className="lang-dist__name">中文</span><span className="lang-dist__val">15%</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Package card */}
+                                <div className="dash-card">
+                                    <div className="dash-card__head">
+                                        <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline</h3>
+                                    </div>
+                                    <div className="package-card">
+                                        <div className="package-card__row">
+                                            <span>Phiên bản</span>
+                                            <strong>{OFFLINE_PACKAGE.version}</strong>
+                                        </div>
+                                        <div>
+                                            <div className="package-card__row">
+                                                <span>Dung lượng</span>
+                                                <span className="package-card__size">{OFFLINE_PACKAGE.totalMb} / {OFFLINE_PACKAGE.limitMb} MB</span>
+                                            </div>
+                                            <div className={`meter ${OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb > 0.95 ? "is-danger" : "is-warning"}`}>
+                                                <div className="meter__fill" style={{ "--pct": `${(OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb) * 100}%` }} />
+                                            </div>
+                                        </div>
+                                        <div className="package-card__row">
+                                            <span>Android</span><strong>{OFFLINE_PACKAGE.downloads.android.toLocaleString()}</strong>
+                                        </div>
+                                        <div className="package-card__row">
+                                            <span>iOS</span><strong>{OFFLINE_PACKAGE.downloads.ios.toLocaleString()}</strong>
+                                        </div>
+                                        <div className="package-card__row">
+                                            <span>Web (browser)</span><strong>{OFFLINE_PACKAGE.downloads.web.toLocaleString()}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* POI popularity table */}
+                            <div className="dash-card" style={{ marginTop: 16 }}>
+                                <div className="dash-card__head">
+                                    <h3 className="dash-card__title"><MapPin size={17} className="text-emerald" /> Mức độ phổ biến POI</h3>
+                                    <p className="dash-card__desc">Xếp hạng theo lượt play audio</p>
+                                </div>
+                                <div className="table-responsive">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>POI</th>
+                                                <th>Lượt nghe</th>
+                                                <th>Hoàn thành ≥80%</th>
+                                                <th>Tỉ lệ replay</th>
+                                                <th>Ngôn ngữ phổ biến</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[
+                                                { n: "Khu Voi Châu Á", p: "3,840", c: "78%", r: "12%", l: "VI" },
+                                                { n: "Chuồng Hổ Bengal", p: "2,910", c: "72%", r: "9%", l: "EN" },
+                                                { n: "Hồ Hồng Hạc", p: "2,450", c: "81%", r: "15%", l: "ZH" },
+                                                { n: "Đảo Linh Trưởng", p: "1,820", c: "66%", r: "8%", l: "VI" },
+                                                { n: "Vườn Lan Cổ Thụ", p: "1,340", c: "54%", r: "5%", l: "EN" },
+                                            ].map((row, i) => (
+                                                <tr key={i}>
+                                                    <td><strong>#{i + 1}</strong></td>
+                                                    <td>{row.n}</td>
+                                                    <td><span className="price-badge">{row.p}</span></td>
+                                                    <td>{row.c}</td>
+                                                    <td>{row.r}</td>
+                                                    <td><span className="method-badge">{row.l}</span></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= TAB: ADMIN ACCOUNTS (UC7) ================= */}
+                    {currentTab === "accounts" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Tài Khoản Admin &amp; Phân Quyền</h1>
+                                    <p className="admin-tab-desc">UC7 — Thêm, sửa, vô hiệu hoá tài khoản; gán quyền và MFA</p>
+                                </div>
+                                <div className="admin-tab-actions">
+                                    <button
+                                        className="btn-primary-admin"
+                                        onClick={() => showToast("Demo: mở form thêm tài khoản")}
+                                    >
+                                        <Plus size={16} /> Thêm tài khoản
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="admin-banner admin-banner--warn" style={{ marginBottom: 16 }}>
+                                <ShieldCheck size={16} />
+                                <div>
+                                    Theo PRD, sau <strong>5 lần sai mật khẩu</strong> hoặc <strong>3 lần sai MFA</strong> — tài khoản sẽ bị khoá 15 phút. Access token 30 phút, refresh token 7 ngày.
+                                </div>
+                            </div>
+
+                            <div className="dash-card">
+                                <div className="table-responsive">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã</th>
+                                                <th>Nhân sự</th>
+                                                <th>Quyền</th>
+                                                <th>MFA</th>
+                                                <th>Trạng thái</th>
+                                                <th>Đăng nhập gần nhất</th>
+                                                <th style={{ textAlign: "right" }}>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {adminList.map((a) => {
+                                                const role = ROLE_OPTIONS.find((r) => r.value === a.role);
+                                                return (
+                                                    <tr key={a.id}>
+                                                        <td><span className="code-badge">{a.id}</span></td>
+                                                        <td>
+                                                            <div className="table-item-title">
+                                                                <div className="avatar-initial">{a.name.charAt(0)}</div>
+                                                                <div>
+                                                                    <div className="font-semibold text-slate-100">{a.name}</div>
+                                                                    <div className="text-xs text-slate-400">{a.email}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td><span className={`role-badge ${role?.cls || ""}`}>{role?.label}</span></td>
+                                                        <td>
+                                                            {a.mfa
+                                                                ? <span className="mfa-chip"><KeyRound size={11} /> Đang bật</span>
+                                                                : <span className="mfa-chip is-off"><Unlock size={11} /> Tắt</span>}
+                                                        </td>
+                                                        <td>
+                                                            <span className={`account-status account-status--${a.status}`}>
+                                                                {a.status === "active" && "Đang hoạt động"}
+                                                                {a.status === "locked" && "Đang bị khoá"}
+                                                                {a.status === "deactivated" && "Đã vô hiệu"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="text-xs text-slate-400">{a.lastLogin}</td>
+                                                        <td style={{ textAlign: "right" }}>
+                                                            <div className="table-actions">
+                                                                <button className="btn-action-edit" title="Sửa" onClick={() => showToast("Demo: sửa tài khoản")}>
+                                                                    <UserCog size={15} />
+                                                                </button>
+                                                                <button className="btn-action-delete" title="Vô hiệu hoá"
+                                                                    onClick={() => {
+                                                                        setAdminList((prev) =>
+                                                                            prev.map((x) => (x.id === a.id ? { ...x, status: "deactivated" } : x))
+                                                                        );
+                                                                        showToast("Đã vô hiệu hoá tài khoản");
+                                                                    }}>
+                                                                    <Lock size={15} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= TAB: AUDIT LOG (UC4/UC7) ================= */}
+                    {currentTab === "audit" && (
+                        <div className="admin-tab-view animate-fade">
+                            <div className="admin-tab-head">
+                                <div>
+                                    <h1 className="admin-tab-title">Audit Log</h1>
+                                    <p className="admin-tab-desc">
+                                        UC4/UC7 — Mọi sự kiện đăng nhập, thay đổi nội dung, phân quyền đều được ghi nhật ký
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="dash-card">
+                                <div className="audit-list">
+                                    {auditLogs.map((log) => (
+                                        <div key={log.id} className={`audit-item audit-item--${log.type}`}>
+                                            <div className="audit-item__icon">
+                                                {log.type === "success" && <CheckCircle2 size={16} />}
+                                                {log.type === "failed" && <AlertCircle size={16} />}
+                                                {log.type === "lock" && <Lock size={16} />}
+                                                {log.type === "change" && <Edit3 size={16} />}
+                                            </div>
+                                            <div>
+                                                <div className="audit-item__title">{log.event}</div>
+                                                <div className="audit-item__detail">
+                                                    {log.admin} • {log.detail}
+                                                </div>
+                                            </div>
+                                            <div className="audit-item__time">{log.time}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </main>
             </div>
-          )}
-        </main>
-      </div>
 
-      {/* ================= MODAL THÊM CÁ THỂ MỚI ================= */}
-      {showAddModal && (
-        <div className="admin-modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal__head">
-              <div>
-                <h2 className="admin-modal__title">Thêm Hồ Sơ Cá Thể Mới</h2>
-                <p className="admin-modal__desc">Nhập thông tin động vật hoặc thực vật vào cơ sở dữ liệu TCV</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="clear-btn">
-                <X size={18} />
-              </button>
-            </div>
+            {/* ================= MODAL POI (UC5) ================= */}
+            {editingPoi && poiForm && (
+                <div className="admin-modal-backdrop" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                    <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-modal__head">
+                            <div>
+                                <h2 className="admin-modal__title">
+                                    {editingPoi === "new" ? "Thêm POI mới" : `Chỉnh sửa ${poiForm.id}`}
+                                </h2>
+                                <p className="admin-modal__desc">
+                                    Nhập thông tin POI và mô tả đa ngôn ngữ. Có thể dùng AI để sinh bản dịch.
+                                </p>
+                            </div>
+                            <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                                <X size={18} />
+                            </button>
+                        </div>
 
-            <form onSubmit={handleAddItem} className="admin-modal__form">
-              <div className="form-group">
-                <label>Loại cá thể</label>
-                <div className="form-radio-row">
-                  <label className={`form-radio-chip ${newForm.type === "animal" ? "is-selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="type"
-                      checked={newForm.type === "animal"}
-                      onChange={() => setNewForm({ ...newForm, type: "animal" })}
-                    />
-                    <span>🐾 Động vật</span>
-                  </label>
-                  <label className={`form-radio-chip ${newForm.type === "plant" ? "is-selected" : ""}`}>
-                    <input
-                      type="radio"
-                      name="type"
-                      checked={newForm.type === "plant"}
-                      onChange={() => setNewForm({ ...newForm, type: "plant" })}
-                    />
-                    <span>🌳 Cây xanh / Thực vật</span>
-                  </label>
+                        <div className="poi-editor">
+                            {/* Cột trái: form */}
+                            <div>
+                                <div className="form-row-2" style={{ marginBottom: 12 }}>
+                                    <div className="form-group">
+                                        <label>Mã POI</label>
+                                        <input type="text" value={poiForm.id} disabled />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Loại</label>
+                                        <select value={poiForm.category}
+                                            onChange={(e) => setPoiForm({ ...poiForm, category: e.target.value })}>
+                                            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="form-row-2" style={{ marginBottom: 12 }}>
+                                    <div className="form-group">
+                                        <label>Tên POI</label>
+                                        <input type="text" value={poiForm.name}
+                                            placeholder="VD: Chuồng Hổ Bengal"
+                                            onChange={(e) => setPoiForm({ ...poiForm, name: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Phân khu</label>
+                                        <input type="text" value={poiForm.zone}
+                                            placeholder="VD: Khu Thú săn mồi"
+                                            onChange={(e) => setPoiForm({ ...poiForm, zone: e.target.value })} />
+                                    </div>
+                                </div>
+
+                                <div className="form-row-3" style={{ marginBottom: 12 }}>
+                                    <div className="form-group">
+                                        <label>Vĩ độ (Lat)</label>
+                                        <input type="text" value={poiForm.latitude}
+                                            onChange={(e) => setPoiForm({ ...poiForm, latitude: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Kinh độ (Lng)</label>
+                                        <input type="text" value={poiForm.longitude}
+                                            onChange={(e) => setPoiForm({ ...poiForm, longitude: e.target.value })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Bán kính geofence (m)</label>
+                                        <input type="number" min={5} max={200} value={poiForm.geofenceRadius}
+                                            onChange={(e) => setPoiForm({ ...poiForm, geofenceRadius: +e.target.value })} />
+                                    </div>
+                                </div>
+
+                                {/* Language tabs */}
+                                <div className="lang-tabs">
+                                    {LANGUAGES.map((l) => {
+                                        const done = !!poiForm.translations[l.code].trim();
+                                        return (
+                                            <button
+                                                key={l.code}
+                                                type="button"
+                                                data-lang={l.code}
+                                                className={`lang-tab ${poiLangTab === l.code ? "is-active" : ""}`}
+                                                onClick={() => setPoiLangTab(l.code)}
+                                            >
+                                                <span className={`lang-tab__dot ${done ? "is-complete" : ""}`} />
+                                                {l.label}
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="lang-tabs__spacer" />
+                                    <button type="button" className="btn-ai" onClick={handleAiTranslate} disabled={isTranslating}>
+                                        {isTranslating ? <><span className="btn-spinner" /> AI đang dịch...</> : <><Sparkles size={14} /> Dịch bằng AI</>}
+                                    </button>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Mô tả — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}</label>
+                                    <textarea
+                                        rows={6}
+                                        value={poiForm.translations[poiLangTab]}
+                                        placeholder={poiLangTab === "vi" ? "Nhập mô tả tiếng Việt (bắt buộc)..." : "Bản dịch sẽ do AI sinh, vui lòng rà soát lại..."}
+                                        onChange={(e) =>
+                                            setPoiForm({
+                                                ...poiForm,
+                                                translations: { ...poiForm.translations, [poiLangTab]: e.target.value },
+                                            })
+                                        }
+                                    />
+                                    <span className="field-hint">
+                                        Ngôn ngữ mặc định của hệ thống là Tiếng Việt (dùng khi bản dịch ngôn ngữ khác chưa có).
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Cột phải: geofence preview */}
+                            <div>
+                                <div className="form-group" style={{ marginBottom: 10 }}>
+                                    <label>Xem trước vùng Geofence</label>
+                                </div>
+                                <div className="geofence-preview">
+                                    <div
+                                        className="geofence-preview__ring"
+                                        style={{ "--ring-size": `${Math.min(90, 20 + poiForm.geofenceRadius / 2)}%` }}
+                                    />
+                                    <div className="geofence-preview__pin" />
+                                    <div className="geofence-preview__caption">
+                                        Bán kính: {poiForm.geofenceRadius}m • Toạ độ: {poiForm.latitude}, {poiForm.longitude}
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginTop: 14 }}>
+                                    <label>Trạng thái hoạt động</label>
+                                    <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <span className="switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={poiForm.isActive}
+                                                onChange={(e) => setPoiForm({ ...poiForm, isActive: e.target.checked })}
+                                            />
+                                            <span className="switch__track" />
+                                        </span>
+                                        <span style={{ fontSize: 12.5, color: "var(--dash-text-2)" }}>
+                                            {poiForm.isActive ? "Đang mở cửa tham quan" : "Tạm đóng / bảo trì"}
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="admin-modal__foot">
+                            <button className="btn-secondary-admin" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                                Huỷ
+                            </button>
+                            <button className="btn-primary-admin" onClick={savePoi}>
+                                <Save size={16} /> Lưu POI
+                            </button>
+                        </div>
+                    </div>
                 </div>
-              </div>
+            )}
 
-              <div className="form-group">
-                <label>Tên loài (Tên thông thường &amp; Tên khoa học)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="VD: Hổ Bengal, Cây Dầu Rái 100 tuổi..."
-                  value={newForm.name}
-                  onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
-                />
-              </div>
-
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Phân khu / Vị trí chuồng</label>
-                  <input
-                    type="text"
-                    placeholder="VD: Khu Voi, Hồ Hồng Hạc..."
-                    value={newForm.zone}
-                    onChange={(e) => setNewForm({ ...newForm, zone: e.target.value })}
-                  />
+            {/* ================= TOAST ================= */}
+            {toast && (
+                <div className={`admin-toast ${toast.tone === "error" ? "admin-toast--error" : ""}`}>
+                    {toast.tone === "error" ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                    <span>{toast.msg}</span>
                 </div>
-                <div className="form-group">
-                  <label>Tình trạng sức khỏe</label>
-                  <select
-                    value={newForm.status}
-                    onChange={(e) => setNewForm({ ...newForm, status: e.target.value })}
-                  >
-                    <option value="healthy">Khỏe mạnh bình thường</option>
-                    <option value="monitoring">Đang theo dõi sức khỏe</option>
-                    <option value="treatment">Cần kiểm tra / Điều trị y tế</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>Độ tuổi / Năm trồng</label>
-                  <input
-                    type="text"
-                    placeholder="VD: 5 tuổi, 120 năm..."
-                    value={newForm.age}
-                    onChange={(e) => setNewForm({ ...newForm, age: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Cán bộ / Bác sĩ phụ trách</label>
-                  <input
-                    type="text"
-                    value={newForm.caretaker}
-                    onChange={(e) => setNewForm({ ...newForm, caretaker: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Chế độ dinh dưỡng / Chăm sóc</label>
-                <textarea
-                  rows={2}
-                  placeholder="Khẩu phần ăn hàng ngày, lưu ý đặc biệt..."
-                  value={newForm.diet}
-                  onChange={(e) => setNewForm({ ...newForm, diet: e.target.value })}
-                />
-              </div>
-
-              <div className="admin-modal__foot">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary-admin">
-                  Hủy bỏ
-                </button>
-                <button type="submit" className="btn-primary-admin">
-                  <Check size={16} /> Lưu Vào Hệ Thống
-                </button>
-              </div>
-            </form>
-          </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

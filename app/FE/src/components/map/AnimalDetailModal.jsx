@@ -22,17 +22,19 @@ import {
 import { getMarkerDetails } from "./animalMediaData";
 import { TYPE_META } from "./mapData";
 import { useSettings } from "../../context/SettingsContext";
+import RoutePickerModal from "./RoutePickerModal";
 import "./animalModal.css";
 
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
-export default function AnimalDetailModal({ marker, onClose }) {
+export default function AnimalDetailModal({ marker, onClose, onPathReady }) {
   const { t } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  const [showRoute, setShowRoute] = useState(false);
 
   const details = getMarkerDetails(marker);
   const markerName = t(`markers.${marker?.id}.name`, marker?.name);
@@ -367,10 +369,7 @@ export default function AnimalDetailModal({ marker, onClose }) {
 
           <button
             type="button"
-            onClick={() => {
-              alert(`Bắt đầu dẫn đường đến: ${marker.name}`);
-              onClose();
-            }}
+            onClick={() => setShowRoute(true)}
             className="animal-modal-btn-nav"
           >
             <Navigation size={16} />
@@ -378,6 +377,19 @@ export default function AnimalDetailModal({ marker, onClose }) {
           </button>
         </div>
       </div>
+
+      {/* Popup chỉ đường */}
+      {showRoute && (
+        <RoutePickerModal
+          destination={marker}
+          onClose={() => setShowRoute(false)}
+          onPathReady={(path) => {
+            onPathReady?.(path);
+            setShowRoute(false);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }

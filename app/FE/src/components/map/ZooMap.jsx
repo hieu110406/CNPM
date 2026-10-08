@@ -30,6 +30,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
+  const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
 
   const selectedMarker = useMemo(
     () => MARKERS.find((m) => m.id === selectedId),
@@ -157,6 +158,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
           selectedId={selectedId}
           onSelectMarker={selectMarker}
           isDimmed={isDimmed}
+          pathNodes={pathNodes}
         />
 
         <MapControls
@@ -169,7 +171,53 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
         <MapInfoCard
           marker={selectedMarker}
           onClose={() => setSelectedId(null)}
+          onPathReady={(path) => {
+            setPathNodes(path);
+            if (path.length) {
+              const startId = path[0].code || path[0].node_id || path[0].id;
+              if (startId) selectMarker(startId);
+            }
+          }}
         />
+
+        {pathNodes.length > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "20px",
+              left: "20px",
+              zIndex: 30,
+            }}
+          >
+            <button
+              onClick={() => setPathNodes([])}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "24px",
+                background: "#ffffff",
+                color: "#dc2626",
+                border: "1px solid #fecaca",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.12)",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#fef2f2";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#ffffff";
+              }}
+            >
+              <X size={14} />
+              <span>Xoá lộ trình dẫn đường</span>
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Thanh bên phải: Khu nổi bật */}

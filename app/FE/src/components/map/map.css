@@ -1388,3 +1388,11 @@
     display: flex;
   }
 }
+
+/* SVG đường đi Dijkstra — animation nét đứt chạy */
+.path-line-animated {
+  animation: dashMove 1.2s linear infinite;
+}
+@keyframes dashMove {
+  to { stroke-dashoffset: -26; }
+}

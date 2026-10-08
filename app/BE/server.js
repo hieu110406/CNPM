@@ -9,6 +9,7 @@ import audioRoutes from "./routes/audio.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
+import pathfindingRoutes from "./routes/pathfinding.routes.js";
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -22,6 +23,7 @@ app.use("/api/audio", audioRoutes);
 app.use("/api/admin-accounts", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/audit-logs", auditRoutes);
+app.use("/api/pathfinding", pathfindingRoutes);
 
 const PORT = process.env.PORT || 5000;
 

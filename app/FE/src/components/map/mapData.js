@@ -428,11 +428,11 @@ export const HIGHLIGHT_GROUPS = [
 ];
 
 export const FILTER_CATEGORIES = [
-  { key: "all", label: "Tất cả địa điểm", icon: "🌐" },
-  { key: "animal", label: "Động vật", icon: "🦁" },
-  { key: "plant", label: "Thực vật", icon: "🌿" },
-  { key: "entertainment", label: "Vui chơi", icon: "🎡" },
-  { key: "restaurant", label: "Ẩm thực", icon: "☕" },
-  { key: "service", label: "Dịch vụ & Xe điện", icon: "🚂" },
-  { key: "restroom", label: "Nhà vệ sinh", icon: "🚻" },
+  { key: "all", label: "Tất cả địa điểm"},
+  { key: "animal", label: "Động vật", },
+  { key: "plant", label: "Thực vật",  },
+  { key: "entertainment", label: "Vui chơi",  },
+  { key: "restaurant", label: "Ẩm thực", },
+  { key: "service", label: "Dịch vụ & Xe điện", },
+  { key: "restroom", label: "Nhà vệ sinh",  },
 ];

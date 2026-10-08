@@ -8,13 +8,10 @@ import logo from "../../assets/marker/logo.png";
 import {
   Settings,
   Clock,
-  CloudSun,
-  ShieldCheck,
   Compass,
 } from "lucide-react";
 
 import { useSettings } from "../../context/SettingsContext";
-import LanguageSwitcher from "../language/LanguageSwitcher";
 
 export default function Header({
   children,
@@ -88,41 +85,7 @@ export default function Header({
           </span>
         </div>
 
-        {/* Thời tiết */}
-        <div className="header-chip header-chip--weather">
-          <CloudSun
-            size={13}
-            className="header-chip__icon--weather"
-          />
 
-          <span>
-            {t("weatherCity")}
-          </span>
-        </div>
-
-        {/* =========================
-            CHUYỂN ĐỔI NGÔN NGỮ
-        ========================== */}
-        <LanguageSwitcher />
-
-        {/* =========================
-            NÚT QUẢN TRỊ
-        ========================== */}
-        {onNavigateAdmin && (
-          <button
-            type="button"
-            onClick={onNavigateAdmin}
-            title="Đăng nhập Quản trị viên"
-            className="btn-admin-header"
-            aria-label="Đăng nhập Quản trị viên"
-          >
-            <ShieldCheck size={15} />
-
-            <span>
-              {t("adminBtn") || "Quản trị"}
-            </span>
-          </button>
-        )}
 
         {/* =========================
             NÚT HƯỚNG DẪN

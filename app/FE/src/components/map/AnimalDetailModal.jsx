@@ -306,7 +306,7 @@ export default function AnimalDetailModal({ marker, onClose }) {
           {details.characteristics && details.characteristics.length > 0 && (
             <div>
               <h4 className="animal-modal-section-title">
-                📋 Đặc điểm sinh học & tập tính
+                Đặc điểm sinh học & tập tính
               </h4>
               <ul className="animal-modal-bullets">
                 {details.characteristics.map((item, idx) => (

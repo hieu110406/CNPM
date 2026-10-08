@@ -177,7 +177,7 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
         <div className="right-panel__head">
           <div className="right-panel__title-row">
             <h2 className="right-panel__title">
-              <span>🧭</span> {t("rightPanelTitle")}
+              <span></span> {t("rightPanelTitle")}
             </h2>
             <button
               onClick={() => setIsPanelOpen(false)}

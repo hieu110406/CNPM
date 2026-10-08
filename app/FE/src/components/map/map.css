@@ -247,10 +247,11 @@
 /* Banner tour xe điện */
 .tour-banner {
   padding: 14px;
-  color: #fff;
-  background: linear-gradient(to bottom right, #065f46, #042f2e);
+  color: #065f46;
+  background: #ffffff;
+  border: 1.5px solid #10b981;
   border-radius: 16px;
-  box-shadow: var(--sh-md);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.08), var(--sh-md);
 }
 
 .tour-banner__head {
@@ -266,21 +267,21 @@
   width: 28px;
   height: 28px;
   font-size: 14px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(16, 185, 129, 0.12);
   border-radius: 8px;
 }
 
 .tour-banner__title {
   font-size: 12px;
   font-weight: 700;
-  color: #a7f3d0;
+  color: #065f46;
 }
 
 .tour-banner__desc {
   margin-top: 6px !important;
   font-size: 11px;
   line-height: 1.625;
-  color: rgba(209, 250, 229, 0.8);
+  color: #374151;
 }
 
 .tour-banner__foot {
@@ -293,18 +294,18 @@
 
 .tour-banner__price {
   font-weight: 600;
-  color: #fcd34d;
+  color: #059669;
 }
 
 .tour-banner__link {
   font-weight: 700;
-  color: #fff;
+  color: #10b981;
   text-decoration: underline;
   transition: color 0.2s;
 }
 
 .tour-banner__link:hover {
-  color: #a7f3d0;
+  color: #065f46;
 }
 
 /* ==========================================================================

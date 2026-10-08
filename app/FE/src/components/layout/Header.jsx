@@ -1,9 +1,14 @@
 // components/layout/Header.jsx
-// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin
+// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin, cài đặt
 
-import { Menu, Clock, CloudSun, ShieldCheck } from "lucide-react";
+import React from "react";
+import { Settings, Clock, CloudSun, ShieldCheck, Compass } from "lucide-react";
+import { useSettings } from "../../context/SettingsContext";
+import LanguageSwitcher from "../language/LanguageSwitcher";
 
 export default function Header({ children, onMenuClick, isPanelOpen, onNavigateAdmin }) {
+  const { openSettings, t } = useSettings();
+
   return (
     <header className="app-header">
       <div className="app-header__glow app-header__glow--top" />
@@ -21,10 +26,10 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
 
         <div className="brand__text">
           <div className="brand__title-row">
-            <h1 className="brand__title">Thảo Cầm Viên</h1>
+            <h1 className="brand__title">{t("appTitle")}</h1>
             <span className="brand__badge">Est. 1864</span>
           </div>
-          <p className="brand__subtitle">Saigon Zoo &amp; Botanical Gardens</p>
+          <p className="brand__subtitle">{t("brandSubtitle")}</p>
         </div>
       </div>
 
@@ -35,33 +40,56 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
       <div className="header-actions">
         <div className="header-chip header-chip--hours">
           <Clock size={12} className="header-chip__icon--clock" />
-          <span>Mở cửa: <strong>07:00 - 18:30</strong></span>
+          <span>{t("hoursLabel")}</span>
         </div>
 
         <div className="header-chip header-chip--weather">
           <CloudSun size={13} className="header-chip__icon--weather" />
-          <span>TP.HCM <strong>31°C</strong></span>
+          <span>{t("weatherCity")}</span>
         </div>
 
+        {/* Chuyển đổi ngôn ngữ nhanh */}
+        <LanguageSwitcher />
+
+        {/* Nút Đăng nhập / Chuyển tới Quản trị viên */}
         {onNavigateAdmin && (
           <button
+            type="button"
             onClick={onNavigateAdmin}
             title="Đăng nhập Quản trị viên"
             className="btn-admin-header"
+            aria-label="Đăng nhập Quản trị viên"
           >
             <ShieldCheck size={15} />
-            <span>Admin</span>
+            <span>{t("adminBtn") || "Quản trị"}</span>
           </button>
         )}
 
+        {/* Nút bật/tắt bảng hướng dẫn tham quan */}
+        {onMenuClick && (
+          <button
+            type="button"
+            onClick={onMenuClick}
+            title={isPanelOpen ? "Thu gọn bảng hướng dẫn" : "Mở bảng hướng dẫn & khu nổi bật"}
+            className={`btn-guide-header ${isPanelOpen ? "is-active" : ""}`}
+            aria-label="Hướng dẫn tham quan"
+          >
+            <Compass size={16} className="btn-guide-header__icon" />
+            <span className="btn-guide-header__text">{t("guideBtn") || "Hướng dẫn"}</span>
+          </button>
+        )}
+
+        {/* Nút Mở Cài đặt hệ thống (Ngôn ngữ, Phông chữ...) */}
         <button
-          onClick={onMenuClick}
-          title="Bật/tắt thanh chú thích & khu nổi bật"
-          className={`btn-menu ${isPanelOpen ? "is-active" : ""}`}
+          type="button"
+          onClick={openSettings}
+          title={t("settingsTitle")}
+          className="btn-menu"
+          aria-label="Cài đặt hệ thống"
         >
-          <Menu size={18} />
+          <Settings size={18} />
         </button>
       </div>
     </header>
   );
-}
+}

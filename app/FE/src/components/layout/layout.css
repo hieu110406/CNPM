@@ -3,7 +3,7 @@
    Nguồn: index.css (font, reset, scrollbar) + App.css (cấu trúc sidebar/header/main)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto:wght@300;400;500;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap');
 
 /* ---------- Biến màu ---------- */
 :root {
@@ -30,6 +30,7 @@
 
   --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
+  --font-scale: 100%;
 
   --sidebar-width: 76px;
 }
@@ -39,6 +40,10 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  font-size: var(--font-scale, 100%);
 }
 
 html,
@@ -334,9 +339,17 @@ select {
   transition: all 0.2s;
 }
 
+.btn-menu svg {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .btn-menu:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-menu:hover svg {
+  transform: rotate(45deg);
 }
 
 .btn-menu.is-active {
@@ -369,6 +382,67 @@ select {
 
 .btn-admin-header:active {
   transform: scale(0.96);
+}
+
+/* ---------- Nút Bảng Hướng Dẫn Header ---------- */
+.btn-guide-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-guide-header:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.38);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-guide-header:active {
+  transform: scale(0.96);
+}
+
+.btn-guide-header.is-active {
+  color: var(--c-emerald-950, #064e3b);
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.btn-guide-header__icon {
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.btn-guide-header:hover .btn-guide-header__icon {
+  transform: rotate(20deg);
+}
+
+.btn-guide-header.is-active .btn-guide-header__icon {
+  color: var(--c-emerald-600, #059669);
+}
+
+.btn-guide-header__text {
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .btn-guide-header__text {
+    display: none;
+  }
 }
 
 /* ==========================================================================

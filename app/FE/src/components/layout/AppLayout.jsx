@@ -3,6 +3,7 @@
 
 import React from "react";
 import Header from "./Header";
+import SettingsModal from "../settings/SettingsModal";
 import "./layout.css";
 
 export default function AppLayout({
@@ -26,6 +27,7 @@ export default function AppLayout({
       <div className="app-body">
         {children}
       </div>
+      <SettingsModal />
     </div>
   );
-}
+}

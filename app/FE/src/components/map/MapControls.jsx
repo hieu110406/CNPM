@@ -20,13 +20,13 @@ export default function MapControls({ onZoomIn, onZoomOut, onReset, zoom = 1 }) 
   return (
     <div className="map-controls">
       <div className="map-controls__zoom glass">
-        <button onClick={onZoomIn} className="map-btn" title="Phóng to">
+        <button onClick={onZoomIn} className="map-btn" title="Phóng to" aria-label="Phóng to">
           <Plus size={18} strokeWidth={2.4} />
         </button>
 
         <div className="map-controls__pct">{Math.round(zoom * 100)}%</div>
 
-        <button onClick={onZoomOut} className="map-btn" title="Thu nhỏ">
+        <button onClick={onZoomOut} className="map-btn" title="Thu nhỏ" aria-label="Thu nhỏ">
           <Minus size={18} strokeWidth={2.4} />
         </button>
       </div>
@@ -35,6 +35,7 @@ export default function MapControls({ onZoomIn, onZoomOut, onReset, zoom = 1 }) 
         onClick={onReset}
         className="map-btn map-btn--solid"
         title="Về trung tâm bản đồ"
+        aria-label="Về trung tâm bản đồ"
       >
         <LocateFixed size={18} />
       </button>
@@ -43,6 +44,7 @@ export default function MapControls({ onZoomIn, onZoomOut, onReset, zoom = 1 }) 
         onClick={toggleFullscreen}
         className="map-btn map-btn--solid"
         title={isFullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
+        aria-label={isFullscreen ? "Thoát toàn màn hình" : "Xem toàn màn hình"}
       >
         {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
       </button>

@@ -1,23 +1,47 @@
+
 // components/layout/Header.jsx
-// Header ứng dụng Thảo Cầm Viên: logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin, cài đặt
+// Header ứng dụng Thảo Cầm Viên:
+// logo, ô tìm kiếm, giờ mở cửa, thời tiết, admin, cài đặt
 
 import React from "react";
-import { Settings, Clock, CloudSun, ShieldCheck, Compass } from "lucide-react";
+import logo from "../../assets/marker/logo.png";
+import {
+  Settings,
+  Clock,
+  CloudSun,
+  ShieldCheck,
+  Compass,
+} from "lucide-react";
+
 import { useSettings } from "../../context/SettingsContext";
 import LanguageSwitcher from "../language/LanguageSwitcher";
 
-export default function Header({ children, onMenuClick, isPanelOpen, onNavigateAdmin }) {
+export default function Header({
+  children,
+  onMenuClick,
+  isPanelOpen,
+  onNavigateAdmin,
+}) {
   const { openSettings, t } = useSettings();
 
   return (
     <header className="app-header">
+      {/* Hiệu ứng ánh sáng nền */}
       <div className="app-header__glow app-header__glow--top" />
       <div className="app-header__glow app-header__glow--bottom" />
 
-      {/* Logo & Tên thương hiệu */}
+      {/* =========================
+          LOGO & TÊN THƯƠNG HIỆU
+      ========================== */}
       <div className="brand">
         <div className="brand__logo">
-          <span>🐅</span>
+          <img
+            src={logo}
+            alt="Thảo Cầm Viên"
+            className="brand__logo-image"
+          />
+
+          {/* Trạng thái online */}
           <span className="brand__status">
             <span className="brand__status-ping" />
             <span className="brand__status-dot" />
@@ -26,32 +50,64 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
 
         <div className="brand__text">
           <div className="brand__title-row">
-            <h1 className="brand__title">{t("appTitle")}</h1>
-            <span className="brand__badge">Est. 1864</span>
+            <h1 className="brand__title">
+              {t("appTitle")}
+            </h1>
+
+            <span className="brand__badge">
+              Est. 1864
+            </span>
           </div>
-          <p className="brand__subtitle">{t("brandSubtitle")}</p>
+
+          <p className="brand__subtitle">
+            {t("brandSubtitle")}
+          </p>
         </div>
       </div>
 
-      {/* Vị trí ô tìm kiếm trung tâm */}
-      <div className="header-search">{children}</div>
+      {/* =========================
+          Ô TÌM KIẾM TRUNG TÂM
+      ========================== */}
+      <div className="header-search">
+        {children}
+      </div>
 
-      {/* Thông tin trực tiếp & Nút hành động */}
+      {/* =========================
+          THÔNG TIN & NÚT HÀNH ĐỘNG
+      ========================== */}
       <div className="header-actions">
+        {/* Giờ mở cửa */}
         <div className="header-chip header-chip--hours">
-          <Clock size={12} className="header-chip__icon--clock" />
-          <span>{t("hoursLabel")}</span>
+          <Clock
+            size={12}
+            className="header-chip__icon--clock"
+          />
+
+          <span>
+            {t("hoursLabel")}
+          </span>
         </div>
 
+        {/* Thời tiết */}
         <div className="header-chip header-chip--weather">
-          <CloudSun size={13} className="header-chip__icon--weather" />
-          <span>{t("weatherCity")}</span>
+          <CloudSun
+            size={13}
+            className="header-chip__icon--weather"
+          />
+
+          <span>
+            {t("weatherCity")}
+          </span>
         </div>
 
-        {/* Chuyển đổi ngôn ngữ nhanh */}
+        {/* =========================
+            CHUYỂN ĐỔI NGÔN NGỮ
+        ========================== */}
         <LanguageSwitcher />
 
-        {/* Nút Đăng nhập / Chuyển tới Quản trị viên */}
+        {/* =========================
+            NÚT QUẢN TRỊ
+        ========================== */}
         {onNavigateAdmin && (
           <button
             type="button"
@@ -61,25 +117,44 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
             aria-label="Đăng nhập Quản trị viên"
           >
             <ShieldCheck size={15} />
-            <span>{t("adminBtn") || "Quản trị"}</span>
+
+            <span>
+              {t("adminBtn") || "Quản trị"}
+            </span>
           </button>
         )}
 
-        {/* Nút bật/tắt bảng hướng dẫn tham quan */}
+        {/* =========================
+            NÚT HƯỚNG DẪN
+        ========================== */}
         {onMenuClick && (
           <button
             type="button"
             onClick={onMenuClick}
-            title={isPanelOpen ? "Thu gọn bảng hướng dẫn" : "Mở bảng hướng dẫn & khu nổi bật"}
-            className={`btn-guide-header ${isPanelOpen ? "is-active" : ""}`}
+            title={
+              isPanelOpen
+                ? "Thu gọn bảng hướng dẫn"
+                : "Mở bảng hướng dẫn & khu nổi bật"
+            }
+            className={`btn-guide-header ${
+              isPanelOpen ? "is-active" : ""
+            }`}
             aria-label="Hướng dẫn tham quan"
           >
-            <Compass size={16} className="btn-guide-header__icon" />
-            <span className="btn-guide-header__text">{t("guideBtn") || "Hướng dẫn"}</span>
+            <Compass
+              size={16}
+              className="btn-guide-header__icon"
+            />
+
+            <span className="btn-guide-header__text">
+              {t("guideBtn") || "Hướng dẫn"}
+            </span>
           </button>
         )}
 
-        {/* Nút Mở Cài đặt hệ thống (Ngôn ngữ, Phông chữ...) */}
+        {/* =========================
+            NÚT CÀI ĐẶT
+        ========================== */}
         <button
           type="button"
           onClick={openSettings}
@@ -93,3 +168,4 @@ export default function Header({ children, onMenuClick, isPanelOpen, onNavigateA
     </header>
   );
 }
+

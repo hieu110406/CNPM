@@ -1,0 +1,78 @@
+CREATE TABLE IF NOT EXISTS admin_account (
+  admin_id        SERIAL PRIMARY KEY,
+  name            VARCHAR(120) NOT NULL,
+  email           VARCHAR(150) UNIQUE NOT NULL,
+  password_hash   TEXT NOT NULL,
+  role_id         INTEGER DEFAULT 1,
+  is_locked       BOOLEAN DEFAULT FALSE,
+  failed_attempts INTEGER DEFAULT 0,
+  locked_until    TIMESTAMPTZ,
+  mfa_enabled     BOOLEAN DEFAULT TRUE,
+  status          VARCHAR(20) DEFAULT 'active',
+  last_login      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS category (
+  category_id SERIAL PRIMARY KEY,
+  name        VARCHAR(80) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS poi (
+  poi_id          SERIAL PRIMARY KEY,
+  code            VARCHAR(20) UNIQUE NOT NULL,
+  category_id     INTEGER REFERENCES category(category_id),
+  name            VARCHAR(200) NOT NULL,
+  zone            VARCHAR(150),
+  latitude        NUMERIC(10, 6),
+  longitude       NUMERIC(10, 6),
+  geofence_radius INTEGER DEFAULT 20,
+  is_active       BOOLEAN DEFAULT TRUE,
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS poi_translation (
+  translation_id SERIAL PRIMARY KEY,
+  poi_id         INTEGER REFERENCES poi(poi_id) ON DELETE CASCADE,
+  language_code  VARCHAR(5) NOT NULL,
+  description    TEXT,
+  UNIQUE (poi_id, language_code)
+);
+
+CREATE TABLE IF NOT EXISTS audio_track (
+  audio_id      SERIAL PRIMARY KEY,
+  poi_id        INTEGER REFERENCES poi(poi_id) ON DELETE CASCADE,
+  language_code VARCHAR(5) NOT NULL,
+  source        VARCHAR(20),
+  duration_sec  INTEGER,
+  size_mb       NUMERIC(6, 2),
+  file_url      TEXT,
+  status        VARCHAR(20) DEFAULT 'draft',
+  published_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (poi_id, language_code)
+);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  log_id     SERIAL PRIMARY KEY,
+  admin_id   INTEGER,
+  admin_name VARCHAR(120),
+  type       VARCHAR(20),
+  event      VARCHAR(200),
+  detail     TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS usage_log (
+  usage_id      SERIAL PRIMARY KEY,
+  poi_id        INTEGER,
+  language_code VARCHAR(5),
+  trigger_type  VARCHAR(10),
+  completed     BOOLEAN DEFAULT FALSE,
+  played_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_poi   ON usage_log(poi_id);
+CREATE INDEX IF NOT EXISTS idx_usage_lang  ON usage_log(language_code);
+CREATE INDEX IF NOT EXISTS idx_audit_admin ON audit_log(admin_id);
+CREATE INDEX IF NOT EXISTS idx_audio_poi   ON audio_track(poi_id);

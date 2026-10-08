@@ -10,7 +10,7 @@ export default function HighlightedZones({ selectedGroupId, onSelectGroup }) {
     <div className="zones">
       <div className="zones__head">
         <p className="panel-title">
-          <Sparkles size={13} className="ic-amber" />
+          <Sparkles size={0} className="ic-amber" />
           Khu vực nổi bật
         </p>
         <span className="zones__count">{HIGHLIGHT_GROUPS.length} nhóm</span>

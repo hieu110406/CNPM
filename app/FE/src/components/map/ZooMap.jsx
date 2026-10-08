@@ -172,12 +172,12 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
         />
       </main>
 
-      {/* Thanh bên phải: Khu nổi bật & Chú thích */}
+      {/* Thanh bên phải: Khu nổi bật */}
       <aside className={`right-panel ${isPanelOpen ? "is-open" : ""}`}>
         <div className="right-panel__head">
           <div className="right-panel__title-row">
             <h2 className="right-panel__title">
-              <span>🧭</span> {t("rightPanelTitle")}
+              <span></span> {t("rightPanelTitle")}
             </h2>
             <button
               onClick={() => setIsPanelOpen(false)}
@@ -187,38 +187,13 @@ export default function ZooMap({ mapImageSrc = zooMapImage, onNavigateAdmin }) {
               <X size={15} />
             </button>
           </div>
-
-          <div className="tabs">
-            <button
-              onClick={() => setRightPanelTab("zones")}
-              className={`tab ${rightPanelTab === "zones" ? "is-active" : ""}`}
-            >
-              <Sparkles size={13} className="tab__icon--zones" />
-              {t("tabZones")}
-            </button>
-
-            <button
-              onClick={() => setRightPanelTab("legend")}
-              className={`tab ${rightPanelTab === "legend" ? "is-active" : ""}`}
-            >
-              <Layers size={13} className="tab__icon--legend" />
-              {t("tabLegend")} ({MARKERS.length})
-            </button>
-          </div>
         </div>
 
         <div className="right-panel__body custom-scrollbar">
-          {rightPanelTab === "zones" ? (
-            <HighlightedZones
-              selectedGroupId={selectedGroupId}
-              onSelectGroup={selectGroup}
-            />
-          ) : (
-            <MapLegend
-              typeFilter={typeFilter === "all" ? null : typeFilter}
-              onToggleType={(type) => setTypeFilter(type || "all")}
-            />
-          )}
+          <HighlightedZones
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={selectGroup}
+          />
 
           <div className="tour-banner">
             <div className="tour-banner__head">

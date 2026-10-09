@@ -41,17 +41,23 @@ class PoiDescriptions(BaseModel):
         return value.strip()
 
 
-class PoiTranslationRequest(BaseModel):
+class PoiFields(BaseModel):
     name: str = Field(min_length=1)
     zone: str = Field(min_length=1)
-    descriptions: PoiDescriptions
+    category: str = Field(min_length=1)
+    status: str = Field(min_length=1)
 
-    @field_validator("name", "zone", mode="before")
+    @field_validator("name", "zone", "category", "status", mode="before")
     @classmethod
     def reject_blank_context(cls, value: str) -> str:
         if not isinstance(value, str) or not value.strip():
             raise ValueError("Giá trị không được để trống")
         return value.strip()
+
+
+class PoiTranslationRequest(BaseModel):
+    poi: PoiFields
+    descriptionsVi: PoiDescriptions
 
 
 class LanguageTranslation(BaseModel):
@@ -66,7 +72,25 @@ class LanguageTranslation(BaseModel):
         return value.strip()
 
 
+class LocalizedPoiField(BaseModel):
+    en: str = Field(min_length=1)
+    zh: str = Field(min_length=1)
+
+    @field_validator("en", "zh", mode="before")
+    @classmethod
+    def reject_blank_translation(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Bản dịch không được để trống")
+        return value.strip()
+
+
+class TranslatedPoiFields(BaseModel):
+    name: LocalizedPoiField
+    zone: LocalizedPoiField
+
+
 class PoiTranslationResponse(BaseModel):
+    poi: TranslatedPoiFields
     en: LanguageTranslation
     zh: LanguageTranslation
 
@@ -92,18 +116,22 @@ def translate_poi(request: PoiTranslationRequest) -> dict[str, dict[str, dict[st
             (
                 "system",
                 """Bạn là biên dịch viên chuyên nghiệp tiếng Việt, tiếng Anh và tiếng Trung giản thể.
-Dịch chính xác hai mô tả được cung cấp sang cả tiếng Anh (en) và tiếng Trung giản thể (zh).
-Tên POI và phân khu chỉ dùng làm ngữ cảnh, không dịch chúng.
+Dịch tất cả nội dung có ngôn ngữ sang tiếng Anh (en) và tiếng Trung giản thể (zh):
+- Tên POI và khu vực: trả về bên dưới poi.name và poi.zone.
+- Mô tả ngắn và chi tiết: trả về bên dưới en và zh.
+Không dịch mã POI, danh mục, tọa độ, bán kính hoặc trạng thái; các giá trị này được giữ nguyên hoặc định dạng tại ứng dụng.
 Giữ nguyên ý nghĩa, tên riêng và thông tin thực tế. Không tự thêm thông tin.
 Chỉ trả về một đối tượng JSON hợp lệ, không markdown hay lời dẫn, theo cấu trúc:
-{{"en":{{"short":"...","detail":"..."}},"zh":{{"short":"...","detail":"..."}}}}""",
+{{"poi":{{"name":{{"en":"...","zh":"..."}},"zone":{{"en":"...","zh":"..."}}}},"en":{{"short":"...","detail":"..."}},"zh":{{"short":"...","detail":"..."}}}}""",
             ),
             (
                 "human",
-                """Tên POI: {name}
-Phân khu: {zone}
-Mô tả ngắn tiếng Việt: {short}
-Mô tả chi tiết tiếng Việt: {detail}""",
+                """Thông tin POI tiếng Việt (danh mục và trạng thái là mã, không dịch):
+Tên: {name}
+Khu vực: {zone}
+Dữ liệu khác: {poi_metadata}
+Mô tả ngắn: {short}
+Mô tả chi tiết: {detail}""",
             ),
         ]
     )
@@ -115,10 +143,17 @@ Mô tả chi tiết tiếng Việt: {detail}""",
             temperature=0,
         )).invoke(
             {
-                "name": request.name,
-                "zone": request.zone,
-                "short": request.descriptions.short,
-                "detail": request.descriptions.detail,
+                "name": request.poi.name,
+                "zone": request.poi.zone,
+                "poi_metadata": json.dumps(
+                    {
+                        "category": request.poi.category,
+                        "status": request.poi.status,
+                    },
+                    ensure_ascii=False,
+                ),
+                "short": request.descriptionsVi.short,
+                "detail": request.descriptionsVi.detail,
             }
         )
     except OpenAIError as error:

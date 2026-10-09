@@ -15,18 +15,20 @@ import {
 } from "lucide-react";
 import { TYPE_META } from "./mapData";
 import AnimalDetailModal from "./AnimalDetailModal";
+import RoutePickerModal from "./RoutePickerModal";
 import { useSettings } from "../../context/SettingsContext"; // chỉnh đường dẫn cho đúng
 
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
-export default function MapInfoCard({ marker, onClose }) {
+export default function MapInfoCard({ marker, onClose, onPathReady }) {
   const { t } = useSettings();
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showRoute, setShowRoute] = useState(false);
   const [prevId, setPrevId] = useState(marker?.id);
 
   // Đồng bộ reset state khi chuyển sang marker khác
@@ -35,6 +37,7 @@ export default function MapInfoCard({ marker, onClose }) {
     setIsPlayingAudio(false);
     setAudioProgress(0);
     setIsModalOpen(false);
+    setShowRoute(false);
   }
 
   useEffect(() => {
@@ -156,11 +159,7 @@ export default function MapInfoCard({ marker, onClose }) {
 
           <div className="info-card__actions">
             <button
-              onClick={() =>
-                alert(
-                  `${t("map.infoCard.navigateAlert", "Bắt đầu dẫn đường đến:")} ${markerName}`
-                )
-              }
+              onClick={() => setShowRoute(true)}
               className="info-card__nav"
             >
               <Navigation size={13} />
@@ -197,9 +196,25 @@ export default function MapInfoCard({ marker, onClose }) {
       {isModalOpen &&
         typeof document !== "undefined" &&
         createPortal(
-          <AnimalDetailModal marker={marker} onClose={() => setIsModalOpen(false)} />,
+          <AnimalDetailModal
+            marker={marker}
+            onClose={() => setIsModalOpen(false)}
+            onPathReady={onPathReady}
+          />,
           document.body
         )}
+
+      {/* Popup chỉ đường từ info card nhỏ */}
+      {showRoute && (
+        <RoutePickerModal
+          destination={marker}
+          onClose={() => setShowRoute(false)}
+          onPathReady={(path) => {
+            onPathReady?.(path);
+            setShowRoute(false);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -346,16 +346,7 @@ export const MARKERS = [
     desc: "Phục vụ thức ăn nhanh, cơm trưa, cà phê đá, kem tươi trong bóng râm mát mẻ.",
     openingHours: "07:30 - 18:00",
   },
-  {
-    id: "wc_main",
-    name: "Nhà Vệ Sinh Trung Tâm (Có WC trẻ em)",
-    zone: "Tiện ích vệ sinh",
-    type: "restroom",
-    emoji: "🚻",
-    x: 44.8,
-    y: 62.8,
-    desc: "Nhà vệ sinh sạch sẽ, có phòng thay tã cho em bé và lối đi cho xe lăn.",
-  },
+
   {
     id: "wc_north",
     name: "Nhà Vệ Sinh Khu Bờ Sông",

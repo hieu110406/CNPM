@@ -1,0 +1,308 @@
+/* routePickerModal.css — Minimal · White & Green */
+
+/* ── Overlay ── */
+.rp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  animation: rpFadeIn 0.15s ease;
+}
+@keyframes rpFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Card ── */
+.rp-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  animation: rpSlideUp 0.2s ease;
+}
+@keyframes rpSlideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Header ── */
+.rp-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e8f5e9;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rp-header__icon {
+  width: 36px;
+  height: 36px;
+  background: #e8f5e9;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2e7d32;
+  flex-shrink: 0;
+}
+.rp-header__text { flex: 1; min-width: 0; }
+.rp-header__title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 1px;
+}
+.rp-header__dest {
+  font-size: 0.74rem;
+  color: #2e7d32;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-header__close {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #9e9e9e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.rp-header__close:hover {
+  background: #f5f5f5;
+  color: #1a1a1a;
+}
+
+/* ── Body ── */
+.rp-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Route strip ── */
+.rp-route-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #f9fbe7;
+  border-radius: 10px;
+  border: 1px solid #e8f5e9;
+}
+.rp-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rp-dot--from { background: #43a047; }
+.rp-dot--to   { background: #ef5350; }
+.rp-route-strip__label {
+  font-size: 0.68rem;
+  color: #757575;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rp-route-strip__name {
+  flex: 1;
+  font-size: 0.76rem;
+  color: #1a1a1a;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-route-strip__line {
+  flex: 1;
+  height: 1px;
+  border-top: 1.5px dashed #c8e6c9;
+  margin: 0 2px;
+}
+
+/* ── Select ── */
+.rp-select-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #424242;
+  margin-bottom: 5px;
+  display: block;
+}
+.rp-select {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #e0e0e0;
+  background: #fafafa;
+  font-size: 0.80rem;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  outline: none;
+  appearance: auto;
+}
+.rp-select:focus {
+  border-color: #43a047;
+  background: #fff;
+}
+
+/* ── Find button ── */
+.rp-find-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rp-find-btn:hover:not(:disabled) {
+  background: #1b5e20;
+}
+.rp-find-btn:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error ── */
+.rp-error {
+  font-size: 0.74rem;
+  color: #c62828;
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+/* ── Result ── */
+.rp-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rp-result__summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.rp-badge--steps { background: #e8f5e9; color: #2e7d32; }
+.rp-badge--dist  { background: #f1f8e9; color: #558b2f; }
+.rp-result__hint {
+  font-size: 0.66rem;
+  color: #9e9e9e;
+  margin-left: auto;
+}
+
+/* ── Steps ── */
+.rp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.rp-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: #fafafa;
+  width: 100%;
+}
+.rp-step.is-start { border-color: #c8e6c9; background: #f1f8e9; }
+.rp-step.is-end   { border-color: #ffcdd2; background: #fff8f8; }
+.rp-step__num {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #bdbdbd;
+  min-width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.rp-step__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #43a047;
+  flex-shrink: 0;
+}
+.rp-step.is-start .rp-step__dot { background: #43a047; }
+.rp-step.is-end   .rp-step__dot { background: #ef5350; }
+.rp-step__name {
+  flex: 1;
+  font-size: 0.74rem;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rp-step__arr {
+  color: #bdbdbd;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+}
+
+/* ── Footer ── */
+.rp-footer {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 16px;
+  border-top: 1px solid #f5f5f5;
+  padding-top: 12px;
+  margin-top: -4px;
+}
+.rp-footer__btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: 8px;
+  border: 1.5px solid #e0e0e0;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #616161;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rp-footer__btn:hover { background: #f5f5f5; }
+.rp-footer__btn--primary {
+  background: #2e7d32;
+  color: #fff;
+  border-color: #2e7d32;
+}
+.rp-footer__btn--primary:hover { background: #1b5e20; border-color: #1b5e20; }

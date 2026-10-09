@@ -14,6 +14,7 @@ export default function MapCanvas({
   selectedId,
   onSelectMarker,
   isDimmed,
+  pathNodes = [], // [{code, name, x, y}] kết quả Dijkstra — vẽ SVG lên bản đồ
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const drag = useRef({ startX: 0, startY: 0, originX: 0, originY: 0, moved: false });
@@ -73,6 +74,188 @@ export default function MapCanvas({
             className="map-canvas__img"
             draggable={false}
           />
+
+          {/* SVG overlay: vẽ đường đi ngắn nhất Dijkstra */}
+          {pathNodes && pathNodes.length >= 2 && (() => {
+            const pointsStr = pathNodes
+              .map((n) => `${(Number(n.x) * 13.71).toFixed(1)},${(Number(n.y) * 8.75).toFixed(1)}`)
+              .join(" ");
+
+            const startNode = pathNodes[0];
+            const endNode = pathNodes[pathNodes.length - 1];
+            const startX = (Number(startNode.x) * 13.71).toFixed(1);
+            const startY = (Number(startNode.y) * 8.75).toFixed(1);
+            const endX = (Number(endNode.x) * 13.71).toFixed(1);
+            const endY = (Number(endNode.y) * 8.75).toFixed(1);
+
+            return (
+              <svg
+                viewBox="0 0 1371 875"
+                preserveAspectRatio="none"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                  overflow: "visible",
+                  zIndex: 8,
+                }}
+              >
+                <defs>
+                  <marker
+                    id="rp-arrow"
+                    markerWidth="6"
+                    markerHeight="6"
+                    refX="4"
+                    refY="3"
+                    orient="auto"
+                  >
+                    <path d="M0,0 L0,6 L6,3 z" fill="#047857" />
+                  </marker>
+                </defs>
+
+                {/* 1. Đổ bóng viền ngoài */}
+                <polyline
+                  points={pointsStr}
+                  fill="none"
+                  stroke="rgba(0, 0, 0, 0.2)"
+                  strokeWidth="11"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* 2. Đường viền trắng dày làm nổi bật trên nền bản đồ */}
+                <polyline
+                  points={pointsStr}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* 3. Đường chính nét đứt xanh lá đậm chạy animation */}
+                <polyline
+                  points={pointsStr}
+                  fill="none"
+                  stroke="#047857"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="10 6"
+                  markerEnd="url(#rp-arrow)"
+                  className="path-line-animated"
+                />
+
+                {/* 4. Các điểm dừng trung gian */}
+                {pathNodes.slice(1, -1).map((n, idx) => {
+                  const cx = (Number(n.x) * 13.71).toFixed(1);
+                  const cy = (Number(n.y) * 8.75).toFixed(1);
+                  const isWaypoint = n.category === "waypoint";
+                  if (isWaypoint) {
+                    return (
+                      <circle
+                        key={n.node_id || n.code || idx}
+                        cx={cx}
+                        cy={cy}
+                        r="3"
+                        fill="#047857"
+                        opacity="0.6"
+                      />
+                    );
+                  }
+                  return (
+                    <circle
+                      key={n.node_id || n.code || idx}
+                      cx={cx}
+                      cy={cy}
+                      r="6"
+                      fill="#047857"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  );
+                })}
+
+                {/* 5. Điểm bắt đầu (Xanh lá) */}
+                <circle
+                  cx={startX}
+                  cy={startY}
+                  r="14"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  opacity="0.8"
+                />
+                <circle
+                  cx={startX}
+                  cy={startY}
+                  r="8"
+                  fill="#10b981"
+                  stroke="#ffffff"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx={startX}
+                  cy={startY}
+                  r="3"
+                  fill="#ffffff"
+                />
+                <text
+                  x={startX}
+                  y={Number(startY) + 20}
+                  textAnchor="middle"
+                  fill="#065f46"
+                  fontSize="11"
+                  fontWeight="700"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                  paintOrder="stroke"
+                >
+                  Xuất phát
+                </text>
+
+                {/* 6. Điểm đích đến (Đỏ) */}
+                <circle
+                  cx={endX}
+                  cy={endY}
+                  r="14"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="2.5"
+                  opacity="0.8"
+                />
+                <circle
+                  cx={endX}
+                  cy={endY}
+                  r="8"
+                  fill="#ef4444"
+                  stroke="#ffffff"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx={endX}
+                  cy={endY}
+                  r="3"
+                  fill="#ffffff"
+                />
+                <text
+                  x={endX}
+                  y={Number(endY) + 20}
+                  textAnchor="middle"
+                  fill="#991b1b"
+                  fontSize="11"
+                  fontWeight="700"
+                  stroke="#ffffff"
+                  strokeWidth="2.5"
+                  paintOrder="stroke"
+                >
+                  Điểm đến
+                </text>
+              </svg>
+            );
+          })()}
 
           {MARKERS.map((m) => (
             <div

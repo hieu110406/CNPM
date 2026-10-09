@@ -76,3 +76,18 @@ CREATE INDEX IF NOT EXISTS idx_usage_poi   ON usage_log(poi_id);
 CREATE INDEX IF NOT EXISTS idx_usage_lang  ON usage_log(language_code);
 CREATE INDEX IF NOT EXISTS idx_audit_admin ON audit_log(admin_id);
 CREATE INDEX IF NOT EXISTS idx_audio_poi   ON audio_track(poi_id);
+
+CREATE TABLE IF NOT EXISTS map_node (
+  node_id  VARCHAR(50) PRIMARY KEY,
+  name     VARCHAR(120) NOT NULL,
+  x        REAL NOT NULL,
+  y        REAL NOT NULL,
+  category VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS map_edge (
+  edge_id  SERIAL PRIMARY KEY,
+  from_id  VARCHAR(50) REFERENCES map_node(node_id) ON DELETE CASCADE,
+  to_id    VARCHAR(50) REFERENCES map_node(node_id) ON DELETE CASCADE,
+  distance REAL NOT NULL
+);

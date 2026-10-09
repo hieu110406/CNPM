@@ -37,7 +37,9 @@ export const api = {
 
     // UC7 - Admin & Analytics
     getAdmins: () => request("/admin-accounts"),
+    createAdmin: (data) => request("/admin-accounts", { method: "POST", body: JSON.stringify(data) }),
     deactivateAdmin: (id) => request(`/admin-accounts/${id}/deactivate`, { method: "PUT" }),
+    updateAdmin: (id, data) => request(`/admin-accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     getAnalytics: () => request("/analytics/overview"),
     getAuditLogs: () => request("/audit-logs"),
 };

@@ -1799,7 +1799,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
 }
-}
 .poi-map-picker__hint {
   margin: 0;
   color: var(--dash-text-2);
@@ -2499,7 +2498,6 @@
 }
 
 @media (max-width: 1100px) {
-@media (max-width: 1100px) {
     .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2513,7 +2511,6 @@
     .geofence-preview {
         max-width: 320px;
     }
-}
 }
 
 @media (max-width: 860px) {

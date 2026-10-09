@@ -2,8 +2,9 @@
   "name": "app",
   "private": true,
   "scripts": {
+    "dev:be": "npm --prefix BE run dev",
     "dev:fe": "npm --prefix FE run dev",
-    "dev": "concurrently \"npm run dev:fe\""
+    "dev": "concurrently --kill-others --names BE,FE \"npm run dev:be\" \"npm run dev:fe\""
   },
   "devDependencies": {
     "concurrently": "^9.2.4"

@@ -60,7 +60,6 @@ export default function ZooMap({
           throw new Error("API POI trả về dữ liệu không hợp lệ.");
         }
 
-        let missingCoordinates = 0;
         const databaseMarkers = data.flatMap((poi) => {
           if (!poi || typeof poi.id !== "string") return [];
 
@@ -68,7 +67,6 @@ export default function ZooMap({
           const x = poi.x ?? fallback?.x;
           const y = poi.y ?? fallback?.y;
           if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) {
-            missingCoordinates += 1;
             return [];
           }
 
@@ -92,8 +90,6 @@ export default function ZooMap({
           setPoiLoadError(
             data.length === 0
               ? "Database chưa có POI hoạt động; chạy npm run seed:pois để nạp các điểm mặc định."
-              : missingCoordinates
-              ? `${missingCoordinates} POI chưa có tọa độ bản đồ nên không hiển thị.`
               : ""
           );
           setSelectedId((selected) =>

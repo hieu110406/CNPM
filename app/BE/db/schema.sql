@@ -104,6 +104,7 @@ ALTER TABLE poi
 
 -- poi_translation: thêm tên, khu vực, fun fact
 ALTER TABLE poi_translation
+  ADD COLUMN IF NOT EXISTS short_description TEXT DEFAULT '',
   ADD COLUMN IF NOT EXISTS name     VARCHAR(200),
   ADD COLUMN IF NOT EXISTS zone     VARCHAR(150),
   ADD COLUMN IF NOT EXISTS fun_fact TEXT;
@@ -237,3 +238,31 @@ INSERT INTO category (name) VALUES
  ('animal'),('plant'),('building'),('entertainment'),
  ('restaurant'),('restroom'),('service'),('medical'),('photo')
 ON CONFLICT (name) DO NOTHING;
+
+WITH legacy_poi_coordinates(code, x, y) AS (
+  VALUES
+    ('POI-001', 57.3::REAL, 40.1::REAL),
+    ('POI-002', 84.8::REAL, 77.4::REAL),
+    ('POI-003', 43.9::REAL, 64.2::REAL),
+    ('POI-004', 53.4::REAL, 56.9::REAL),
+    ('POI-005', 59.5::REAL, 81.5::REAL)
+)
+UPDATE poi p
+SET x = legacy.x,
+    y = legacy.y
+FROM legacy_poi_coordinates legacy
+WHERE p.code = legacy.code
+  AND (p.x IS NULL OR p.y IS NULL);
+
+INSERT INTO map_node (node_id, name, x, y, category)
+SELECT p.code, p.name, p.x, p.y, c.name
+FROM poi p
+JOIN category c ON c.category_id = p.category_id
+WHERE p.code IN ('POI-001', 'POI-002', 'POI-003', 'POI-004', 'POI-005')
+  AND p.x IS NOT NULL
+  AND p.y IS NOT NULL
+ON CONFLICT (node_id) DO UPDATE
+SET name = EXCLUDED.name,
+    x = EXCLUDED.x,
+    y = EXCLUDED.y,
+    category = EXCLUDED.category;

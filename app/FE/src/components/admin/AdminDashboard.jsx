@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     LayoutDashboard, MapPin, Headphones, BarChart3, Users, ShieldCheck,
     Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
@@ -8,6 +8,7 @@ import {
     FileText, Mic, RefreshCw, Save, Lock, Unlock,
 } from "lucide-react";
 import { api } from "../../api/client";
+import PoiMapPicker from "./PoiMapPicker";
 import "./dashboard.css";
 
 
@@ -20,9 +21,13 @@ const LANGUAGES = [
 const CATEGORY_OPTIONS = [
     { value: "animal", label: "Động vật" },
     { value: "plant", label: "Thực vật" },
-    { value: "facility", label: "Cơ sở hạ tầng" },
+    { value: "building", label: "Công trình & Cổng" },
+    { value: "entertainment", label: "Vui chơi & Giải trí" },
+    { value: "restaurant", label: "Nhà hàng & Cà phê" },
+    { value: "restroom", label: "Nhà vệ sinh" },
     { value: "service", label: "Dịch vụ" },
-    { value: "entrance", label: "Cổng vào" },
+    { value: "medical", label: "Trạm y tế & Sơ cứu" },
+    { value: "photo", label: "Điểm check-in" },
 ];
 
 const ROLE_OPTIONS = [
@@ -268,6 +273,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setPoiForm({
             id: nextId, name: "", category: "animal", zone: "",
             latitude: "10.787500", longitude: "106.705000",
+            mapX: 50, mapY: 50,
             geofenceRadius: 20, isActive: true,
             translations: { vi: "", en: "", zh: "" },
         });
@@ -276,7 +282,13 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     };
 
     const startEditPoi = (poi) => {
-        setPoiForm({ ...JSON.parse(JSON.stringify(poi)), dbId: poi.dbId });
+        setPoiForm({
+            ...JSON.parse(JSON.stringify(poi)),
+            dbId: poi.dbId,
+            mapX: poi.mapX ?? 50,
+            mapY: poi.mapY ?? 50,
+            translations: { vi: "", en: "", zh: "", ...poi.translations },
+        });
         setEditingPoi(poi.id);
         setPoiLangTab("vi");
     };
@@ -286,6 +298,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         if (!f.zone.trim()) return "Thiếu phân khu";
         if (!f.translations.vi.trim()) return "Thiếu mô tả tiếng Việt";
         if (f.geofenceRadius < 5 || f.geofenceRadius > 200) return "Bán kính geofence phải trong khoảng 5–200m";
+        if (f.mapX < 0 || f.mapX > 100 || f.mapY < 0 || f.mapY > 100) return "Toạ độ bản đồ X/Y phải trong khoảng 0–100";
         return null;
     };
 
@@ -1479,16 +1492,17 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
                             <div>
                                 <div className="form-group" style={{ marginBottom: 10 }}>
-                                    <label>Xem trước vùng Geofence</label>
+                                    <label>Chọn vị trí trên bản đồ</label>
                                 </div>
-                                <div className="geofence-preview">
-                                    <div className="geofence-preview__ring"
-                                        style={{ "--ring-size": `${Math.min(90, 20 + poiForm.geofenceRadius / 2)}%` }} />
-                                    <div className="geofence-preview__pin" />
-                                    <div className="geofence-preview__caption">
-                                        Bán kính: {poiForm.geofenceRadius}m • Toạ độ: {poiForm.latitude}, {poiForm.longitude}
-                                    </div>
-                                </div>
+                                <PoiMapPicker
+                                    mapX={poiForm.mapX}
+                                    mapY={poiForm.mapY}
+                                    geofenceRadius={poiForm.geofenceRadius}
+                                    disabled={savingPoi}
+                                    onChange={({ mapX, mapY }) =>
+                                        setPoiForm((current) => ({ ...current, mapX, mapY }))
+                                    }
+                                />
 
                                 <div className="form-group" style={{ marginTop: 14 }}>
                                     <label>Trạng thái hoạt động</label>

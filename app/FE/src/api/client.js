@@ -25,6 +25,8 @@ export const api = {
 
     // UC5 - POI
     getPois: () => request("/pois"),
+    getPublicPois: (language = "vi") =>
+        request(`/pois/public?lang=${encodeURIComponent(language)}`),
     createPoi: (data) => request("/pois", { method: "POST", body: JSON.stringify(data) }),
     updatePoi: (dbId, data) => request(`/pois/${dbId}`, { method: "PUT", body: JSON.stringify(data) }),
     deletePoi: (dbId) => request(`/pois/${dbId}`, { method: "DELETE" }),

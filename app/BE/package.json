@@ -5,7 +5,8 @@
 	"scripts": {
 		"dev": "nodemon server.js",
 		"start": "node server.js",
-		"seed": "node db/seed.js"
+		"seed": "node db/seed.js",
+		"seed:pois": "node db/seedpois.js"
 	},
 	"dependencies": {
 		"bcryptjs": "^2.4.3",

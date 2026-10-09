@@ -20,14 +20,14 @@ async function apiFindPath(from, to) {
   return data;
 }
 
-function RoutePickerModalInner({ destination, onClose, onPathReady }) {
+function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
   const [fromId, setFromId]   = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const [result, setResult]   = useState(null);
 
-  const nodeOptions = MARKERS.filter((m) => m.id !== destination?.id);
-  const fromName    = MARKERS.find((m) => m.id === fromId)?.name ?? "";
+  const nodeOptions = markers.filter((m) => m.id !== destination?.id);
+  const fromName    = markers.find((m) => m.id === fromId)?.name ?? "";
 
   const handleFind = useCallback(async () => {
     if (!fromId) { setError("Vui lòng chọn điểm xuất phát."); return; }
@@ -170,11 +170,12 @@ function RoutePickerModalInner({ destination, onClose, onPathReady }) {
   );
 }
 
-export default function RoutePickerModal({ destination, onClose, onPathReady }) {
+export default function RoutePickerModal({ destination, markers = MARKERS, onClose, onPathReady }) {
   if (!destination || typeof document === "undefined") return null;
   return createPortal(
     <RoutePickerModalInner
       destination={destination}
+      markers={markers}
       onClose={onClose}
       onPathReady={onPathReady}
     />,

@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import MapCanvas from "./MapCanvas";
 import MapControls from "./MapControls";
@@ -10,7 +10,9 @@ import {
   MARKERS,
   HIGHLIGHT_GROUPS,
   FILTER_CATEGORIES,
+  TYPE_META,
 } from "./mapData";
+import { api } from "../../api/client";
 import zooMapImage from "../../assets/map/zoo_map.png";
 import { Sparkles, ChevronRight, X } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
@@ -34,8 +36,10 @@ export default function ZooMap({
   mapImageSrc = zooMapImage,
   onNavigateAdmin,
 }) {
-  const { t } = useSettings();
+  const { t, language } = useSettings();
 
+  const [markers, setMarkers] = useState(MARKERS);
+  const [poiLoadError, setPoiLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("gate_main");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -46,9 +50,81 @@ export default function ZooMap({
   const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
   const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPois() {
+      try {
+        const data = await api.getPublicPois(language);
+        if (!Array.isArray(data)) {
+          throw new Error("API POI trả về dữ liệu không hợp lệ.");
+        }
+
+        let missingCoordinates = 0;
+        const databaseMarkers = data.flatMap((poi) => {
+          if (!poi || typeof poi.id !== "string") return [];
+
+          const fallback = MARKERS.find((marker) => marker.id === poi.id);
+          const x = poi.x ?? fallback?.x;
+          const y = poi.y ?? fallback?.y;
+          if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) {
+            missingCoordinates += 1;
+            return [];
+          }
+
+          return [{
+            ...fallback,
+            ...poi,
+            id: poi.id,
+            name: poi.name || fallback?.name || poi.id,
+            zone: poi.zone || fallback?.zone || "",
+            desc: poi.desc || fallback?.desc || "",
+            emoji: poi.emoji || fallback?.emoji || "📍",
+            type: poi.type || fallback?.type || "animal",
+            x: Number(x),
+            y: Number(y),
+            fromDatabase: true,
+          }];
+        });
+
+        if (!cancelled) {
+          setMarkers(databaseMarkers);
+          setPoiLoadError(
+            data.length === 0
+              ? "Database chưa có POI hoạt động; chạy npm run seed:pois để nạp các điểm mặc định."
+              : missingCoordinates
+              ? `${missingCoordinates} POI chưa có tọa độ bản đồ nên không hiển thị.`
+              : ""
+          );
+          setSelectedId((selected) =>
+            databaseMarkers.some((marker) => marker.id === selected)
+              ? selected
+              : databaseMarkers[0]?.id ?? null
+          );
+        }
+      } catch (error) {
+        console.error("Không thể tải POI từ database:", error);
+        if (!cancelled) {
+          setMarkers(MARKERS);
+          setSelectedId((selected) =>
+            MARKERS.some((marker) => marker.id === selected)
+              ? selected
+              : MARKERS[0]?.id ?? null
+          );
+          setPoiLoadError("Không thể tải POI từ máy chủ; đang hiển thị dữ liệu bản đồ mặc định.");
+        }
+      }
+    }
+
+    loadPois();
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
   const selectedMarker = useMemo(
-    () => MARKERS.find((marker) => marker.id === selectedId),
-    [selectedId]
+    () => markers.find((marker) => marker.id === selectedId),
+    [markers, selectedId]
   );
 
   const activeGroup = useMemo(
@@ -61,7 +137,7 @@ export default function ZooMap({
 
     const searchText = query.trim().toLowerCase();
 
-    return MARKERS.filter(
+    return markers.filter(
       (marker) =>
         marker.name.toLowerCase().includes(searchText) ||
         (marker.zone &&
@@ -69,14 +145,24 @@ export default function ZooMap({
         (marker.desc &&
           marker.desc.toLowerCase().includes(searchText))
     ).slice(0, 6);
-  }, [query]);
+  }, [markers, query]);
+
+  const filterCategories = useMemo(() => {
+    const existingKeys = new Set(FILTER_CATEGORIES.map(({ key }) => key));
+    return [
+      ...FILTER_CATEGORIES,
+      ...Object.entries(TYPE_META)
+        .filter(([key]) => !existingKeys.has(key) && markers.some((marker) => marker.type === key))
+        .map(([key, meta]) => ({ key, label: meta.label })),
+    ];
+  }, [markers]);
 
   function selectMarker(id) {
     setSelectedId(id);
     setSelectedGroupId(null);
     setQuery("");
 
-    const marker = MARKERS.find((item) => item.id === id);
+    const marker = markers.find((item) => item.id === id);
 
     if (marker && zoom > 1.2) {
       const offsetX = (50 - marker.x) * 4;
@@ -153,11 +239,12 @@ export default function ZooMap({
       <main className="zoo-main">
         <div className="filter-bar">
           <div className="filter-bar__list glass custom-scrollbar">
-            {FILTER_CATEGORIES.map((category) => {
+            {filterCategories.map((category) => {
               const active = typeFilter === category.key;
 
               const labelKey =
                 FILTER_LABEL_KEYS[category.key] || category.key;
+              const CategoryIcon = TYPE_META[category.key]?.icon;
 
               return (
                 <button
@@ -171,16 +258,25 @@ export default function ZooMap({
                   }`}
                 >
                   <span className="filter-chip__icon">
-                    {category.icon}
+                    {CategoryIcon ? <CategoryIcon size={14} /> : category.icon}
                   </span>
 
                   <span>
-                    {t(`filters.${labelKey}`)}
+                    {t(
+                      `filters.${labelKey}`,
+                      category.label || TYPE_META[category.key]?.label || category.key
+                    )}
                   </span>
                 </button>
               );
             })}
           </div>
+
+          {/* {poiLoadError && (
+            <div className="poi-load-warning" role="status">
+              {poiLoadError}
+            </div>
+          )} */}
 
           {!isPanelOpen && (
             <button
@@ -203,6 +299,7 @@ export default function ZooMap({
           selectedId={selectedId}
           onSelectMarker={selectMarker}
           isDimmed={isDimmed}
+          markers={markers}
           pathNodes={pathNodes}
         />
 
@@ -223,6 +320,7 @@ export default function ZooMap({
 
         <MapInfoCard
           marker={selectedMarker}
+          markers={markers}
           onClose={() => setSelectedId(null)}
           onPathReady={(path) => {
             setPathNodes(path);

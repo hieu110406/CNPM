@@ -13,7 +13,7 @@ import {
   Heart,
   ExternalLink,
 } from "lucide-react";
-import { TYPE_META } from "./mapData";
+import { MARKERS, TYPE_META } from "./mapData";
 import AnimalDetailModal from "./AnimalDetailModal";
 import RoutePickerModal from "./RoutePickerModal";
 import { useSettings } from "../../context/SettingsContext"; // chỉnh đường dẫn cho đúng
@@ -21,7 +21,7 @@ import { useSettings } from "../../context/SettingsContext"; // chỉnh đườn
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
-export default function MapInfoCard({ marker, onClose, onPathReady }) {
+export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPathReady }) {
   const { t } = useSettings();
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -58,9 +58,11 @@ export default function MapInfoCard({ marker, onClose, onPathReady }) {
 
   const meta = TYPE_META[marker.type] || TYPE_META.animal;
   const typeLabel = t(`types.${marker.type}`, t(`filters.${marker.type}`, meta.label));
-  const markerName = t(`markers.${marker.id}.name`, marker.name);
-  const markerZone = marker.zone ? t(`markers.${marker.id}.zone`, marker.zone) : "";
-  const markerDesc = t(`markers.${marker.id}.desc`, marker.desc);
+  const markerName = marker.fromDatabase ? marker.name : t(`markers.${marker.id}.name`, marker.name);
+  const markerZone = marker.zone
+    ? marker.fromDatabase ? marker.zone : t(`markers.${marker.id}.zone`, marker.zone)
+    : "";
+  const markerDesc = marker.fromDatabase ? marker.desc : t(`markers.${marker.id}.desc`, marker.desc);
   const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);
 
   return (
@@ -198,6 +200,7 @@ export default function MapInfoCard({ marker, onClose, onPathReady }) {
         createPortal(
           <AnimalDetailModal
             marker={marker}
+            markers={markers}
             onClose={() => setIsModalOpen(false)}
             onPathReady={onPathReady}
           />,
@@ -208,6 +211,7 @@ export default function MapInfoCard({ marker, onClose, onPathReady }) {
       {showRoute && (
         <RoutePickerModal
           destination={marker}
+          markers={markers}
           onClose={() => setShowRoute(false)}
           onPathReady={(path) => {
             onPathReady?.(path);

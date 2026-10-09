@@ -7,18 +7,18 @@ import { Layers, RotateCcw } from "lucide-react";
 import { TYPE_META, MARKERS } from "./mapData";
 import { useSettings } from "../../context/SettingsContext";
 
-export default function MapLegend({ typeFilter, onToggleType }) {
+export default function MapLegend({ typeFilter, onToggleType, markers = MARKERS }) {
   const { t } = useSettings();
 
   const counts = React.useMemo(() => {
     const res = {};
 
-    MARKERS.forEach((marker) => {
+    markers.forEach((marker) => {
       res[marker.type] = (res[marker.type] || 0) + 1;
     });
 
     return res;
-  }, []);
+  }, [markers]);
 
   // Lấy tên loại địa điểm theo ngôn ngữ hiện tại
   const getTypeLabel = (key, meta) => {

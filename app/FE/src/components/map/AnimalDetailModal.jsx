@@ -28,7 +28,7 @@ import "./animalModal.css";
 const TOTAL_SECONDS = 45;
 const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
 
-export default function AnimalDetailModal({ marker, onClose, onPathReady }) {
+export default function AnimalDetailModal({ marker, markers = [], onClose, onPathReady }) {
   const { t } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -37,9 +37,15 @@ export default function AnimalDetailModal({ marker, onClose, onPathReady }) {
   const [showRoute, setShowRoute] = useState(false);
 
   const details = getMarkerDetails(marker);
-  const markerName = t(`markers.${marker?.id}.name`, marker?.name);
-  const markerZone = marker?.zone ? t(`markers.${marker?.id}.zone`, marker?.zone) : "";
-  const markerDesc = t(`markers.${marker?.id}.desc`, marker?.desc);
+  const markerName = marker?.fromDatabase
+    ? marker.name
+    : t(`markers.${marker?.id}.name`, marker?.name);
+  const markerZone = marker?.zone
+    ? marker.fromDatabase ? marker.zone : t(`markers.${marker?.id}.zone`, marker.zone)
+    : "";
+  const markerDesc = marker?.fromDatabase
+    ? marker.desc
+    : t(`markers.${marker?.id}.desc`, marker?.desc);
 
   // Đóng bằng phím Escape
   useEffect(() => {
@@ -382,6 +388,7 @@ export default function AnimalDetailModal({ marker, onClose, onPathReady }) {
       {showRoute && (
         <RoutePickerModal
           destination={marker}
+          markers={markers}
           onClose={() => setShowRoute(false)}
           onPathReady={(path) => {
             onPathReady?.(path);

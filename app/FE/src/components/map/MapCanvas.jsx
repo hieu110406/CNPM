@@ -14,6 +14,7 @@ export default function MapCanvas({
   selectedId,
   onSelectMarker,
   isDimmed,
+  markers = MARKERS,
   pathNodes = [], // [{code, name, x, y}] kết quả Dijkstra — vẽ SVG lên bản đồ
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -257,7 +258,7 @@ export default function MapCanvas({
             );
           })()}
 
-          {MARKERS.map((m) => (
+          {markers.map((m) => (
             <div
               key={m.id}
               className="map-canvas__marker"

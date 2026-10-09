@@ -107,6 +107,21 @@
   pointer-events: auto;
 }
 
+.poi-load-warning {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 6px;
+  max-width: min(420px, calc(100vw - 52px));
+  padding: 7px 11px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
 .filter-chip {
   display: flex;
   flex-shrink: 0;

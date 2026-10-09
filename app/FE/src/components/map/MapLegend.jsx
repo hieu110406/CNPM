@@ -1,31 +1,51 @@
 // MapLegend.jsx
 // Chú thích bản đồ tương tác: bấm để lọc các loại địa điểm, hiển thị số lượng từng loại
 
+
 import React from "react";
 import { Layers, RotateCcw } from "lucide-react";
 import { TYPE_META, MARKERS } from "./mapData";
+import { useSettings } from "../../context/SettingsContext";
 
 export default function MapLegend({ typeFilter, onToggleType }) {
+  const { t } = useSettings();
+
   const counts = React.useMemo(() => {
     const res = {};
-    MARKERS.forEach((m) => {
-      res[m.type] = (res[m.type] || 0) + 1;
+
+    MARKERS.forEach((marker) => {
+      res[marker.type] = (res[marker.type] || 0) + 1;
     });
+
     return res;
   }, []);
+
+  // Lấy tên loại địa điểm theo ngôn ngữ hiện tại
+  const getTypeLabel = (key, meta) => {
+    const translated = t(`types.${key}`, "");
+
+    if (translated && translated !== `types.${key}`) {
+      return translated;
+    }
+
+    return meta.label;
+  };
 
   return (
     <div className="legend">
       <div className="legend__head">
         <p className="panel-title">
           <Layers size={13} className="ic-emerald" />
-          Phân loại địa điểm
+          {t("map.legend.title", "Phân loại địa điểm")}
         </p>
 
         {typeFilter && (
-          <button onClick={() => onToggleType(null)} className="legend__reset">
+          <button
+            onClick={() => onToggleType(null)}
+            className="legend__reset"
+          >
             <RotateCcw size={11} />
-            Bỏ lọc
+            {t("map.legend.reset", "Bỏ lọc")}
           </button>
         )}
       </div>
@@ -47,15 +67,22 @@ export default function MapLegend({ typeFilter, onToggleType }) {
                   className="legend-item__icon"
                   style={{
                     backgroundColor: meta.color,
-                    boxShadow: active ? `0 2px 8px ${meta.color}55` : "none",
+                    boxShadow: active
+                      ? `0 2px 8px ${meta.color}55`
+                      : "none",
                   }}
                 >
                   <Icon size={14} />
                 </span>
-                <span className="legend-item__label">{meta.label}</span>
+
+                <span className="legend-item__label">
+                  {getTypeLabel(key, meta)}
+                </span>
               </div>
 
-              <span className="legend-item__count">{count}</span>
+              <span className="legend-item__count">
+                {count}
+              </span>
             </button>
           );
         })}

@@ -28,3 +28,8 @@ Thumbs.db
 # Visual Studio
 .vs/
 app/BE/.evn
+app/BE/package-lock.json
+app/BE/package.json
+app/BE/package.json
+app/BE/package-lock.json
+app/BE/package.json

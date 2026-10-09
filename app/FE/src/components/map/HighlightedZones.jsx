@@ -1,44 +1,107 @@
-// HighlightedZones.jsx
-// Danh sách các khu vực nổi bật trong Thảo Cầm Viên: thẻ card với gradient, avatar, badge
 
 import React from "react";
 import { ChevronRight, Sparkles } from "lucide-react";
 import { HIGHLIGHT_GROUPS } from "./mapData";
+import { useSettings } from "../../context/SettingsContext";
 
-export default function HighlightedZones({ selectedGroupId, onSelectGroup }) {
+const GROUP_TRANSLATIONS = {
+  big: {
+    title: "guide.bigAnimalsTitle",
+    subtitle: "guide.bigAnimalsSubtitle",
+    badge: "guide.bigBadge",
+  },
+  birds: {
+    title: "guide.birdsTitle",
+    subtitle: "guide.birdsSubtitle",
+    badge: "guide.birdsBadge",
+  },
+  primates: {
+    title: "guide.primatesTitle",
+    subtitle: "guide.primatesSubtitle",
+    badge: "guide.primatesBadge",
+  },
+  entertainment: {
+    title: "guide.entertainmentTitle",
+    subtitle: "guide.entertainmentSubtitle",
+    badge: "guide.entertainmentBadge",
+  },
+  botanical: {
+    title: "guide.botanicalTitle",
+    subtitle: "guide.botanicalSubtitle",
+    badge: "guide.botanicalBadge",
+  },
+};
+
+export default function HighlightedZones({
+  selectedGroupId,
+  onSelectGroup,
+}) {
+  const { t } = useSettings();
+
   return (
     <div className="zones">
       <div className="zones__head">
         <p className="panel-title">
           <Sparkles size={0} className="ic-amber" />
-          Khu vực nổi bật
+          {t("guide.tabs.zones")}
         </p>
-        <span className="zones__count">{HIGHLIGHT_GROUPS.length} nhóm</span>
+
+        <span className="zones__count">
+          {HIGHLIGHT_GROUPS.length} {t("guide.groups")}
+        </span>
       </div>
 
       <div className="zones__list">
-        {HIGHLIGHT_GROUPS.map((g) => {
-          const isSelected = selectedGroupId === g.id;
+        {HIGHLIGHT_GROUPS.map((group) => {
+          const isSelected = selectedGroupId === group.id;
+
+          const translation =
+            GROUP_TRANSLATIONS[group.id];
 
           return (
             <button
-              key={g.id}
-              onClick={() => onSelectGroup(isSelected ? null : g)}
-              className={`zone-card ${isSelected ? "is-selected" : ""}`}
+              key={group.id}
+              onClick={() =>
+                onSelectGroup(isSelected ? null : group)
+              }
+              className={`zone-card ${
+                isSelected ? "is-selected" : ""
+              }`}
             >
-              <div className={`zone-card__avatar zone-card__avatar--${g.id}`}>
-                <span>{g.emoji}</span>
+              <div
+                className={`zone-card__avatar zone-card__avatar--${group.id}`}
+              >
+                <span>{group.emoji}</span>
               </div>
 
               <div className="zone-card__info">
                 <div className="zone-card__row">
-                  <p className="zone-card__title">{g.title}</p>
-                  {g.badge && <span className="zone-card__badge">{g.badge}</span>}
+                  <p className="zone-card__title">
+                    {translation
+                      ? t(translation.title)
+                      : group.title}
+                  </p>
+
+                  {group.badge && (
+                    <span className="zone-card__badge">
+                      {translation
+                        ? t(translation.badge)
+                        : group.badge}
+                    </span>
+                  )}
                 </div>
-                <p className="zone-card__subtitle">{g.subtitle}</p>
+
+                <p className="zone-card__subtitle">
+                  {translation
+                    ? t(translation.subtitle)
+                    : group.subtitle}
+                </p>
               </div>
 
-              <ChevronRight size={15} className="zone-card__chevron" />
+              <ChevronRight
+                size={15}
+                className="zone-card__chevron"
+              />
             </button>
           );
         })}

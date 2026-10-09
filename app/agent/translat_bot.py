@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -7,10 +8,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from openai import OpenAIError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 load_dotenv(Path(__file__).with_name(".env"))
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="POI Translation Agent")
 
 allowed_origins = [
@@ -93,7 +96,7 @@ Dịch chính xác hai mô tả được cung cấp sang cả tiếng Anh (en) v
 Tên POI và phân khu chỉ dùng làm ngữ cảnh, không dịch chúng.
 Giữ nguyên ý nghĩa, tên riêng và thông tin thực tế. Không tự thêm thông tin.
 Chỉ trả về một đối tượng JSON hợp lệ, không markdown hay lời dẫn, theo cấu trúc:
-{"en":{"short":"...","detail":"..."},"zh":{"short":"...","detail":"..."}}""",
+{{"en":{{"short":"...","detail":"..."}},"zh":{{"short":"...","detail":"..."}}}}""",
             ),
             (
                 "human",
@@ -104,19 +107,26 @@ Mô tả chi tiết tiếng Việt: {detail}""",
             ),
         ]
     )
-    result = (prompt | ChatOpenAI(
-        model=model_name,
-        base_url=base_url,
-        api_key=api_key,
-        temperature=0,
-    )).invoke(
-        {
-            "name": request.name,
-            "zone": request.zone,
-            "short": request.descriptions.short,
-            "detail": request.descriptions.detail,
-        }
-    )
+    try:
+        result = (prompt | ChatOpenAI(
+            model=model_name,
+            base_url=base_url,
+            api_key=api_key,
+            temperature=0,
+        )).invoke(
+            {
+                "name": request.name,
+                "zone": request.zone,
+                "short": request.descriptions.short,
+                "detail": request.descriptions.detail,
+            }
+        )
+    except OpenAIError as error:
+        logger.exception("Translation model request failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Không gọi được model dịch ({type(error).__name__}); kiểm tra cấu hình agent trên Render.",
+        ) from error
 
     if not isinstance(result.content, str):
         raise HTTPException(status_code=502, detail="Agent trả về kết quả không phải văn bản")

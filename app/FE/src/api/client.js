@@ -1,6 +1,6 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const TRANSLATION_API_URL = (
-    import.meta.env.VITE_TRANSLATION_API_URL || "http://localhost:8000"
+    import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com"
 ).replace(/\/+$/, "");
 
 function getToken() {

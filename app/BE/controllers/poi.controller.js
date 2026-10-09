@@ -154,51 +154,116 @@ export async function listPublicPois(req, res) {
   }
 }
 
+/* GET /api/pois */
+export async function listPois(req, res) {
 export async function listPois(req, res) {
   try {
-    const { rows } = await pool.query(
-      `SELECT
-         p.poi_id AS "dbId",
-         p.code AS id,
-         p.name,
-         c.name AS category,
-         p.zone,
-         p.latitude,
-         p.longitude,
-         p.x::float AS "mapX",
-         p.y::float AS "mapY",
-         p.geofence_radius AS "geofenceRadius",
-         p.is_active AS "isActive",
-         jsonb_build_object(
-           'vi', COALESCE(MAX(t.description) FILTER (WHERE t.language_code = 'vi'), ''),
-           'en', COALESCE(MAX(t.description) FILTER (WHERE t.language_code = 'en'), ''),
-           'zh', COALESCE(MAX(t.description) FILTER (WHERE t.language_code = 'zh'), '')
-         ) AS translations
-       FROM poi p
-       LEFT JOIN category c ON c.category_id = p.category_id
-       LEFT JOIN poi_translation t ON t.poi_id = p.poi_id
-       GROUP BY p.poi_id, c.name
-       ORDER BY p.poi_id`
+    const { rows } = await pool.query(`
+      SELECT
+        p.poi_id AS "dbId",
+        p.code AS id,
+        p.name,
+        c.name AS category,
+        p.zone,
+        p.latitude,
+        p.longitude,
+        p.x::float AS "mapX",
+        p.y::float AS "mapY",
+        p.geofence_radius AS "geofenceRadius",
+        p.is_active AS "isActive",
+        p.updated_at AS "updatedAt",
+        jsonb_object_agg(
+          t.language_code,
+          jsonb_build_object(
+            'short', COALESCE(t.short_description, ''),
+            'detail', COALESCE(t.description, '')
+          )
+        ) FILTER (WHERE t.language_code IS NOT NULL) AS translations
+      FROM poi p
+      LEFT JOIN category c ON c.category_id = p.category_id
+      LEFT JOIN poi_translation t ON t.poi_id = p.poi_id
+      GROUP BY p.poi_id, c.name
+      ORDER BY p.poi_id
+    `);
+
+    return res.json(
+      rows.map((poi) => ({
+        ...poi,
+        translations: {
+          vi: { short: "", detail: "" },
+          en: { short: "", detail: "" },
+          zh: { short: "", detail: "" },
+          ...(poi.translations || {}),
+        },
+      }))
     );
-    return res.json(rows);
   } catch (error) {
     return respondWithError(res, error);
   }
 }
+}
 
+/* POST /api/pois */
+export async function createPoi(req, res) {
 export async function createPoi(req, res) {
   const parsed = readPoiInput(req.body || {});
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const poi = parsed.value;
   let client;
+
   try {
     client = await pool.connect();
     await client.query("BEGIN");
+
     const categoryId = await getCategoryId(client, poi.category);
     if (!categoryId) {
       const error = new Error("Unknown POI category");
       error.code = "INVALID_CATEGORY";
       throw error;
+    }
+
+    const { rows } = await client.query(
+      `
+        INSERT INTO poi (code, category_id, name, zone, latitude, longitude, geofence_radius, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING poi_id
+      `,
+      [
+        poi.id,
+        categoryId,
+        poi.name,
+        poi.zone,
+        Number(poi.latitude),
+        Number(poi.longitude),
+        Number(poi.geofenceRadius),
+        !!poi.isActive,
+      ]
+    );
+
+    const poiId = rows[0].poi_id;
+    for (const l of ["vi", "en", "zh"]) {
+      const tr = poi.translations?.[l] || {};
+      await client.query(
+        `
+          INSERT INTO poi_translation (poi_id, language_code, short_description, description)
+          VALUES ($1, $2, $3, $4)
+        `,
+        [poiId, l, tr.short || "", tr.detail || ""]
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({ ok: true, poiId });
+  } catch (error) {
+    if (client) {
+      await client.query("ROLLBACK").catch(() => {});
+    }
+    if (error.code === "INVALID_CATEGORY") {
+      return res.status(400).json({ error: "Unknown POI category" });
+    }
+    return respondWithError(res, error);
+  }
+}
     }
 
     const { rows } = await client.query(
@@ -227,6 +292,7 @@ export async function createPoi(req, res) {
   }
 }
 
+/* PUT /api/pois/:dbId */
 export async function updatePoi(req, res) {
   const parsed = readPoiInput(req.body || {});
   if (parsed.error) return res.status(400).json({ error: parsed.error });
@@ -240,11 +306,73 @@ export async function updatePoi(req, res) {
   try {
     client = await pool.connect();
     await client.query("BEGIN");
+
     const categoryId = await getCategoryId(client, poi.category);
     if (!categoryId) {
       const error = new Error("Unknown POI category");
       error.code = "INVALID_CATEGORY";
       throw error;
+    }
+
+    const { rows: existingRows } = await client.query(
+      `SELECT poi_id FROM poi WHERE poi_id = $1`,
+      [poi.dbId]
+    );
+
+    if (!existingRows.length) {
+      const error = new Error("POI not found");
+      error.code = "POI_NOT_FOUND";
+      throw error;
+    }
+
+    await client.query(
+      `
+        UPDATE poi SET
+          name = $1,
+          category_id = $2,
+          zone = $3,
+          latitude = $4,
+          longitude = $5,
+          geofence_radius = $6,
+          is_active = $7,
+          updated_at = NOW()
+        WHERE poi_id = $8
+      `,
+      [
+        poi.name,
+        categoryId,
+        poi.zone,
+        Number(poi.latitude),
+        Number(poi.longitude),
+        Number(poi.geofenceRadius),
+        !!poi.isActive,
+        poi.dbId,
+      ]
+    );
+
+    for (const l of ["vi", "en", "zh"]) {
+      const tr = poi.translations?.[l] || {};
+      await client.query(
+        `
+          INSERT INTO poi_translation (poi_id, language_code, short_description, description)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (poi_id, language_code)
+          DO UPDATE SET
+            short_description = EXCLUDED.short_description,
+            description = EXCLUDED.description
+        `,
+        [poi.dbId, l, tr.short || "", tr.detail || ""]
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.json({ ok: true });
+  } catch (error) {
+    if (client) {
+      await client.query("ROLLBACK").catch(() => {});
+    }
+    return respondWithError(res, error);
+  }
     }
 
     const { rows: existingRows } = await client.query(
@@ -293,6 +421,7 @@ export async function updatePoi(req, res) {
   }
 }
 
+/* DELETE /api/pois/:dbId */
 export async function deletePoi(req, res) {
   const dbId = Number(req.params.dbId);
   if (!Number.isInteger(dbId) || dbId < 1) {

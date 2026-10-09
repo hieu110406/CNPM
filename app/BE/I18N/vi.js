@@ -1,4 +1,3 @@
-// translations/vi.js
 
 const VI = {
   app: {
@@ -44,7 +43,11 @@ const VI = {
     service: "Dịch vụ & Xe điện",
     medical: "Trạm y tế & Sơ cứu",
     photo: "Điểm check-in đẹp",
+    gate: "Cổng vào",
   },
+
+  rightPanelTitle: "Hướng Dẫn Tham Quan",
+  exploreBtn: "Khám phá",
 
   settings: {
     title: "Cài Đặt Hệ Thống",
@@ -79,12 +82,13 @@ const VI = {
     audio: {
       autoPlayLabel: "Tự động phát thuyết minh",
       autoPlayDescription:
-        "Tự động phát lời thuyết minh âm thanh khi bấm vào loài thú",
+        "Tự động phát lời thuyết minh âm thanh khi bấm vào địa điểm",
     },
 
     map: {
-      showLabelsLabel: "Hiện nhãn tên chuồng thú trên bản đồ",
-      showLabelsDescription: "Hiển thị tên các địa điểm trực tiếp trên từng icon",
+      showLabelsLabel: "Hiện nhãn tên địa điểm trên bản đồ",
+      showLabelsDescription:
+        "Hiển thị tên địa điểm trực tiếp bên cạnh các biểu tượng trên bản đồ",
     },
 
     actions: {
@@ -95,35 +99,219 @@ const VI = {
 
   guide: {
     title: "Hướng Dẫn Tham Quan",
+
     tabs: {
       zones: "Khu nổi bật",
       legend: "Chú thích",
     },
+
+    highlights: "KHU VỰC NỔI BẬT",
+    groups: "nhóm",
+
+    bigAnimalsTitle: "Khu Thú Lớn Nổi Bật",
+    bigAnimalsSubtitle: "Voi châu Á, hươu cao cổ, hà mã...",
+    bigBadge: "5 loài",
+
+    birdsTitle: "Vườn Chim & Thủy Cầm",
+    birdsSubtitle: "Hồng hạc, thiên nga, bồ nông...",
+    birdsBadge: "Hồ cảnh quan",
+
+    primatesTitle: "Thế Giới Linh Trưởng",
+    primatesSubtitle: "Vượn đen má trắng, các loài khỉ...",
+    primatesBadge: "Khu bảo tồn",
+
+    entertainmentTitle: "Vui Chơi & Trải Nghiệm",
+    entertainmentSubtitle: "Đu quay khổng lồ, sân khấu biểu diễn...",
+    entertainmentBadge: "Gia đình & Bé",
+
+    botanicalTitle: "Vườn Thực Vật Cổ Thụ",
+    botanicalSubtitle: "Cây trăm tuổi, vườn phong lan...",
+    botanicalBadge: "Di sản xanh",
+
+    electricTram: "Tour Xe Điện Khám Phá",
+    tramDescription:
+      "Trải nghiệm xe điện dạo quanh 20 hecta vườn thú với lời bình audio sinh động.",
+    ticketPrice: "20.000đ / vé",
+    viewRoute: "Xem vị trí ga",
   },
 
   map: {
-    //INFOCARD//
+    legend: {
+      title: "Danh mục địa điểm",
+      reset: "Xóa bộ lọc",
+    },
+
     infoCard: {
+      gate: "Cổng",
       close: "Đóng",
       viewDetails: "Xem chi tiết & hình ảnh",
-      viewMore: "Xem chi tiết",
+      viewDetailsTitle: "Mở bảng thông tin chi tiết và album hình ảnh",
+      viewMore: "Xem thêm",
       didYouKnow: "Bạn có biết?",
       feedingTime: "Giờ cho ăn",
-      openingHours: "Mở cửa",
+      openingHours: "Giờ mở cửa",
       audioTitle: "Nghe thuyết minh",
       pause: "Tạm dừng",
+      play: "Phát thuyết minh",
       navigate: "Chỉ đường tới đây",
       navigateAlert: "Bắt đầu dẫn đường đến:",
       favorite: "Lưu vào danh sách yêu thích",
+      favoriteTitle: "Lưu vào danh sách yêu thích",
       share: "Chia sẻ địa điểm",
+      shareTitle: "Chia sẻ địa điểm",
       copied: "Đã sao chép liên kết chia sẻ địa điểm!",
-      desc: ""
+      desc: "",
     },
   },
-  
 
   system: {
     offline: "Bạn đang ở chế độ ngoại tuyến.",
+  },
+
+  markers: {
+    gate_main: {
+      name: "Cổng chính (Cổng A)",
+      zone: "Lối vào chính",
+      desc: "Số 2 Nguyễn Bỉnh Khiêm, phường Bến Nghé, Quận 1. Điểm bán vé và quầy đón tiếp.",
+    },
+
+    gate_c: {
+      name: "Cổng C (Nguyễn Thị Minh Khai)",
+      zone: "Lối vào phụ",
+      desc: "Lối vào từ đường Nguyễn Thị Minh Khai, thuận tiện cho xe buýt và người đi bộ.",
+    },
+
+    gate_d: {
+      name: "Cổng D",
+      zone: "Lối vào phụ",
+      desc: "Lối vào phía Tây Bắc gần sông Thị Nghè.",
+    },
+
+    den_hung: {
+      name: "Đền thờ Vua Hùng & Bảo tàng Lịch sử",
+      zone: "Khu di tích lịch sử",
+      desc: "Di tích lịch sử văn hóa với kiến trúc cung đình truyền thống đặc sắc.",
+    },
+
+    elephant: {
+      name: "Voi Châu Á",
+      zone: "Khu thú lớn",
+      desc: "Đàn voi châu Á với khu sân rộng và hồ tắm tự nhiên.",
+    },
+
+    giraffe: {
+      name: "Hươu Cao Cổ",
+      zone: "Khu thú lớn",
+      desc: "Khu vực tham quan hươu cao cổ.",
+    },
+
+    tiger: {
+      name: "Hổ Đông Dương & Hổ Trắng",
+      zone: "Khu thú ăn thịt",
+      desc: "Các loài hổ quý hiếm được chăm sóc trong khu chuồng mô phỏng môi trường tự nhiên.",
+    },
+
+    lion: {
+      name: "Sư Tử Châu Phi",
+      zone: "Khu thú ăn thịt",
+      desc: "Sư tử sinh sống theo tập tính bầy đàn tự nhiên.",
+    },
+
+    bear: {
+      name: "Gấu Ngựa & Gấu Chó",
+      zone: "Khu thú ăn thịt",
+      desc: "Hai loài gấu có nguồn gốc từ châu Á.",
+    },
+
+    rhino_hippo: {
+      name: "Hà Mã",
+      zone: "Khu thú lớn",
+      desc: "Hồ nước nơi những chú hà mã bơi lội và làm mát cơ thể.",
+    },
+
+    rhino: {
+      name: "Tê Giác",
+      zone: "Khu thú ăn cỏ",
+      desc: "Khu vực tham quan tê giác.",
+    },
+
+    deer_area: {
+      name: "Nai Cà Tông & Hươu Sao",
+      zone: "Khu móng guốc",
+      desc: "Khu đồi cỏ xanh nơi đàn nai gặm cỏ bên suối nhân tạo.",
+    },
+
+    monkey_primate: {
+      name: "Đảo Khỉ & Vượn Đen Má Trắng",
+      zone: "Khu linh trưởng",
+      desc: "Khu vực có dây leo và cành cây cho các loài linh trưởng chuyền cành.",
+    },
+
+    birds_lake: {
+      name: "Hồ Hồng Hạc & Chim Nước",
+      zone: "Khu chim cảnh",
+      desc: "Mặt hồ có hồng hạc, bồ nông và thiên nga.",
+    },
+
+    birds_pool: {
+      name: "Chim Trong Hồ",
+      zone: "Khu chim cảnh",
+      desc: "Khu vực hồ nước nơi các loài chim thủy cầm bơi lội và kiếm ăn.",
+    },
+
+    botanical_garden: {
+      name: "Vườn Phong Lan & Xương Rồng",
+      zone: "Vườn thực vật",
+      desc: "Bộ sưu tập phong lan và các loại cây cảnh.",
+    },
+
+    ferris_wheel: {
+      name: "Vòng Đu Quay Khổng Lồ",
+      zone: "Khu trò chơi",
+      desc: "Ngắm toàn cảnh thành phố và mảng xanh Thảo Cầm Viên từ trên cao.",
+    },
+
+    stage_main: {
+      name: "Sân Khấu Biểu Diễn Nghệ Thuật",
+      zone: "Sân khấu trung tâm",
+      desc: "Các chương trình biểu diễn dành cho thiếu nhi vào cuối tuần và ngày lễ.",
+    },
+
+    photo_spot_bridge: {
+      name: "Cầu Kính & Vườn Hoa Sen",
+      zone: "Điểm check-in",
+      desc: "Góc chụp ảnh được yêu thích tại Thảo Cầm Viên.",
+    },
+
+    tram_station: {
+      name: "Ga Xe Điện Du Lịch",
+      zone: "Dịch vụ vận chuyển",
+      desc: "Xe điện đưa đón du khách tham quan vườn thú với lời thuyết minh.",
+    },
+
+    restaurant_central: {
+      name: "Nhà Hàng Cây Xanh & Quán Cà Phê",
+      zone: "Ẩm thực & Giải khát",
+      desc: "Phục vụ thức ăn, cà phê, kem và đồ uống.",
+    },
+
+    wc_main: {
+      name: "Nhà Vệ Sinh Trung Tâm",
+      zone: "Tiện ích vệ sinh",
+      desc: "Nhà vệ sinh có tiện ích cho gia đình và người sử dụng xe lăn.",
+    },
+
+    wc_north: {
+      name: "Nhà Vệ Sinh Khu Bờ Sông",
+      zone: "Tiện ích vệ sinh",
+      desc: "Nằm gần hồ nước và khu vực bãi giữ xe cổng D.",
+    },
+
+    medical_station: {
+      name: "Trạm Y Tế & Sơ Cứu",
+      zone: "Hỗ trợ y tế",
+      desc: "Trạm hỗ trợ sơ cứu và chăm sóc sức khỏe cho khách tham quan.",
+    },
   },
 };
 

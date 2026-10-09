@@ -2,9 +2,10 @@
   "name": "app",
   "private": true,
   "scripts": {
+    "dev:agent": "python -m uvicorn translat_bot:app --app-dir agent --reload --port 8000",
     "dev:be": "npm --prefix BE run dev",
     "dev:fe": "npm --prefix FE run dev",
-    "dev": "concurrently --kill-others --names BE,FE \"npm run dev:be\" \"npm run dev:fe\""
+    "dev": "concurrently --kill-others --names Agent,BE,FE \"npm run dev:agent\" \"npm run dev:be\" \"npm run dev:fe\""
   },
   "devDependencies": {
     "concurrently": "^9.2.4"

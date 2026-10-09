@@ -3,14 +3,29 @@ import { query } from "../db/database.js";
 const CAT_MAP = { animal: 1, plant: 2, facility: 3, service: 4, entrance: 5 };
 const CAT_REV = ["", "animal", "plant", "facility", "service", "entrance"];
 
+/* GET /api/pois */
 export async function listPois(req, res) {
     try {
         const { rows: pois } = await query(`SELECT * FROM poi ORDER BY poi_id DESC`);
         const { rows: translations } = await query(`SELECT * FROM poi_translation`);
 
         const result = pois.map((p) => {
-            const t = { vi: "", en: "", zh: "" };
-            translations.filter((x) => x.poi_id === p.poi_id).forEach((x) => (t[x.language_code] = x.description));
+            const t = {
+                vi: { short: "", detail: "" },
+                en: { short: "", detail: "" },
+                zh: { short: "", detail: "" },
+            };
+            translations
+                .filter((x) => x.poi_id === p.poi_id)
+                .forEach((x) => {
+                    if (t[x.language_code]) {
+                        t[x.language_code] = {
+                            short: x.short_description || "",
+                            detail: x.description || "",
+                        };
+                    }
+                });
+
             return {
                 id: p.code,
                 dbId: p.poi_id,
@@ -33,6 +48,7 @@ export async function listPois(req, res) {
     }
 }
 
+/* POST /api/pois */
 export async function createPoi(req, res) {
     try {
         const { id, name, category, zone, latitude, longitude, geofenceRadius, isActive, translations } = req.body;
@@ -44,9 +60,11 @@ export async function createPoi(req, res) {
 
         const poiId = rows[0].poi_id;
         for (const l of ["vi", "en", "zh"]) {
+            const tr = translations?.[l] || {};
             await query(
-                `INSERT INTO poi_translation (poi_id, language_code, description) VALUES ($1, $2, $3)`,
-                [poiId, l, translations[l] || ""]
+                `INSERT INTO poi_translation (poi_id, language_code, short_description, description)
+         VALUES ($1, $2, $3, $4)`,
+                [poiId, l, tr.short || "", tr.detail || ""]
             );
         }
         return res.json({ ok: true, poiId });
@@ -56,6 +74,7 @@ export async function createPoi(req, res) {
     }
 }
 
+/* PUT /api/pois/:dbId */
 export async function updatePoi(req, res) {
     try {
         const { dbId } = req.params;
@@ -68,10 +87,14 @@ export async function updatePoi(req, res) {
     `, [name, CAT_MAP[category] || 1, zone, +latitude, +longitude, +geofenceRadius, !!isActive, dbId]);
 
         for (const l of ["vi", "en", "zh"]) {
+            const tr = translations?.[l] || {};
             await query(`
-        INSERT INTO poi_translation (poi_id, language_code, description) VALUES ($1, $2, $3)
-        ON CONFLICT (poi_id, language_code) DO UPDATE SET description = EXCLUDED.description
-      `, [dbId, l, translations[l] || ""]);
+        INSERT INTO poi_translation (poi_id, language_code, short_description, description)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (poi_id, language_code)
+        DO UPDATE SET short_description = EXCLUDED.short_description,
+                      description = EXCLUDED.description
+      `, [dbId, l, tr.short || "", tr.detail || ""]);
         }
         return res.json({ ok: true });
     } catch (e) {
@@ -80,6 +103,7 @@ export async function updatePoi(req, res) {
     }
 }
 
+/* DELETE /api/pois/:dbId */
 export async function deletePoi(req, res) {
     try {
         await query(`DELETE FROM poi WHERE poi_id = $1`, [req.params.dbId]);

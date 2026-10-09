@@ -117,14 +117,25 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [isTranslating, setIsTranslating] = useState(false);
 
     /* ---- UC6: Audio ---- */
+<<<<<<< Updated upstream
     const [audioList, setAudioList] = useState(() => buildInitialAudio(buildInitialPois()));
     const [audioPoiId, setAudioPoiId] = useState(() => buildInitialPois()[0]?.id);
+=======
+    const [audioList, setAudioList] = useState([]);
+    const [audioLoading, setAudioLoading] = useState(false);
+    const [audioPoiId, setAudioPoiId] = useState(null);
+>>>>>>> Stashed changes
     const [aiScript, setAiScript] = useState("");
     const [aiLang, setAiLang] = useState("vi");
     const [isGenerating, setIsGenerating] = useState(false);
     const [previewTrack, setPreviewTrack] = useState(null);
 
     /* ---- UC7: Analytics ---- */
+<<<<<<< Updated upstream
+=======
+    const [analytics, setAnalytics] = useState(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+>>>>>>> Stashed changes
     const [range, setRange] = useState("7d");
     const [exporting, setExporting] = useState(false);
 
@@ -132,7 +143,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [adminList, setAdminList] = useState(INITIAL_ADMINS);
 
     /* ---- UC4: Audit log ---- */
+<<<<<<< Updated upstream
     const [auditLogs] = useState(INITIAL_AUDIT);
+=======
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [auditLoading, setAuditLoading] = useState(false);
+>>>>>>> Stashed changes
 
     /* ---- Helper ---- */
     const showToast = (msg, tone = "ok") => {
@@ -140,6 +156,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setTimeout(() => setToast(null), 2600);
     };
 
+<<<<<<< Updated upstream
     /* ---- Derived ---- */
     const filteredPois = useMemo(() => {
         return poiList.filter((p) => {
@@ -151,6 +168,133 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                 p.id.toLowerCase().includes(kw) ||
                 p.zone.toLowerCase().includes(kw);
             return okCat && okKw;
+=======
+    /* =========================================================
+       LOAD DỮ LIỆU
+       ========================================================= */
+
+    // 1. Admins
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAdminLoading(true);
+            try {
+                const data = await api.getAdmins();
+                if (!cancelled) setAdminList(data);
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setAdminLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 2. POIs
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setPoiLoading(true);
+            try {
+                const data = await api.getPois();
+                if (!cancelled) {
+                    setPoiList(data);
+                    if (data.length > 0) {
+                        setAudioPoiId((prev) => prev || data[0].dbId);
+                    }
+                }
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setPoiLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 3. Analytics
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAnalyticsLoading(true);
+            try {
+                const data = await api.getAnalytics();
+                if (!cancelled) setAnalytics(data);
+            } catch (err) {
+                if (!cancelled) console.error("Analytics:", err.message);
+            } finally {
+                if (!cancelled) setAnalyticsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 4. Audit logs
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAuditLoading(true);
+            try {
+                const data = await api.getAuditLogs();
+                if (!cancelled) setAuditLogs(data);
+            } catch (err) {
+                if (!cancelled) console.error("Audit:", err.message);
+            } finally {
+                if (!cancelled) setAuditLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 5. Audio — reload khi audioPoiId thay đổi
+    useEffect(() => {
+        if (!audioPoiId) {
+            setAudioList([]);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            setAudioLoading(true);
+            try {
+                const data = await api.getAudio(audioPoiId);
+                if (!cancelled) setAudioList(data);
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setAudioLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [audioPoiId]);
+
+    /* =========================================================
+       UC7 — ADMIN
+       ========================================================= */
+    const handleCreateAdmin = async (e) => {
+        e.preventDefault();
+        if (!newAdminForm.name.trim()) return showToast("Vui lòng nhập họ tên", "error");
+        if (!newAdminForm.email.trim()) return showToast("Vui lòng nhập email", "error");
+        if (newAdminForm.password.length < 6) return showToast("Mật khẩu tối thiểu 6 ký tự", "error");
+
+        setSavingAdmin(true);
+        try {
+            const created = await api.createAdmin(newAdminForm);
+            setAdminList((prev) => [...prev, created]);
+            setShowAddAdminModal(false);
+            setNewAdminForm({ name: "", email: "", password: "", mfa: true });
+            showToast("Đã tạo tài khoản mới");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setSavingAdmin(false);
+        }
+    };
+
+    const handleOpenEditAdmin = (a) => {
+        setEditAdminForm({
+            dbId: a.dbId, id: a.id, name: a.name,
+            email: a.email, mfa: a.mfa, status: a.status,
+>>>>>>> Stashed changes
         });
     }, [poiList, poiSearch, poiCategory]);
 
@@ -169,6 +313,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
        ========================================================= */
     const startCreatePoi = () => {
         setPoiForm({
+<<<<<<< Updated upstream
             id: `POI-${String(poiList.length + 1).padStart(3, "0")}`,
             name: "",
             category: "animal",
@@ -178,6 +323,16 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             geofenceRadius: 20,
             isActive: true,
             translations: { vi: "", en: "", zh: "" },
+=======
+            id: nextId, name: "", category: "animal", zone: "",
+            latitude: "10.787500", longitude: "106.705000",
+            geofenceRadius: 20, isActive: true,
+            translations: {
+                vi: { short: "", detail: "" },
+                en: { short: "", detail: "" },
+                zh: { short: "", detail: "" },
+            },
+>>>>>>> Stashed changes
         });
         setEditingPoi("new");
         setPoiLangTab("vi");
@@ -192,7 +347,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const validatePoiForm = (f) => {
         if (!f.name.trim()) return "Thiếu tên POI";
         if (!f.zone.trim()) return "Thiếu phân khu";
-        if (!f.translations.vi.trim()) return "Thiếu mô tả tiếng Việt";
+        if (!f.translations.vi.detail.trim()) return "Thiếu mô tả chi tiết tiếng Việt";
+        if (!f.translations.vi.short.trim()) return "Thiếu mô tả ngắn tiếng Việt";
         if (f.geofenceRadius < 5 || f.geofenceRadius > 200) return "Bán kính geofence phải trong khoảng 5–200m";
         return null;
     };
@@ -211,17 +367,35 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setPoiForm(null);
     };
 
+<<<<<<< Updated upstream
     const deletePoi = (id) => {
         if (!window.confirm("Xoá POI này? Audio liên quan cũng sẽ bị gỡ khỏi gói offline.")) return;
         setPoiList((prev) => prev.filter((p) => p.id !== id));
         setAudioList((prev) => prev.filter((a) => a.poiId !== id));
         showToast("Đã xoá POI", "error");
+=======
+    const deletePoi = async (poi) => {
+        if (!window.confirm(`Xoá POI "${poi.name}"? Audio liên quan cũng sẽ bị gỡ.`)) return;
+        try {
+            await api.deletePoi(poi.dbId);
+            const list = await api.getPois();
+            setPoiList(list);
+            if (audioPoiId === poi.dbId) {
+                setAudioPoiId(list[0]?.dbId || null);
+            }
+            showToast("Đã xoá POI");
+        } catch (err) {
+            showToast(err.message, "error");
+        }
+>>>>>>> Stashed changes
     };
 
     /* --- A1: AI-assisted translation (UC5 Alternative) --- */
     const handleAiTranslate = () => {
-        const src = poiForm.translations.vi.trim();
-        if (!src) return showToast("Cần nhập mô tả tiếng Việt trước khi dịch", "error");
+        const srcShort = poiForm.translations.vi.short.trim();
+        const srcDetail = poiForm.translations.vi.detail.trim();
+        if (!srcDetail) return showToast("Cần nhập mô tả chi tiết tiếng Việt trước khi dịch", "error");
+
         setIsTranslating(true);
         // Giả lập gọi AI content service
         setTimeout(() => {
@@ -229,8 +403,14 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                 ...f,
                 translations: {
                     ...f.translations,
-                    en: f.translations.en || `[AI draft EN] ${src}`,
-                    zh: f.translations.zh || `[AI 草稿 ZH] ${src}`,
+                    en: {
+                        short: f.translations.en.short || `[AI draft EN] ${srcShort || srcDetail.slice(0, 100)}`,
+                        detail: f.translations.en.detail || `[AI draft EN] ${srcDetail}`,
+                    },
+                    zh: {
+                        short: f.translations.zh.short || `[AI 草稿 ZH] ${srcShort || srcDetail.slice(0, 100)}`,
+                        detail: f.translations.zh.detail || `[AI 草稿 ZH] ${srcDetail}`,
+                    },
                 },
             }));
             setIsTranslating(false);
@@ -239,7 +419,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     };
 
     /* =========================================================
+<<<<<<< Updated upstream
        UC6 — HÀNH ĐỘNG AUDIO
+=======
+       UC6 — AUDIO
+>>>>>>> Stashed changes
        ========================================================= */
     const uploadAudio = (lang) => {
         const dur = 60 + Math.floor(Math.random() * 60);
@@ -440,7 +624,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="stat-card__value">{poiList.filter((p) => p.isActive).length}</div>
                                     <div className="stat-card__label">POI đang hoạt động</div>
                                     <div className="stat-card__foot">
+<<<<<<< Updated upstream
                                         {poiList.filter((p) => LANGUAGES.every((l) => p.translations[l.code])).length} POI đủ 3 ngôn ngữ
+=======
+                                        {poiList.filter((p) => LANGUAGES.every((l) => p.translations?.[l.code]?.detail)).length} POI đủ 3 ngôn ngữ
+>>>>>>> Stashed changes
                                     </div>
                                 </div>
 
@@ -566,9 +754,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý POI &amp; Hạ Tầng</h1>
-                                    <p className="admin-tab-desc">
-                                        UC5 — Tạo, cập nhật POI với toạ độ GPS, bán kính geofence và mô tả đa ngôn ngữ (VI/EN/ZH)
-                                    </p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <button onClick={startCreatePoi} className="btn-primary-admin">
@@ -621,8 +806,28 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             </tr>
                                         </thead>
                                         <tbody>
+<<<<<<< Updated upstream
                                             {filteredPois.map((p) => {
                                                 const doneLangs = LANGUAGES.filter((l) => p.translations[l.code]);
+=======
+                                            {poiLoading && (
+                                                <tr>
+                                                    <td colSpan={8} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Đang tải danh sách POI...
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!poiLoading && filteredPois.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={8} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Chưa có POI nào
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!poiLoading && filteredPois.map((p) => {
+                                                const tr = p.translations || {};
+                                                const doneLangs = LANGUAGES.filter((l) => tr[l.code]?.detail);
+>>>>>>> Stashed changes
                                                 return (
                                                     <tr key={p.id}>
                                                         <td><span className="code-badge">{p.id}</span></td>
@@ -645,7 +850,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         <td>
                                                             <div style={{ display: "flex", gap: 4 }}>
                                                                 {LANGUAGES.map((l) => {
+<<<<<<< Updated upstream
                                                                     const done = !!p.translations[l.code];
+=======
+                                                                    const done = !!tr[l.code]?.detail;
+>>>>>>> Stashed changes
                                                                     return (
                                                                         <span key={l.code}
                                                                             className={`lang-tab__dot ${done ? "is-complete" : ""}`}
@@ -699,9 +908,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý Audio &amp; Nội dung AI</h1>
-                                    <p className="admin-tab-desc">
-                                        UC6 — Upload file ghi âm hoặc sinh audio bằng AI Text-to-Speech, rà soát rồi publish cho VI/EN/ZH
-                                    </p>
+                                    
                                 </div>
                                 <div className="admin-tab-actions">
                                     <select
@@ -727,7 +934,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <Info size={16} />
                                     <div>
                                         <strong>{currentAudioPoi.name}</strong> — {currentAudioPoi.zone} • Geofence{" "}
+<<<<<<< Updated upstream
                                         {currentAudioPoi.geofenceRadius}m • {LANGUAGES.filter((l) => currentAudioPoi.translations[l.code]).length}/3 ngôn ngữ đã có mô tả
+=======
+                                        {currentAudioPoi.geofenceRadius}m • {LANGUAGES.filter((l) => currentAudioPoi.translations?.[l.code]?.detail).length}/3 ngôn ngữ đã có mô tả
+>>>>>>> Stashed changes
                                     </div>
                                 </div>
                             )}
@@ -873,7 +1084,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Phân Tích &amp; Thống Kê</h1>
-                                    <p className="admin-tab-desc">UC7 — Theo dõi lượt dùng, phân bổ ngôn ngữ, mức độ phổ biến POI và tải gói offline</p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <div className="admin-filter-tabs">
@@ -1024,7 +1234,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Tài Khoản Admin &amp; Phân Quyền</h1>
-                                    <p className="admin-tab-desc">UC7 — Thêm, sửa, vô hiệu hoá tài khoản; gán quyền và MFA</p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <button
@@ -1118,9 +1327,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Audit Log</h1>
-                                    <p className="admin-tab-desc">
-                                        UC4/UC7 — Mọi sự kiện đăng nhập, thay đổi nội dung, phân quyền đều được ghi nhật ký
-                                    </p>
+                                    
                                 </div>
                             </div>
 
@@ -1221,7 +1428,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 {/* Language tabs */}
                                 <div className="lang-tabs">
                                     {LANGUAGES.map((l) => {
-                                        const done = !!poiForm.translations[l.code].trim();
+                                        const done = !!(poiForm.translations[l.code]?.detail || "").trim();
                                         return (
                                             <button
                                                 key={l.code}
@@ -1241,7 +1448,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     </button>
                                 </div>
 
+                                {/* Mô tả ngắn */}
                                 <div className="form-group">
+<<<<<<< Updated upstream
                                     <label>Mô tả — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}</label>
                                     <textarea
                                         rows={6}
@@ -1254,6 +1463,56 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             })
                                         }
                                     />
+=======
+                                    <label>
+                                        Mô tả ngắn — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}
+                                        <span style={{ fontSize: 11, color: "var(--dash-text-3)", marginLeft: 8 }}>
+                                            (card danh sách)
+                                        </span>
+                                    </label>
+                                    <textarea rows={2}
+                                        value={poiForm.translations[poiLangTab]?.short || ""}
+                                        placeholder="VD: S2 Nguyễn Bỉnh Khiêm, P. Bến Nghé, Q.1..."
+                                        maxLength={180}
+                                        onChange={(e) => setPoiForm({
+                                            ...poiForm,
+                                            translations: {
+                                                ...poiForm.translations,
+                                                [poiLangTab]: {
+                                                    ...poiForm.translations[poiLangTab],
+                                                    short: e.target.value,
+                                                },
+                                            },
+                                        })}
+                                        disabled={savingPoi} />
+                                    <span className="field-hint">
+                                        {(poiForm.translations[poiLangTab]?.short || "").length}/180 ký tự — ngắn gọn 1-2 câu.
+                                    </span>
+                                </div>
+
+                                {/* Mô tả chi tiết */}
+                                <div className="form-group" style={{ marginTop: 12 }}>
+                                    <label>
+                                        Mô tả chi tiết — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}
+                                        <span style={{ fontSize: 11, color: "var(--dash-text-3)", marginLeft: 8 }}>
+                                            (modal chi tiết)
+                                        </span>
+                                    </label>
+                                    <textarea rows={6}
+                                        value={poiForm.translations[poiLangTab]?.detail || ""}
+                                        placeholder={poiLangTab === "vi" ? "Nhập mô tả chi tiết tiếng Việt (bắt buộc)..." : "Bản dịch chi tiết do AI sinh..."}
+                                        onChange={(e) => setPoiForm({
+                                            ...poiForm,
+                                            translations: {
+                                                ...poiForm.translations,
+                                                [poiLangTab]: {
+                                                    ...poiForm.translations[poiLangTab],
+                                                    detail: e.target.value,
+                                                },
+                                            },
+                                        })}
+                                        disabled={savingPoi} />
+>>>>>>> Stashed changes
                                     <span className="field-hint">
                                         Ngôn ngữ mặc định của hệ thống là Tiếng Việt (dùng khi bản dịch ngôn ngữ khác chưa có).
                                     </span>

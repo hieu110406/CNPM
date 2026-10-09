@@ -32,10 +32,11 @@ CREATE TABLE IF NOT EXISTS poi (
 );
 
 CREATE TABLE IF NOT EXISTS poi_translation (
-  translation_id SERIAL PRIMARY KEY,
-  poi_id         INTEGER REFERENCES poi(poi_id) ON DELETE CASCADE,
-  language_code  VARCHAR(5) NOT NULL,
-  description    TEXT,
+  translation_id    SERIAL PRIMARY KEY,
+  poi_id            INTEGER REFERENCES poi(poi_id) ON DELETE CASCADE,
+  language_code     VARCHAR(5) NOT NULL,
+  short_description TEXT DEFAULT '',
+  description       TEXT,
   UNIQUE (poi_id, language_code)
 );
 

@@ -15,6 +15,19 @@ async function request(path, options = {}) {
     return data;
 }
 
+async function requestAgentAudio(path, body) {
+    const res = await fetch(`${TRANSLATION_API_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || data.error || "Không tạo được audio");
+    }
+    return res.blob();
+}
+
 export const api = {
     // UC4 - Auth
     login: (email, password) =>
@@ -32,6 +45,10 @@ export const api = {
     deletePoi: (dbId) => request(`/pois/${dbId}`, { method: "DELETE" }),
 
     // UC6 - Audio
+    translateAudioScript: (script) =>
+        requestTranslation("/translate-script", { script }),
+    generateAudio: (text, language) =>
+        requestAgentAudio("/text-to-speech", { text, language }),
     getAudio: (poiDbId) => request(`/audio?poiId=${poiDbId}`),
     createAudio: (data) => request("/audio", { method: "POST", body: JSON.stringify(data) }),
     publishAudio: (id) => request(`/audio/${id}/publish`, { method: "PUT" }),

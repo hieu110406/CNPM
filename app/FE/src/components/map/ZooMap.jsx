@@ -13,9 +13,9 @@ import {
   TYPE_META,
 } from "./mapData";
 import { api } from "../../api/client";
-import { buildGraph } from "./mapGraph";
+import { buildGraph, shortestPath } from "./mapGraph";
 import zooMapImage from "../../assets/map/zoo_map.png";
-import { Sparkles, ChevronRight, Navigation, X } from "lucide-react";
+import { Sparkles, ChevronRight, X } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
 import "./map.css";
 
@@ -31,14 +31,6 @@ const FILTER_LABEL_KEYS = {
   restaurant: "restaurant",
   service: "service",
   restroom: "restroom",
-};
-
-const ROUTE_ERROR_KEYS = {
-  ROUTE_SELECTION_REQUIRED: "route.errorMissingPoint",
-  ROUTE_SAME_POI: "route.errorSamePoint",
-  ROUTE_POI_NOT_FOUND: "route.errorNotFound",
-  ROUTE_NOT_FOUND: "route.errorNoRoute",
-  ROUTE_INTERNAL_ERROR: "route.errorGeneric",
 };
 
 export default function ZooMap({
@@ -63,6 +55,7 @@ export default function ZooMap({
   const [routeEndId, setRouteEndId] = useState(null);
   const [isFindingRoute, setIsFindingRoute] = useState(false);
   const [routeErrorKey, setRouteErrorKey] = useState(null);
+  const [routeDistance, setRouteDistance] = useState(null);
   const routeRequestId = useRef(0);
 
   useEffect(() => {
@@ -190,13 +183,16 @@ export default function ZooMap({
     }
   }
 
-  function startRouteMode() {
+  function handleStartPickTwo() {
     routeRequestId.current += 1;
     setIsRouteMode(true);
+    setSelectedId(null);
+    setSelectedGroupId(null);
     setRouteStartId(null);
     setRouteEndId(null);
     setIsFindingRoute(false);
     setRouteErrorKey(null);
+    setRouteDistance(null);
     setPathNodes([]);
   }
 
@@ -207,56 +203,68 @@ export default function ZooMap({
     setRouteEndId(null);
     setIsFindingRoute(false);
     setRouteErrorKey(null);
+    setRouteDistance(null);
     setPathNodes([]);
   }
 
   async function selectRouteMarker(id) {
     if (isFindingRoute) return;
 
+    // Chưa chọn điểm xuất phát → POI vừa bấm là điểm xuất phát
     if (!routeStartId) {
       setRouteStartId(id);
+      setRouteEndId(null);
       setRouteErrorKey(null);
+      setRouteDistance(null);
+      setPathNodes([]);
       return;
     }
 
+    // Bấm lại đúng điểm xuất phát → bỏ chọn, xoá đường
     if (id === routeStartId) {
       setRouteStartId(null);
       setRouteEndId(null);
       setRouteErrorKey(null);
+      setRouteDistance(null);
       setPathNodes([]);
       return;
     }
 
+    // Bấm lại đúng điểm đến hiện tại → bỏ điểm đến, xoá đường (giữ điểm xuất phát)
     if (id === routeEndId) {
       setRouteEndId(null);
       setRouteErrorKey(null);
+      setRouteDistance(null);
       setPathNodes([]);
       return;
     }
 
+    // Chọn điểm đến (mới hoặc đổi): giữ nguyên điểm xuất phát, tính & vẽ ngay
     setRouteEndId(id);
     setRouteErrorKey(null);
+    setRouteDistance(null);
     setPathNodes([]);
     setIsFindingRoute(true);
     const requestId = ++routeRequestId.current;
 
     try {
-      const route = await api.getRoute(routeStartId, id, language);
+      // Tính đường ngắn nhất phía client bằng đồ thị waypoint tĩnh (mapGraph.js)
+      const result = shortestPath(routeStartId, id);
       if (requestId !== routeRequestId.current) return;
-      if (
-        !Array.isArray(route.path) ||
-        route.path.length < 2 ||
-        route.path.some(
-          (point) => !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))
-        )
-      ) {
-        throw new Error("Invalid route response");
+      if (!result || !Array.isArray(result.path) || result.path.length < 2) {
+        // Không có đường nối → báo lỗi đã dịch, cho chọn lại điểm đến (không thoát chế độ)
+        setRouteEndId(null);
+        setRouteErrorKey("route.errorNoRoute");
+        return;
       }
-      setPathNodes(route.path);
+      setPathNodes(result.path);
+      setRouteDistance(
+        Number.isFinite(result.totalDistance) ? result.totalDistance : null
+      );
     } catch (error) {
       if (requestId !== routeRequestId.current) return;
       setRouteEndId(null);
-      setRouteErrorKey(ROUTE_ERROR_KEYS[error.code] || "route.errorGeneric");
+      setRouteErrorKey("route.errorGeneric");
     } finally {
       if (requestId === routeRequestId.current) {
         setIsFindingRoute(false);
@@ -397,33 +405,28 @@ export default function ZooMap({
           routeEndId={isRouteMode ? routeEndId : null}
         />
 
-        {!isRouteMode ? (
-          <button
-            type="button"
-            className="map-route-start"
-            onClick={startRouteMode}
-          >
-            <Navigation size={15} />
-            <span>{t("route.startBtn")}</span>
-          </button>
-        ) : (
+        {isRouteMode && (
           <>
-            {(isFindingRoute || !routeStartId || !routeEndId || routeErrorKey) && (
+            {(isFindingRoute || !routeStartId || !routeEndId || routeErrorKey || pathNodes.length > 0) && (
               <div className="map-route-status" role="status" aria-live="polite">
-                <span>
-                  {t(
-                    isFindingRoute
-                      ? "route.finding"
-                      : routeStartId
-                        ? "route.selectDestination"
-                        : "route.selectStart"
-                  )}
-                </span>
-                {routeErrorKey && (
+                {routeErrorKey ? (
                   <span className="map-route-status__error" role="alert">
                     {t(routeErrorKey)}
                   </span>
-                )}
+                ) : isFindingRoute ? (
+                  <span>{t("route.finding")}</span>
+                ) : !routeStartId ? (
+                  <span>{t("route.pickTwoPoints")}</span>
+                ) : !routeEndId ? (
+                  <span>{t("route.selectDestination")}</span>
+                ) : pathNodes.length > 0 ? (
+                  <span>
+                    {t("route.complete")}
+                    {routeDistance != null && (
+                      <> · {t("route.distance")}: {routeDistance.toFixed(1)}</>
+                    )}
+                  </span>
+                ) : null}
               </div>
             )}
             <button
@@ -456,6 +459,7 @@ export default function ZooMap({
           marker={selectedMarker}
           markers={markers}
           onClose={() => setSelectedId(null)}
+          onStartRouteMode={handleStartPickTwo}
           onPathReady={(path) => {
             setPathNodes(path);
             if (path.length) {

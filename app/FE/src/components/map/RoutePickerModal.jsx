@@ -3,12 +3,14 @@
 
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Loader2, ChevronRight } from "lucide-react";
+import { X, Navigation, Loader2, ChevronRight, MapPinned } from "lucide-react";
 import { MARKERS } from "./mapData";
 import { shortestPath } from "./mapGraph";
+import { useSettings } from "../../context/SettingsContext";
 import "./routePickerModal.css";
 
-function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
+function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onStartRouteMode }) {
+  const { t } = useSettings();
   const [fromId, setFromId]   = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
@@ -106,6 +108,19 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
             }
           </button>
 
+          {/* Chọn 2 điểm ngay trên bản đồ */}
+          <button
+            type="button"
+            className="rp-pick-btn"
+            onClick={() => {
+              onStartRouteMode?.();
+              onClose();
+            }}
+          >
+            <MapPinned size={14} />
+            {t("route.mapChoice", "Chọn 2 điểm trên bản đồ")}
+          </button>
+
           {/* Lỗi */}
           {error && <div className="rp-error">{error}</div>}
 
@@ -162,7 +177,7 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
   );
 }
 
-export default function RoutePickerModal({ destination, markers = MARKERS, onClose, onPathReady }) {
+export default function RoutePickerModal({ destination, markers = MARKERS, onClose, onPathReady, onStartRouteMode }) {
   if (!destination || typeof document === "undefined") return null;
   return createPortal(
     <RoutePickerModalInner
@@ -170,6 +185,7 @@ export default function RoutePickerModal({ destination, markers = MARKERS, onClo
       markers={markers}
       onClose={onClose}
       onPathReady={onPathReady}
+      onStartRouteMode={onStartRouteMode}
     />,
     document.body
   );

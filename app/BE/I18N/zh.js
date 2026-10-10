@@ -334,6 +334,10 @@ const ZH = {
 
   route: {
     startBtn: "路线导航",
+    mapChoice: "在地图上选择2个点",
+    pickTwoPoints: "在地图上选择起点和终点",
+    complete: "已找到最短路线",
+    distance: "距离",
     selectStart: "请在地图上选择起点",
     selectDestination: "请在地图上选择终点",
     finding: "正在规划路线...",

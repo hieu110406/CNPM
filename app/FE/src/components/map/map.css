@@ -432,8 +432,9 @@
 }
 
 .map-route-cancel {
-  right: 76px;
-  bottom: 20px;
+  top: 20px;
+  right: 20px;
+  bottom: auto;
   color: #b91c1c;
 }
 

@@ -24,7 +24,7 @@ import PoiAudioControl from "../audio/PoiAudioControl";
 import RoutePickerModal from "./RoutePickerModal";
 import "./animalModal.css";
 
-export default function AnimalDetailModal({ marker, markers = [], onClose, onPathReady }) {
+export default function AnimalDetailModal({ marker, markers = [], onClose, onStartRouteMode, onPathReady }) {
   const { t, language } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -338,6 +338,7 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onPat
           destination={marker}
           markers={markers}
           onClose={() => setShowRoute(false)}
+          onStartRouteMode={onStartRouteMode}
           onPathReady={(path) => {
             onPathReady?.(path);
             setShowRoute(false);

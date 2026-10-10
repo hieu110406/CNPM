@@ -339,6 +339,10 @@ const EN = {
 
   route: {
     startBtn: "Find Route",
+    mapChoice: "Pick 2 points on the map",
+    pickTwoPoints: "Select a starting point and a destination on the map",
+    complete: "Shortest route found",
+    distance: "Distance",
     selectStart: "Select starting point on the map",
     selectDestination: "Select destination on the map",
     finding: "Finding route...",

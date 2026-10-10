@@ -5,6 +5,28 @@ import React, { useRef, useState } from "react";
 import MapMarkerPin from "./MapMarkerPin";
 import { MARKERS, TYPE_META } from "./mapData";
 
+// Làm mềm đường gấp khúc thành đường cong mượt (Catmull-Rom -> Bezier).
+// Giữ nguyên các điểm path đi qua, chỉ bo cong ở khúc cua nên vẫn bám đường công viên.
+function buildSmoothPath(pts) {
+  if (!pts || pts.length < 2) return "";
+  if (pts.length === 2) {
+    return `M ${pts[0].x},${pts[0].y} L ${pts[1].x},${pts[1].y}`;
+  }
+  let d = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 export default function MapCanvas({
   mapImageSrc,
   zoom,
@@ -78,11 +100,13 @@ export default function MapCanvas({
             draggable={false}
           />
 
-          {/* SVG overlay: vẽ đường đi ngắn nhất Dijkstra */}
+          {/* SVG overlay: vẽ đường đi ngắn nhất Dijkstra (bo cong mềm mại) */}
           {pathNodes && pathNodes.length >= 2 && (() => {
-            const pointsStr = pathNodes
-              .map((n) => `${(Number(n.x) * 13.71).toFixed(1)},${(Number(n.y) * 8.75).toFixed(1)}`)
-              .join(" ");
+            const px = (n) => Number(n.x) * 13.71;
+            const py = (n) => Number(n.y) * 8.75;
+            const smoothD = buildSmoothPath(
+              pathNodes.map((n) => ({ x: px(n), y: py(n) }))
+            );
 
             const startNode = pathNodes[0];
             const endNode = pathNodes[pathNodes.length - 1];
@@ -118,9 +142,9 @@ export default function MapCanvas({
                   </marker>
                 </defs>
 
-                {/* 1. Đổ bóng viền ngoài */}
-                <polyline
-                  points={pointsStr}
+                {/* 1. Đổ bóng viền ngoài — đường cong mềm */}
+                <path
+                  d={smoothD}
                   fill="none"
                   stroke="rgba(0, 0, 0, 0.2)"
                   strokeWidth="11"
@@ -128,9 +152,9 @@ export default function MapCanvas({
                   strokeLinejoin="round"
                 />
 
-                {/* 2. Đường viền trắng dày làm nổi bật trên nền bản đồ */}
-                <polyline
-                  points={pointsStr}
+                {/* 2. Đường viền trắng dày làm nổi bật trên nền bản đồ — đường cong mềm */}
+                <path
+                  d={smoothD}
                   fill="none"
                   stroke="#ffffff"
                   strokeWidth="7"
@@ -138,9 +162,9 @@ export default function MapCanvas({
                   strokeLinejoin="round"
                 />
 
-                {/* 3. Đường chính nét đứt xanh lá đậm chạy animation */}
-                <polyline
-                  points={pointsStr}
+                {/* 3. Đường chính nét đứt xanh lá đậm chạy animation — đường cong mềm */}
+                <path
+                  d={smoothD}
                   fill="none"
                   stroke="#047857"
                   strokeWidth="4"

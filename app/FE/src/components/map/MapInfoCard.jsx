@@ -17,7 +17,7 @@ import RoutePickerModal from "./RoutePickerModal";
 import { useSettings } from "../../context/SettingsContext"; // chỉnh đường dẫn cho đúng
 import PoiAudioControl from "../audio/PoiAudioControl";
 
-export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPathReady }) {
+export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStartRouteMode, onPathReady }) {
   const { t, language } = useSettings();
 
   const [isLiked, setIsLiked] = useState(false);
@@ -147,6 +147,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPath
             marker={marker}
             markers={markers}
             onClose={() => setIsModalOpen(false)}
+            onStartRouteMode={onStartRouteMode}
             onPathReady={onPathReady}
           />,
           document.body
@@ -158,6 +159,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPath
           destination={marker}
           markers={markers}
           onClose={() => setShowRoute(false)}
+          onStartRouteMode={onStartRouteMode}
           onPathReady={(path) => {
             onPathReady?.(path);
             setShowRoute(false);

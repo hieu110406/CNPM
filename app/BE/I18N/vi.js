@@ -316,6 +316,10 @@ const VI = {
 
   route: {
     startBtn: "Tìm đường",
+    mapChoice: "Chọn 2 điểm trên bản đồ",
+    pickTwoPoints: "Chọn điểm xuất phát và điểm đến trên bản đồ",
+    complete: "Đã tìm thấy đường đi ngắn nhất",
+    distance: "Quãng đường",
     selectStart: "Chọn điểm xuất phát trên bản đồ",
     selectDestination: "Chọn điểm đến trên bản đồ",
     finding: "Đang tìm đường...",

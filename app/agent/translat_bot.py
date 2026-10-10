@@ -263,8 +263,98 @@ Chỉ trả về JSON hợp lệ theo cấu trúc: {{"en":"...","zh":"..."}}."""
     return {"translations": translations.model_dump()}
 
 
+def synthesize_zalo_audio(text: str, api_key: str) -> bytes:
+    speaker_value = os.getenv("ZALO_TTS_SPEAKER", "1")
+    try:
+        speaker_id = int(speaker_value)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="ZALO_TTS_SPEAKER phải là một trong các giá trị từ 1 đến 4.",
+        ) from error
+    if speaker_id not in (1, 2, 3, 4):
+        raise HTTPException(
+            status_code=503,
+            detail="ZALO_TTS_SPEAKER phải là một trong các giá trị từ 1 đến 4.",
+        )
+
+    try:
+        response = httpx.post(
+            "https://api.zalo.ai/v1/tts/synthesize",
+            headers={"apikey": api_key},
+            data={"input": text, "speed": "1.0", "speaker_id": str(speaker_id)},
+            timeout=90,
+        )
+    except httpx.TimeoutException as error:
+        logger.warning("Zalo TTS request timed out")
+        raise HTTPException(status_code=504, detail="Zalo xử lý quá lâu; vui lòng thử lại.") from error
+    except httpx.RequestError as error:
+        logger.exception("Zalo TTS request failed")
+        raise HTTPException(status_code=502, detail="Không kết nối được tới Zalo TTS.") from error
+
+    if not response.is_success:
+        logger.error("Zalo TTS returned HTTP %s", response.status_code)
+        if response.status_code in (401, 403):
+            detail = "Zalo từ chối API key; kiểm tra ZALO_API_KEY."
+        elif response.status_code == 429:
+            detail = "Zalo giới hạn hoặc hết quota TTS."
+        else:
+            detail = f"Zalo TTS trả lỗi HTTP {response.status_code}."
+        raise HTTPException(status_code=502, detail=detail)
+
+    try:
+        result = response.json()
+    except ValueError as error:
+        logger.exception("Zalo TTS returned invalid JSON")
+        raise HTTPException(status_code=502, detail="Zalo TTS trả về phản hồi không hợp lệ.") from error
+
+    if not isinstance(result, dict) or result.get("error_code") != 0:
+        error_code = result.get("error_code") if isinstance(result, dict) else "unknown"
+        logger.error("Zalo TTS returned error code %s", error_code)
+        if error_code == 401:
+            detail = "Zalo từ chối API key; kiểm tra ZALO_API_KEY."
+        else:
+            detail = f"Zalo TTS không tạo được audio (mã lỗi {error_code})."
+        raise HTTPException(status_code=502, detail=detail)
+
+    audio_url = result.get("data", {}).get("url")
+    if not isinstance(audio_url, str) or not audio_url.startswith("https://"):
+        logger.error("Zalo TTS response did not include a valid audio URL")
+        raise HTTPException(status_code=502, detail="Zalo TTS không trả về đường dẫn audio hợp lệ.")
+
+    try:
+        audio_response = httpx.get(audio_url, timeout=90)
+    except httpx.TimeoutException as error:
+        logger.warning("Downloading Zalo TTS audio timed out")
+        raise HTTPException(status_code=504, detail="Tải audio từ Zalo quá lâu; vui lòng thử lại.") from error
+    except httpx.RequestError as error:
+        logger.exception("Downloading Zalo TTS audio failed")
+        raise HTTPException(status_code=502, detail="Không tải được audio từ Zalo.") from error
+
+    if not audio_response.is_success:
+        logger.error("Zalo audio download returned HTTP %s", audio_response.status_code)
+        raise HTTPException(status_code=502, detail="Zalo không tải được file audio đã tạo.")
+    if not audio_response.content:
+        raise HTTPException(status_code=502, detail="Zalo trả về file audio rỗng.")
+    return audio_response.content
+
+
 @app.post("/text-to-speech")
 def text_to_speech(request: SpeechRequest) -> Response:
+    if request.language == "vi":
+        api_key = os.getenv("ZALO_API_KEY")
+        if not api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="Thiếu ZALO_API_KEY để tạo audio tiếng Việt.",
+            )
+        audio = synthesize_zalo_audio(request.text, api_key)
+        return Response(
+            content=audio,
+            media_type="audio/mpeg",
+            headers={'Content-Disposition': 'attachment; filename="poi-vi.mp3"'},
+        )
+
     api_key = os.getenv("ELEVENLABS_API_KEY")
     voice_id = os.getenv(f"ELEVENLABS_VOICE_ID_{request.language.upper()}")
     if not api_key or not voice_id:

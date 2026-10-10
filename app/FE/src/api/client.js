@@ -18,6 +18,21 @@ async function request(path, options = {}) {
     return data;
 }
 
+async function requestFormData(path, formData) {
+    const headers = {};
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const res = await fetch(`${BASE}${path}`, {
+        method: "POST",
+        headers,
+        body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.detail || "Lỗi API");
+    return data;
+}
+
 async function requestTranslation(path, body) {
     const res = await fetch(`${TRANSLATION_API_URL}${path}`, {
         method: "POST",
@@ -57,7 +72,12 @@ export const api = {
     getPublicPois: (language = "vi") =>
         request(`/pois/public?lang=${encodeURIComponent(language)}`),
     translatePoi: (data) => requestTranslation("/translate-poi", data),
-    createPoi: (data) => request("/pois", { method: "POST", body: JSON.stringify(data) }),
+    createPoi: (data, images = []) => {
+        const formData = new FormData();
+        formData.append("poi", JSON.stringify(data));
+        images.forEach((image) => formData.append("images", image));
+        return requestFormData("/pois", formData);
+    },
     updatePoi: (dbId, data) => request(`/pois/${dbId}`, { method: "PUT", body: JSON.stringify(data) }),
     deletePoi: (dbId) => request(`/pois/${dbId}`, { method: "DELETE" }),
 
@@ -67,7 +87,14 @@ export const api = {
     generateAudio: (text, language) =>
         requestAgentAudio("/text-to-speech", { text, language }),
     getAudio: (poiDbId) => request(`/audio?poiId=${poiDbId}`),
-    createAudio: (data) => request("/audio", { method: "POST", body: JSON.stringify(data) }),
+    createAudio: (data, file, filename = "audio.mp3") => {
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) formData.append(key, String(value));
+        });
+        formData.append("file", file, filename);
+        return requestFormData("/audio", formData);
+    },
     publishAudio: (id) => request(`/audio/${id}/publish`, { method: "PUT" }),
     deleteAudio: (id) => request(`/audio/${id}`, { method: "DELETE" }),
 

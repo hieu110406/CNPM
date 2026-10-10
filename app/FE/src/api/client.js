@@ -63,6 +63,18 @@ async function requestAgentAudio(path, body) {
     return res.blob();
 }
 
+async function requestRoute(from, to, language) {
+    const params = new URLSearchParams({ from, to, lang: language });
+    const res = await fetch(`${BASE}/route?${params.toString()}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const error = new Error(data.message || data.error || "");
+        error.code = data.code;
+        throw error;
+    }
+    return data;
+}
+
 export const api = {
     // UC4 - Auth
     login: (email, password) =>
@@ -77,6 +89,7 @@ export const api = {
         request(`/pois/public?lang=${encodeURIComponent(language)}`),
     getPublicAudio: (poiCode, language = "vi") =>
         request(`/audio/public?poiCode=${encodeURIComponent(poiCode)}&lang=${encodeURIComponent(language)}`),
+    getRoute: (from, to, language = "vi") => requestRoute(from, to, language),
     translatePoi: (data) => requestTranslation("/translate-poi", data),
     createPoi: (data, images = []) => {
         const formData = new FormData();

@@ -5,20 +5,8 @@ import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, Navigation, Loader2, ChevronRight } from "lucide-react";
 import { MARKERS } from "./mapData";
+import { shortestPath } from "./mapGraph";
 import "./routePickerModal.css";
-
-const BASE = "http://localhost:5000/api";
-
-async function apiFindPath(from, to) {
-  const res = await fetch(`${BASE}/pathfinding`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Lỗi tìm đường");
-  return data;
-}
 
 function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
   const [fromId, setFromId]   = useState("");
@@ -29,16 +17,20 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady }) {
   const nodeOptions = markers.filter((m) => m.id !== destination?.id);
   const fromName    = markers.find((m) => m.id === fromId)?.name ?? "";
 
-  const handleFind = useCallback(async () => {
+  const handleFind = useCallback(() => {
     if (!fromId) { setError("Vui lòng chọn điểm xuất phát."); return; }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const data = await apiFindPath(fromId, destination.id);
-      setResult(data);
+      const data = shortestPath(fromId, destination.id);
+      if (!data) {
+        setError("Không tìm thấy đường đi giữa 2 địa điểm này.");
+      } else {
+        setResult(data);
+      }
     } catch (e) {
-      setError(e.message);
+      setError(e.message || "Lỗi tìm đường");
     } finally {
       setLoading(false);
     }

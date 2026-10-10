@@ -33,6 +33,7 @@ app.use("/api/admin-accounts", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/pathfinding", pathfindingRoutes);
+app.use("/api/route", pathfindingRoutes);
 
 const PORT = process.env.PORT || 5000;
 

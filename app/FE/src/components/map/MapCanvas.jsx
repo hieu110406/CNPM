@@ -16,6 +16,8 @@ export default function MapCanvas({
   isDimmed,
   markers = MARKERS,
   pathNodes = [], // [{code, name, x, y}] kết quả Dijkstra — vẽ SVG lên bản đồ
+  routeStartId,
+  routeEndId,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const drag = useRef({ startX: 0, startY: 0, originX: 0, originY: 0, moved: false });
@@ -203,20 +205,6 @@ export default function MapCanvas({
                   r="3"
                   fill="#ffffff"
                 />
-                <text
-                  x={startX}
-                  y={Number(startY) + 20}
-                  textAnchor="middle"
-                  fill="#065f46"
-                  fontSize="11"
-                  fontWeight="700"
-                  stroke="#ffffff"
-                  strokeWidth="2.5"
-                  paintOrder="stroke"
-                >
-                  Xuất phát
-                </text>
-
                 {/* 6. Điểm đích đến (Đỏ) */}
                 <circle
                   cx={endX}
@@ -241,19 +229,6 @@ export default function MapCanvas({
                   r="3"
                   fill="#ffffff"
                 />
-                <text
-                  x={endX}
-                  y={Number(endY) + 20}
-                  textAnchor="middle"
-                  fill="#991b1b"
-                  fontSize="11"
-                  fontWeight="700"
-                  stroke="#ffffff"
-                  strokeWidth="2.5"
-                  paintOrder="stroke"
-                >
-                  Điểm đến
-                </text>
               </svg>
             );
           })()}
@@ -266,8 +241,18 @@ export default function MapCanvas({
             >
               <MapMarkerPin
                 marker={m}
-                color={TYPE_META[m.type]?.color}
-                active={selectedId === m.id}
+                color={
+                  routeStartId === m.id
+                    ? "#047857"
+                    : routeEndId === m.id
+                      ? "#dc2626"
+                      : TYPE_META[m.type]?.color
+                }
+                active={
+                  selectedId === m.id ||
+                  routeStartId === m.id ||
+                  routeEndId === m.id
+                }
                 dimmed={isDimmed(m)}
                 onClick={() => onSelectMarker(m.id)}
               />

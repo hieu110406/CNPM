@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import MapCanvas from "./MapCanvas";
 import MapControls from "./MapControls";
@@ -13,8 +13,9 @@ import {
   TYPE_META,
 } from "./mapData";
 import { api } from "../../api/client";
+import { buildGraph } from "./mapGraph";
 import zooMapImage from "../../assets/map/zoo_map.png";
-import { Sparkles, ChevronRight, X } from "lucide-react";
+import { Sparkles, ChevronRight, Navigation, X } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
 import "./map.css";
 
@@ -30,6 +31,14 @@ const FILTER_LABEL_KEYS = {
   restaurant: "restaurant",
   service: "service",
   restroom: "restroom",
+};
+
+const ROUTE_ERROR_KEYS = {
+  ROUTE_SELECTION_REQUIRED: "route.errorMissingPoint",
+  ROUTE_SAME_POI: "route.errorSamePoint",
+  ROUTE_POI_NOT_FOUND: "route.errorNotFound",
+  ROUTE_NOT_FOUND: "route.errorNoRoute",
+  ROUTE_INTERNAL_ERROR: "route.errorGeneric",
 };
 
 export default function ZooMap({
@@ -49,6 +58,12 @@ export default function ZooMap({
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
   const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
+  const [isRouteMode, setIsRouteMode] = useState(false);
+  const [routeStartId, setRouteStartId] = useState(null);
+  const [routeEndId, setRouteEndId] = useState(null);
+  const [isFindingRoute, setIsFindingRoute] = useState(false);
+  const [routeErrorKey, setRouteErrorKey] = useState(null);
+  const routeRequestId = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +133,13 @@ export default function ZooMap({
     };
   }, [language]);
 
+  // Cập nhật lại đồ thị nối POI vào waypoint mỗi khi danh sách markers thay đổi
+  useEffect(() => {
+    if (markers && markers.length > 0) {
+      buildGraph(markers);
+    }
+  }, [markers]);
+
   const selectedMarker = useMemo(
     () => markers.find((marker) => marker.id === selectedId),
     [markers, selectedId]
@@ -165,6 +187,80 @@ export default function ZooMap({
       const offsetY = (50 - marker.y) * 4;
 
       setPan({ x: offsetX, y: offsetY });
+    }
+  }
+
+  function startRouteMode() {
+    routeRequestId.current += 1;
+    setIsRouteMode(true);
+    setRouteStartId(null);
+    setRouteEndId(null);
+    setIsFindingRoute(false);
+    setRouteErrorKey(null);
+    setPathNodes([]);
+  }
+
+  function cancelRouteMode() {
+    routeRequestId.current += 1;
+    setIsRouteMode(false);
+    setRouteStartId(null);
+    setRouteEndId(null);
+    setIsFindingRoute(false);
+    setRouteErrorKey(null);
+    setPathNodes([]);
+  }
+
+  async function selectRouteMarker(id) {
+    if (isFindingRoute) return;
+
+    if (!routeStartId) {
+      setRouteStartId(id);
+      setRouteErrorKey(null);
+      return;
+    }
+
+    if (id === routeStartId) {
+      setRouteStartId(null);
+      setRouteEndId(null);
+      setRouteErrorKey(null);
+      setPathNodes([]);
+      return;
+    }
+
+    if (id === routeEndId) {
+      setRouteEndId(null);
+      setRouteErrorKey(null);
+      setPathNodes([]);
+      return;
+    }
+
+    setRouteEndId(id);
+    setRouteErrorKey(null);
+    setPathNodes([]);
+    setIsFindingRoute(true);
+    const requestId = ++routeRequestId.current;
+
+    try {
+      const route = await api.getRoute(routeStartId, id, language);
+      if (requestId !== routeRequestId.current) return;
+      if (
+        !Array.isArray(route.path) ||
+        route.path.length < 2 ||
+        route.path.some(
+          (point) => !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))
+        )
+      ) {
+        throw new Error("Invalid route response");
+      }
+      setPathNodes(route.path);
+    } catch (error) {
+      if (requestId !== routeRequestId.current) return;
+      setRouteEndId(null);
+      setRouteErrorKey(ROUTE_ERROR_KEYS[error.code] || "route.errorGeneric");
+    } finally {
+      if (requestId === routeRequestId.current) {
+        setIsFindingRoute(false);
+      }
     }
   }
 
@@ -293,11 +389,53 @@ export default function ZooMap({
           pan={pan}
           setPan={setPan}
           selectedId={selectedId}
-          onSelectMarker={selectMarker}
+          onSelectMarker={isRouteMode ? selectRouteMarker : selectMarker}
           isDimmed={isDimmed}
           markers={markers}
           pathNodes={pathNodes}
+          routeStartId={isRouteMode ? routeStartId : null}
+          routeEndId={isRouteMode ? routeEndId : null}
         />
+
+        {!isRouteMode ? (
+          <button
+            type="button"
+            className="map-route-start"
+            onClick={startRouteMode}
+          >
+            <Navigation size={15} />
+            <span>{t("route.startBtn")}</span>
+          </button>
+        ) : (
+          <>
+            {(isFindingRoute || !routeStartId || !routeEndId || routeErrorKey) && (
+              <div className="map-route-status" role="status" aria-live="polite">
+                <span>
+                  {t(
+                    isFindingRoute
+                      ? "route.finding"
+                      : routeStartId
+                        ? "route.selectDestination"
+                        : "route.selectStart"
+                  )}
+                </span>
+                {routeErrorKey && (
+                  <span className="map-route-status__error" role="alert">
+                    {t(routeErrorKey)}
+                  </span>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              className="map-route-cancel"
+              onClick={cancelRouteMode}
+            >
+              <X size={15} />
+              <span>{t("route.cancelBtn")}</span>
+            </button>
+          </>
+        )}
 
         <MapControls
           zoom={zoom}
@@ -314,7 +452,7 @@ export default function ZooMap({
           onReset={handleReset}
         />
 
-        <MapInfoCard
+        {!isRouteMode && <MapInfoCard
           marker={selectedMarker}
           markers={markers}
           onClose={() => setSelectedId(null)}
@@ -325,9 +463,9 @@ export default function ZooMap({
               if (startId) selectMarker(startId);
             }
           }}
-        />
+        />}
 
-        {pathNodes.length > 0 && (
+        {!isRouteMode && pathNodes.length > 0 && (
           <div
             style={{
               position: "absolute",

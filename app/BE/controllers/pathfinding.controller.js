@@ -1,4 +1,24 @@
 import { query } from "../db/database.js";
+import VI from "../I18N/vi.js";
+import EN from "../I18N/en.js";
+import ZH from "../I18N/zh.js";
+
+const ROUTE_TRANSLATIONS = { vi: VI.route, en: EN.route, zh: ZH.route };
+
+function getRouteTranslations(req) {
+  const queryLanguage = typeof req.query.lang === "string"
+    ? req.query.lang.split("-")[0].toLowerCase()
+    : "";
+  const headerLanguage = req.get("accept-language")
+    ?.split(",")[0]
+    .split("-")[0]
+    .toLowerCase();
+  return ROUTE_TRANSLATIONS[queryLanguage] || ROUTE_TRANSLATIONS[headerLanguage] || ROUTE_TRANSLATIONS.vi;
+}
+
+function sendRouteError(res, status, code, message) {
+  return res.status(status).json({ code, message });
+}
 
 class PriorityQueue {
   constructor() {
@@ -30,7 +50,22 @@ export async function listNodes(req, res) {
 }
 
 export async function findShortestPath(req, res) {
-  const { from, to } = req.body;
+  const isRouteApi = req.method === "GET";
+  const { from, to } = isRouteApi ? req.query : req.body;
+  const translations = isRouteApi ? getRouteTranslations(req) : null;
+
+  if (isRouteApi && (
+    typeof from !== "string" ||
+    typeof to !== "string" ||
+    !from.trim() ||
+    !to.trim()
+  )) {
+    return sendRouteError(res, 400, "ROUTE_SELECTION_REQUIRED", translations.errorMissingPoint);
+  }
+
+  if (isRouteApi && from === to) {
+    return sendRouteError(res, 400, "ROUTE_SAME_POI", translations.errorSamePoint);
+  }
 
   if (!from || !to) {
     return res.status(400).json({ error: "Thiếu điểm xuất phát hoặc điểm đến." });
@@ -67,6 +102,9 @@ export async function findShortestPath(req, res) {
     nodesRes.rows.forEach((n) => nodesMap.set(n.node_id, n));
 
     if (!nodesMap.has(from) || !nodesMap.has(to)) {
+      if (isRouteApi) {
+        return sendRouteError(res, 404, "ROUTE_POI_NOT_FOUND", translations.errorNotFound);
+      }
       return res.status(404).json({ error: "Điểm xuất phát hoặc điểm đến không hợp lệ." });
     }
 
@@ -115,6 +153,9 @@ export async function findShortestPath(req, res) {
     }
 
     if (distances[to] === Infinity) {
+      if (isRouteApi) {
+        return sendRouteError(res, 422, "ROUTE_NOT_FOUND", translations.errorNoRoute);
+      }
       return res.status(404).json({ error: "Không tìm thấy đường đi giữa hai điểm này." });
     }
 
@@ -135,6 +176,15 @@ export async function findShortestPath(req, res) {
       };
     });
     const totalDistPercent = Math.round(distances[to] * 10) / 10;
+    if (isRouteApi) {
+      return res.json({
+        from,
+        to,
+        distance: totalDistPercent,
+        path: path.map((node) => ({ x: Number(node.x), y: Number(node.y) })),
+      });
+    }
+
     // Quy đổi ước tính: 1% đường chéo bản đồ ~ 10-12m
     const distanceMeters = Math.round(distances[to] * 12);
     // Tốc độ đi bộ trung bình 4.5 km/h ~ 75 m/phút
@@ -159,6 +209,9 @@ export async function findShortestPath(req, res) {
     });
   } catch (error) {
     console.error("Lỗi Dijkstra:", error);
+    if (isRouteApi) {
+      return sendRouteError(res, 500, "ROUTE_INTERNAL_ERROR", translations.errorGeneric);
+    }
     res.status(500).json({ error: "Lỗi hệ thống khi tìm đường đi." });
   }
 }

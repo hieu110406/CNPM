@@ -313,6 +313,19 @@ const VI = {
       desc: "Trạm hỗ trợ sơ cứu và chăm sóc sức khỏe cho khách tham quan.",
     },
   },
+
+  route: {
+    startBtn: "Tìm đường",
+    selectStart: "Chọn điểm xuất phát trên bản đồ",
+    selectDestination: "Chọn điểm đến trên bản đồ",
+    finding: "Đang tìm đường...",
+    cancelBtn: "Hủy tìm đường",
+    errorSamePoint: "Điểm xuất phát và điểm đến không được trùng nhau.",
+    errorMissingPoint: "Vui lòng chọn cả điểm xuất phát và điểm đến.",
+    errorNotFound: "Không tìm thấy điểm tham quan đã chọn.",
+    errorNoRoute: "Không có đường đi giữa hai điểm này.",
+    errorGeneric: "Không thể tìm đường lúc này. Vui lòng thử lại.",
+  },
 };
 
 export default VI;

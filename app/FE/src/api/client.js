@@ -1,12 +1,7 @@
-<<<<<<< HEAD
-﻿const BASE = "http://localhost:5000/api";
-const TRANSLATION_API_URL = import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com";
-=======
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const TRANSLATION_API_URL = (
     import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com"
 ).replace(/\/+$/, "");
->>>>>>> main
 
 function getToken() {
     return localStorage.getItem("admin_token");
@@ -30,21 +25,10 @@ async function requestTranslation(path, body) {
         body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || data.error || "Không gọi được translation agent");
-    return data;
-}
-
-async function requestTranslation(path, body) {
-    const res = await fetch(`${TRANSLATION_API_URL}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
     if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || data.error || "Không dịch được");
+        throw new Error(data.detail || data.error || "Không gọi được translation agent");
     }
-    return res.json();
+    return data;
 }
 
 async function requestAgentAudio(path, body) {

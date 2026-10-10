@@ -2,7 +2,4 @@ fastapi
 uvicorn[standard]
 python-dotenv
 langchain-openai
-<<<<<<< HEAD
 httpx
-=======
->>>>>>> main

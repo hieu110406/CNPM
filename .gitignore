@@ -33,6 +33,7 @@ app/BE/package.json
 app/BE/package.json
 app/BE/package-lock.json
 app/BE/package.json
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 app/agent/.env.example
@@ -40,3 +41,7 @@ app/FE/.env.example
 !app/agent/.env.example
 >>>>>>> Stashed changes
 app/agent/.env.example
+=======
+app/agent/.env.example
+app/FE/.env.example
+>>>>>>> main

@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
+<<<<<<< HEAD
 from typing import Literal, TypeVar
 
 import httpx
@@ -9,6 +10,12 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+=======
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+>>>>>>> main
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from openai import OpenAIError
@@ -98,6 +105,7 @@ class PoiTranslationResponse(BaseModel):
     zh: LanguageTranslation
 
 
+<<<<<<< HEAD
 class ScriptTranslationRequest(BaseModel):
     script: str = Field(min_length=1, max_length=5000)
 
@@ -133,18 +141,26 @@ class SpeechRequest(BaseModel):
         return value.strip()
 
 
+=======
+>>>>>>> main
 @app.get("/health")
 def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+<<<<<<< HEAD
 def get_translation_model() -> ChatOpenAI:
+=======
+@app.post("/translate-poi")
+def translate_poi(request: PoiTranslationRequest) -> dict[str, dict[str, dict[str, str]]]:
+>>>>>>> main
     api_key = os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL")
     model_name = os.getenv("OPENAI_MODEL")
     if not api_key or not base_url or not model_name:
         raise HTTPException(
             status_code=503,
+<<<<<<< HEAD
             detail="Thiếu cấu hình model dịch OPENAI_API_KEY, OPENAI_BASE_URL hoặc OPENAI_MODEL.",
         )
     return ChatOpenAI(
@@ -178,6 +194,11 @@ def parse_json_response(
 
 @app.post("/translate-poi")
 def translate_poi(request: PoiTranslationRequest) -> dict[str, dict[str, dict[str, str]]]:
+=======
+            detail="Thiếu OPENAI_API_KEY, OPENAI_BASE_URL hoặc OPENAI_MODEL trong app/agent/.env",
+        )
+
+>>>>>>> main
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -203,7 +224,16 @@ Mô tả chi tiết: {detail}""",
         ]
     )
     try:
+<<<<<<< HEAD
         result = (prompt | get_translation_model()).invoke(
+=======
+        result = (prompt | ChatOpenAI(
+            model=model_name,
+            base_url=base_url,
+            api_key=api_key,
+            temperature=0,
+        )).invoke(
+>>>>>>> main
             {
                 "name": request.poi.name,
                 "zone": request.poi.zone,
@@ -228,6 +258,7 @@ Mô tả chi tiết: {detail}""",
     if not isinstance(result.content, str):
         raise HTTPException(status_code=502, detail="Agent trả về kết quả không phải văn bản")
 
+<<<<<<< HEAD
     translations = parse_json_response(result.content, PoiTranslationResponse)
 
     return {"translations": translations.model_dump()}
@@ -400,3 +431,19 @@ def text_to_speech(request: SpeechRequest) -> Response:
         media_type="audio/mpeg",
         headers={"Content-Disposition": f'attachment; filename="poi-{request.language}.mp3"'},
     )
+=======
+    content = result.content.strip()
+    if content.startswith("```"):
+        lines = content.splitlines()
+        if len(lines) >= 3 and lines[-1].startswith("```"):
+            content = "\n".join(lines[1:-1]).strip()
+    try:
+        translations = PoiTranslationResponse.model_validate(json.loads(content))
+    except (json.JSONDecodeError, ValidationError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Agent trả về bản dịch không đúng định dạng en/zh gồm mô tả ngắn và chi tiết",
+        ) from error
+
+    return {"translations": translations.model_dump()}
+>>>>>>> main

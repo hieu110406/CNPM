@@ -18,16 +18,84 @@ const LANGUAGES = [
     { code: "zh", label: "中文", short: "ZH" },
 ];
 
+function getPoiTranslationRequest(form) {
+    return {
+        poi: {
+            name: form.name.trim(),
+            zone: form.zone.trim(),
+            category: form.category,
+            status: form.isActive ? "active" : "closed",
+        },
+        descriptionsVi: {
+            short: form.translations.vi.short.trim(),
+            detail: form.translations.vi.detail.trim(),
+        },
+    };
+}
+
+function getPoiTranslationSource(form) {
+    return JSON.stringify(getPoiTranslationRequest(form));
+}
+
+function mergePoiTranslations(form, translations) {
+    const nextTranslations = { ...form.translations };
+    const fieldTranslations = {};
+    for (const language of ["en", "zh"]) {
+        fieldTranslations[language] = {};
+        for (const field of ["name", "zone"]) {
+            const value = translations?.poi?.[field]?.[language];
+            if (typeof value !== "string" || !value.trim()) {
+                throw new Error(`Agent chưa dịch trường ${field === "name" ? "tên POI" : "khu vực"} sang ${language.toUpperCase()}`);
+            }
+            fieldTranslations[language][field] = value.trim();
+        }
+    }
+    for (const language of ["en", "zh"]) {
+        const translation = translations?.[language];
+        if (!translation?.short?.trim() || !translation?.detail?.trim()) {
+            throw new Error(`Agent chưa trả về đầy đủ thông tin POI cho ${language.toUpperCase()}`);
+        }
+        nextTranslations[language] = {
+            ...nextTranslations[language],
+            short: translation.short.trim(),
+            detail: translation.detail.trim(),
+        };
+    }
+    return { ...form, fieldTranslations, translations: nextTranslations };
+}
+
 const CATEGORY_OPTIONS = [
-    { value: "animal", label: "Động vật" },
-    { value: "plant", label: "Thực vật" },
-    { value: "building", label: "Công trình & Cổng" },
-    { value: "entertainment", label: "Vui chơi & Giải trí" },
-    { value: "restaurant", label: "Nhà hàng & Cà phê" },
-    { value: "restroom", label: "Nhà vệ sinh" },
-    { value: "service", label: "Dịch vụ" },
-    { value: "medical", label: "Trạm y tế & Sơ cứu" },
-    { value: "photo", label: "Điểm check-in" },
+    { value: "animal", labels: { vi: "Động vật", en: "Animal", zh: "动物" } },
+    { value: "plant", labels: { vi: "Thực vật", en: "Plant", zh: "植物" } },
+    { value: "building", labels: { vi: "Công trình & Cổng", en: "Buildings & gates", zh: "建筑与大门" } },
+    { value: "entertainment", labels: { vi: "Vui chơi & Giải trí", en: "Entertainment", zh: "娱乐设施" } },
+    { value: "restaurant", labels: { vi: "Nhà hàng & Cà phê", en: "Restaurants & cafés", zh: "餐厅与咖啡馆" } },
+    { value: "restroom", labels: { vi: "Nhà vệ sinh", en: "Restrooms", zh: "洗手间" } },
+    { value: "service", labels: { vi: "Dịch vụ", en: "Services", zh: "服务设施" } },
+    { value: "medical", labels: { vi: "Trạm y tế & Sơ cứu", en: "Medical & first aid", zh: "医疗与急救站" } },
+    { value: "photo", labels: { vi: "Điểm check-in", en: "Photo spot", zh: "拍照打卡点" } },
+];
+
+const DEFAULT_POI_ZONES = [
+    "Lối vào chính",
+    "Lối vào phụ",
+    "Khu di tích lịch sử",
+    "Khu thú lớn",
+    "Khu thú ăn thịt",
+    "Khu thú săn mồi",
+    "Khu thú lớn ngập nước",
+    "Khu thú ăn cỏ",
+    "Khu móng guốc",
+    "Khu linh trưởng",
+    "Khu chim cảnh",
+    "Vườn thực vật",
+    "Khu trò chơi",
+    "Sân khấu trung tâm",
+    "Điểm Check-in",
+    "Dịch vụ vận chuyển",
+    "Ẩm thực & Giải khát",
+    "Tiện ích vệ sinh",
+    "Hỗ trợ y tế",
 ];
 
 const ROLE_OPTIONS = [
@@ -57,6 +125,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [poiLangTab, setPoiLangTab] = useState("vi");
     const [poiForm, setPoiForm] = useState(null);
     const [isTranslating, setIsTranslating] = useState(false);
+    const [translatedPoiSource, setTranslatedPoiSource] = useState("");
 
     /* ---- UC6: Audio ---- */
     const [audioList, setAudioList] = useState([]);
@@ -284,12 +353,13 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             geofenceRadius: 20, isActive: true,
             translations: {
                 vi: { short: "", detail: "" },
-                en: { short: "", detail: "" },
-                zh: { short: "", detail: "" },
+                en: { ...poiForm.translations.en, short: "", detail: "" },
+                zh: { ...poiForm.translations.zh, short: "", detail: "" },
             },
         });
         setEditingPoi("new");
         setPoiLangTab("vi");
+        setTranslatedPoiSource("");
     };
 
     const startEditPoi = (poi) => {
@@ -302,6 +372,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         });
         setEditingPoi(poi.id);
         setPoiLangTab("vi");
+        setTranslatedPoiSource("");
     };
 
     const validatePoiForm = (f) => {
@@ -321,14 +392,83 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setSavingPoi(true);
         try {
             if (editingPoi === "new") {
-                await api.createPoi(poiForm);
-                showToast("Đã tạo POI mới");
+                let poiToExport = poiForm;
+                if (translatedPoiSource !== getPoiTranslationSource(poiForm)) {
+                    const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
+                    poiToExport = mergePoiTranslations(poiForm, result.translations);
+                }
+
+                const lines = [
+                    ...LANGUAGES.flatMap((language) => {
+                        const code = language.code;
+                        const categoryLabel = CATEGORY_OPTIONS.find(
+                            (category) => category.value === poiToExport.category
+                        )?.labels[code] || poiToExport.category;
+                        const statusLabel = code === "vi"
+                            ? (poiToExport.isActive ? "Đang hoạt động" : "Tạm đóng")
+                            : code === "en"
+                                ? (poiToExport.isActive ? "Open" : "Temporarily closed")
+                                : (poiToExport.isActive ? "开放中" : "暂时关闭");
+                        const labels = code === "vi"
+                            ? {
+                                id: "Mã POI", name: "Tên POI", zone: "Khu vực",
+                                category: "Danh mục", latitude: "Vĩ độ", longitude: "Kinh độ",
+                                radius: "Bán kính geofence", map: "Toạ độ bản đồ",
+                                status: "Trạng thái", short: "Mô tả ngắn", detail: "Mô tả chi tiết",
+                            }
+                            : code === "en"
+                                ? {
+                                    id: "POI ID", name: "Name", zone: "Area",
+                                    category: "Category", latitude: "Latitude", longitude: "Longitude",
+                                    radius: "Geofence radius", map: "Map coordinates",
+                                    status: "Status", short: "Short description", detail: "Detailed description",
+                                }
+                                : {
+                                    id: "POI编号", name: "名称", zone: "区域",
+                                    category: "类别", latitude: "纬度", longitude: "经度",
+                                    radius: "地理围栏半径", map: "地图坐标",
+                                    status: "状态", short: "简短描述", detail: "详细描述",
+                                };
+                        return [
+                            `=== ${language.label} (${language.short}) ===`,
+                            `${labels.id}: ${poiToExport.id}`,
+                            `${labels.name}: ${code === "vi" ? poiToExport.name : poiToExport.fieldTranslations[code].name}`,
+                            `${labels.zone}: ${code === "vi" ? poiToExport.zone : poiToExport.fieldTranslations[code].zone}`,
+                            `${labels.category}: ${categoryLabel}`,
+                            `${labels.latitude}: ${poiToExport.latitude}`,
+                            `${labels.longitude}: ${poiToExport.longitude}`,
+                            `${labels.radius}: ${poiToExport.geofenceRadius}m`,
+                            `${labels.map}: X=${poiToExport.mapX}, Y=${poiToExport.mapY}`,
+                            `${labels.status}: ${statusLabel}`,
+                            "",
+                            `${labels.short}:`,
+                            poiToExport.translations[code].short,
+                            "",
+                            `${labels.detail}:`,
+                            poiToExport.translations[code].detail,
+                            "",
+                        ];
+                    }),
+                ];
+                const blob = new Blob(["\uFEFF", lines.join("\n")], {
+                    type: "text/plain;charset=utf-8",
+                });
+                const downloadUrl = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                const safeFileName = `${poiToExport.id}-${poiToExport.name}`
+                    .replace(/[<>:"/\\|?*]/g, "_")
+                    .trim();
+                link.href = downloadUrl;
+                link.download = `${safeFileName || poiToExport.id}.txt`;
+                link.click();
+                window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+                showToast("Đã dịch đầy đủ VI/EN/ZH và tải file .txt — chưa lưu vào database");
             } else {
                 await api.updatePoi(poiForm.dbId, poiForm);
                 showToast("Đã cập nhật POI");
+                const list = await api.getPois();
+                setPoiList(list);
             }
-            const list = await api.getPois();
-            setPoiList(list);
             setEditingPoi(null);
             setPoiForm(null);
         } catch (err) {
@@ -353,30 +493,25 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         }
     };
 
-    const handleAiTranslate = () => {
-        const srcShort = poiForm.translations.vi.short.trim();
-        const srcDetail = poiForm.translations.vi.detail.trim();
-        if (!srcDetail) return showToast("Cần nhập mô tả chi tiết tiếng Việt trước khi dịch", "error");
-
+    const handleAiTranslate = async () => {
+        if (!poiForm.translations.vi.short.trim()) {
+            return showToast("Cần nhập mô tả ngắn tiếng Việt trước khi dịch", "error");
+        }
+        if (!poiForm.translations.vi.detail.trim()) {
+            return showToast("Cần nhập mô tả chi tiết tiếng Việt trước khi dịch", "error");
+        }
         setIsTranslating(true);
-        setTimeout(() => {
-            setPoiForm((f) => ({
-                ...f,
-                translations: {
-                    ...f.translations,
-                    en: {
-                        short: f.translations.en.short || `[AI draft EN] ${srcShort || srcDetail.slice(0, 100)}`,
-                        detail: f.translations.en.detail || `[AI draft EN] ${srcDetail}`,
-                    },
-                    zh: {
-                        short: f.translations.zh.short || `[AI 草稿 ZH] ${srcShort || srcDetail.slice(0, 100)}`,
-                        detail: f.translations.zh.detail || `[AI 草稿 ZH] ${srcDetail}`,
-                    },
-                },
-            }));
+        try {
+            const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
+            const translatedForm = mergePoiTranslations(poiForm, result.translations);
+            setPoiForm(translatedForm);
+            setTranslatedPoiSource(getPoiTranslationSource(poiForm));
+            showToast("Agent đã dịch thông tin POI và mô tả sang tiếng Anh, tiếng Trung");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
             setIsTranslating(false);
-            showToast("AI đã sinh bản nháp EN/ZH — vui lòng rà soát lại");
-        }, 900);
+        }
     };
 
     /* =========================================================
@@ -806,7 +941,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <button key={c.value}
                                             className={`filter-btn ${poiCategory === c.value ? "is-active" : ""}`}
                                             onClick={() => setPoiCategory(c.value)}>
-                                            {c.label} ({poiList.filter((p) => p.category === c.value).length})
+                                            {c.labels.vi} ({poiList.filter((p) => p.category === c.value).length})
                                         </button>
                                     ))}
                                 </div>
@@ -859,7 +994,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         </td>
                                                         <td>
                                                             <span className="category-pill">
-                                                                {CATEGORY_OPTIONS.find((c) => c.value === p.category)?.label || p.category}
+                                                                {CATEGORY_OPTIONS.find((c) => c.value === p.category)?.labels.vi || p.category}
                                                             </span>
                                                         </td>
                                                         <td><code>{p.latitude}, {p.longitude}</code></td>
@@ -1447,7 +1582,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     {editingPoi === "new" ? "Thêm POI mới" : `Chỉnh sửa ${poiForm.id}`}
                                 </h2>
                                 <p className="admin-modal__desc">
-                                    Nhập thông tin POI và mô tả đa ngôn ngữ. Có thể dùng AI để sinh bản dịch.
+                                    Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI mới được xuất thành file .txt để thử nghiệm, chưa ghi vào database.
                                 </p>
                             </div>
                             <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); }} disabled={savingPoi}>
@@ -1467,7 +1602,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <select value={poiForm.category}
                                             onChange={(e) => setPoiForm({ ...poiForm, category: e.target.value })}
                                             disabled={savingPoi}>
-                                            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.labels.vi}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1475,17 +1610,22 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 <div className="form-row-2" style={{ marginBottom: 12 }}>
                                     <div className="form-group">
                                         <label>Tên POI</label>
-                                        <input type="text" value={poiForm.name}
+                                        <input type="text" value={typeof poiForm.name === "string" ? poiForm.name : poiForm.name.vi}
                                             placeholder="VD: Chuồng Hổ Bengal"
                                             onChange={(e) => setPoiForm({ ...poiForm, name: e.target.value })}
                                             disabled={savingPoi} />
                                     </div>
                                     <div className="form-group">
                                         <label>Phân khu</label>
-                                        <input type="text" value={poiForm.zone}
-                                            placeholder="VD: Khu Thú săn mồi"
-                                            onChange={(e) => setPoiForm({ ...poiForm, zone: e.target.value })}
-                                            disabled={savingPoi} />
+                                        <select
+                                            value={typeof poiForm.zone === "string" ? poiForm.zone : poiForm.zone.vi}
+                                            onChange={(e) => setPoiForm({ ...poiForm, zone: e.target.value, translations: { ...poiForm.translations, en: { ...poiForm.translations.en, zone: "" }, zh: { ...poiForm.translations.zh, zone: "" } } })}
+                                            disabled={savingPoi}
+                                        >
+                                            <option value="">-- Chọn khu vực --</option>
+                                            {[...new Set([...DEFAULT_POI_ZONES, ...poiList.map((poi) => typeof poi.zone === "string" ? poi.zone : poi.zone?.vi).filter(Boolean)])]
+                                                .map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -1524,7 +1664,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     })}
                                     <div className="lang-tabs__spacer" />
                                     <button type="button" className="btn-ai" onClick={handleAiTranslate} disabled={isTranslating || savingPoi}>
-                                        {isTranslating ? <><span className="btn-spinner" /> AI đang dịch...</> : <><Sparkles size={14} /> Dịch bằng AI</>}
+                                        {isTranslating ? <><span className="btn-spinner" /> Agent đang dịch...</> : <><Sparkles size={14} /> Dịch bằng AI</>}
                                     </button>
                                 </div>
 
@@ -1621,11 +1761,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 disabled={savingPoi}>
                                 Huỷ
                             </button>
-                            <button className="btn-primary-admin" onClick={savePoi} disabled={savingPoi}>
+                            <button className="btn-primary-admin" onClick={savePoi} disabled={savingPoi || isTranslating}>
                                 {savingPoi ? (
-                                    <><span className="btn-spinner" /> Đang lưu...</>
+                                    <><span className="btn-spinner" /> Đang xử lý...</>
                                 ) : (
-                                    <><Save size={16} /> Lưu POI</>
+                                    <><Save size={16} /> {editingPoi === "new" ? "Dịch & tải .txt" : "Lưu POI"}</>
                                 )}
                             </button>
                         </div>

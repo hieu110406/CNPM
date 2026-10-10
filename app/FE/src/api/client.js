@@ -1,5 +1,12 @@
+<<<<<<< HEAD
 ﻿const BASE = "http://localhost:5000/api";
 const TRANSLATION_API_URL = import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com";
+=======
+const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const TRANSLATION_API_URL = (
+    import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com"
+).replace(/\/+$/, "");
+>>>>>>> main
 
 function getToken() {
     return localStorage.getItem("admin_token");
@@ -12,7 +19,18 @@ async function request(path, options = {}) {
 
     const res = await fetch(`${BASE}${path}`, { ...options, headers });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Lỗi API");
+    if (!res.ok) throw new Error(data.error || data.detail || "Lỗi API");
+    return data;
+}
+
+async function requestTranslation(path, body) {
+    const res = await fetch(`${TRANSLATION_API_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || data.error || "Không gọi được translation agent");
     return data;
 }
 
@@ -54,6 +72,7 @@ export const api = {
     getPois: () => request("/pois"),
     getPublicPois: (language = "vi") =>
         request(`/pois/public?lang=${encodeURIComponent(language)}`),
+    translatePoi: (data) => requestTranslation("/translate-poi", data),
     createPoi: (data) => request("/pois", { method: "POST", body: JSON.stringify(data) }),
     updatePoi: (dbId, data) => request(`/pois/${dbId}`, { method: "PUT", body: JSON.stringify(data) }),
     deletePoi: (dbId) => request(`/pois/${dbId}`, { method: "DELETE" }),

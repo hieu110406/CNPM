@@ -353,8 +353,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             geofenceRadius: 20, isActive: true,
             translations: {
                 vi: { short: "", detail: "" },
-                en: { ...poiForm.translations.en, short: "", detail: "" },
-                zh: { ...poiForm.translations.zh, short: "", detail: "" },
+                en: { short: "", detail: "" },
+                zh: { short: "", detail: "" },
             },
         });
         setEditingPoi("new");

@@ -75,7 +75,9 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onPat
 
   if (!marker || !details) return null;
 
-  const images = details.images || [];
+  const images = marker.fromDatabase && marker.images?.length
+    ? marker.images.map((image) => ({ url: image.url, caption: image.alt || marker.name }))
+    : details.images || [];
   const currentImage = images[currentImgIndex] || images[0];
   const meta = TYPE_META[marker.type] || TYPE_META.animal;
   const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);

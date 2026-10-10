@@ -1,4 +1,5 @@
 import { pool } from "../db/database.js";
+import { deleteStorageObjects, StorageServiceError, uploadPoiImage } from "../supabaseStorage.js";
 
 const LANGUAGES = ["vi", "en", "zh"];
 
@@ -181,7 +182,15 @@ export async function listPublicPois(req, res) {
          COALESCE(t.name, v.name, p.name) AS name,
          COALESCE(t.zone, v.zone, p.zone) AS zone,
          COALESCE(t.description, v.description) AS "desc",
-         COALESCE(t.fun_fact, v.fun_fact) AS "funFact"
+         COALESCE(t.fun_fact, v.fun_fact) AS "funFact",
+         COALESCE((
+           SELECT jsonb_agg(
+             jsonb_build_object('url', pi.public_url, 'alt', pi.alt_text)
+             ORDER BY pi.sort_order, pi.poi_image_id
+           )
+           FROM poi_image pi
+           WHERE pi.poi_id = p.poi_id
+         ), '[]'::jsonb) AS images
        FROM poi p
        LEFT JOIN category c ON c.category_id = p.category_id
        LEFT JOIN poi_translation t
@@ -215,6 +224,14 @@ export async function listPois(req, res) {
         p.geofence_radius AS "geofenceRadius",
         p.is_active AS "isActive",
         p.updated_at AS "updatedAt",
+        COALESCE((
+          SELECT jsonb_agg(
+            jsonb_build_object('url', pi.public_url, 'alt', pi.alt_text)
+            ORDER BY pi.sort_order, pi.poi_image_id
+          )
+          FROM poi_image pi
+          WHERE pi.poi_id = p.poi_id
+        ), '[]'::jsonb) AS images,
         jsonb_object_agg(
           t.language_code,
           jsonb_build_object(
@@ -250,9 +267,19 @@ export async function listPois(req, res) {
 
 /* POST /api/pois */
 export async function createPoi(req, res) {
-  const parsed = readPoiInput(req.body || {});
+  let body = req.body || {};
+  if (typeof body.poi === "string") {
+    try {
+      body = JSON.parse(body.poi);
+    } catch {
+      return res.status(400).json({ error: "Dữ liệu POI không hợp lệ." });
+    }
+  }
+  const parsed = readPoiInput(body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const poi = parsed.value;
+  const imageFiles = req.files || [];
+  const uploadedPaths = [];
   let client;
 
   try {
@@ -280,12 +307,31 @@ export async function createPoi(req, res) {
 
     await saveTranslations(client, rows[0].dbId, poi.translations);
     await syncMapNode(client, poi);
+
+    for (const [sortOrder, file] of imageFiles.entries()) {
+      const image = await uploadPoiImage(file, poi.code);
+      uploadedPaths.push(image.path);
+      await client.query(
+        `INSERT INTO poi_image (poi_id, storage_path, public_url, alt_text, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [rows[0].dbId, image.path, image.publicUrl, poi.name, sortOrder]
+      );
+    }
+
     await client.query("COMMIT");
     return res.status(201).json({ dbId: rows[0].dbId, id: poi.code });
   } catch (error) {
     if (client) await client.query("ROLLBACK").catch((rollbackError) => {
       console.error("POI transaction rollback failed:", rollbackError);
     });
+    try {
+      await deleteStorageObjects(uploadedPaths);
+    } catch (cleanupError) {
+      console.error("POI image cleanup failed after create rollback:", cleanupError);
+    }
+    if (error instanceof StorageServiceError) {
+      return res.status(error.status).json({ error: error.message });
+    }
     return respondWithError(res, error);
   } finally {
     client?.release();
@@ -387,16 +433,37 @@ export async function deletePoi(req, res) {
   try {
     client = await pool.connect();
     await client.query("BEGIN");
-    const { rows } = await client.query(
-      `DELETE FROM poi WHERE poi_id = $1 RETURNING code`,
+    const { rows: poiRows } = await client.query(
+      `SELECT code FROM poi WHERE poi_id = $1 FOR UPDATE`,
       [dbId]
     );
-    if (!rows.length) {
+    if (!poiRows.length) {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Không tìm thấy POI." });
     }
-    await client.query(`DELETE FROM map_node WHERE node_id = $1`, [rows[0].code]);
+    const { rows: imageRows } = await client.query(
+      `SELECT storage_path FROM poi_image WHERE poi_id = $1`,
+      [dbId]
+    );
+    const { rows: audioRows } = await client.query(
+      `SELECT storage_path FROM audio_track WHERE poi_id = $1`,
+      [dbId]
+    );
+    await client.query(`DELETE FROM poi WHERE poi_id = $1`, [dbId]);
+    await client.query(`DELETE FROM map_node WHERE node_id = $1`, [poiRows[0].code]);
     await client.query("COMMIT");
+    try {
+      await deleteStorageObjects([
+        ...imageRows.map((image) => image.storage_path),
+        ...audioRows.map((audio) => audio.storage_path).filter(Boolean),
+      ]);
+    } catch (cleanupError) {
+      console.error("POI was deleted but its storage media could not be removed:", cleanupError);
+      return res.json({
+        success: true,
+        warning: "POI đã xoá khỏi database nhưng chưa xoá được media trên Storage.",
+      });
+    }
     return res.json({ success: true });
   } catch (error) {
     if (client) await client.query("ROLLBACK").catch((rollbackError) => {

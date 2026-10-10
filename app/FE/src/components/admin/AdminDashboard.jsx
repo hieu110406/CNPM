@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
     LayoutDashboard, MapPin, Headphones, BarChart3, Users, ShieldCheck,
     Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
-    CheckCircle2, Clock, Download, Upload, Sparkles, Play, Pause,
+    CheckCircle2, Clock, Download, Upload, Sparkles,
     Languages, FileAudio, History, Activity, TrendingUp, ArrowUpRight,
     Edit3, Globe, ExternalLink, KeyRound, UserCog, Info, Server, Zap,
     FileText, Mic, RefreshCw, Save, Lock, Unlock,
@@ -62,6 +62,25 @@ function mergePoiTranslations(form, translations) {
         };
     }
     return { ...form, fieldTranslations, translations: nextTranslations };
+}
+
+function getAudioDuration(file) {
+    const url = URL.createObjectURL(file);
+    return new Promise((resolve) => {
+        const audio = new Audio();
+        let settled = false;
+        const timeout = window.setTimeout(() => finish(null), 5000);
+        const finish = (duration) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            URL.revokeObjectURL(url);
+            resolve(Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null);
+        };
+        audio.addEventListener("loadedmetadata", () => finish(audio.duration), { once: true });
+        audio.addEventListener("error", () => finish(null), { once: true });
+        audio.src = url;
+    });
 }
 
 const CATEGORY_OPTIONS = [
@@ -126,16 +145,30 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [poiForm, setPoiForm] = useState(null);
     const [isTranslating, setIsTranslating] = useState(false);
     const [translatedPoiSource, setTranslatedPoiSource] = useState("");
+    const [poiImages, setPoiImages] = useState([]);
+    const poiImagesRef = useRef([]);
+
+    useEffect(() => () => {
+        poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+        poiImagesRef.current = [];
+    }, []);
 
     /* ---- UC6: Audio ---- */
     const [audioList, setAudioList] = useState([]);
     const [audioLoading, setAudioLoading] = useState(false);
     const [audioPoiId, setAudioPoiId] = useState(null);
-    const [aiScript, setAiScript] = useState("");
+    const [aiScripts, setAiScripts] = useState({ vi: "", en: "", zh: "" });
     const [aiLang, setAiLang] = useState("vi");
+    const [isTranslatingScript, setIsTranslatingScript] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [previewTrackId, setPreviewTrackId] = useState(null);
+    const [generatedAudio, setGeneratedAudio] = useState(null);
     const [audioSavingId, setAudioSavingId] = useState(null);
+    const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+    const [isSavingGeneratedAudio, setIsSavingGeneratedAudio] = useState(false);
+    const audioFileInputRef = useRef(null);
+    const pendingAudioLanguage = useRef(null);
+    const pendingAudioPoiId = useRef(null);
+    const aiScript = aiScripts[aiLang];
 
     /* ---- UC7: Analytics ---- */
     const [analytics, setAnalytics] = useState(null);
@@ -163,6 +196,21 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setTimeout(() => setToast(null), 2600);
     };
 
+    const clearPoiImages = () => {
+        poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+        poiImagesRef.current = [];
+        setPoiImages([]);
+    };
+
+    const removePoiImage = (index) => {
+        const removed = poiImagesRef.current[index];
+        if (!removed) return;
+        URL.revokeObjectURL(removed.url);
+        const remaining = poiImagesRef.current.filter((_, fileIndex) => fileIndex !== index);
+        poiImagesRef.current = remaining;
+        setPoiImages(remaining);
+    };
+
     /* =========================================================
        LOAD DỮ LIỆU
        ========================================================= */
@@ -183,6 +231,13 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         })();
         return () => { cancelled = true; };
     }, []);
+
+    useEffect(() => {
+        const url = generatedAudio?.url;
+        return () => {
+            if (url) URL.revokeObjectURL(url);
+        };
+    }, [generatedAudio?.url]);
 
     // 2. POIs
     useEffect(() => {
@@ -346,11 +401,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             geofenceRadius: 20, isActive: true,
             translations: {
                 vi: { short: "", detail: "" },
-                en: { ...poiForm.translations.en, short: "", detail: "" },
-                zh: { ...poiForm.translations.zh, short: "", detail: "" },
+                en: { short: "", detail: "" },
+                zh: { short: "", detail: "" },
             },
         });
         setEditingPoi("new");
+        clearPoiImages();
         setPoiLangTab("vi");
         setTranslatedPoiSource("");
     };
@@ -364,8 +420,31 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             translations: { vi: "", en: "", zh: "", ...poi.translations },
         });
         setEditingPoi(poi.id);
+        clearPoiImages();
         setPoiLangTab("vi");
         setTranslatedPoiSource("");
+    };
+
+    const handlePoiImageSelect = (event) => {
+        const selectedFiles = Array.from(event.target.files || []);
+        event.target.value = "";
+        if (poiImagesRef.current.length + selectedFiles.length > 10) {
+            return showToast("Mỗi POI chỉ được chọn tối đa 10 ảnh", "error");
+        }
+        const invalidFile = selectedFiles.find((file) =>
+            !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+            || file.size > 8 * 1024 * 1024
+        );
+        if (invalidFile) {
+            return showToast("Chỉ nhận JPEG, PNG hoặc WebP; mỗi ảnh tối đa 8 MB", "error");
+        }
+        const added = selectedFiles.map((file) => ({
+            file,
+            url: URL.createObjectURL(file),
+        }));
+        const next = [...poiImagesRef.current, ...added];
+        poiImagesRef.current = next;
+        setPoiImages(next);
     };
 
     const validatePoiForm = (f) => {
@@ -391,71 +470,28 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                     poiToExport = mergePoiTranslations(poiForm, result.translations);
                 }
 
-                const lines = [
-                    ...LANGUAGES.flatMap((language) => {
-                        const code = language.code;
-                        const categoryLabel = CATEGORY_OPTIONS.find(
-                            (category) => category.value === poiToExport.category
-                        )?.labels[code] || poiToExport.category;
-                        const statusLabel = code === "vi"
-                            ? (poiToExport.isActive ? "Đang hoạt động" : "Tạm đóng")
-                            : code === "en"
-                                ? (poiToExport.isActive ? "Open" : "Temporarily closed")
-                                : (poiToExport.isActive ? "开放中" : "暂时关闭");
-                        const labels = code === "vi"
-                            ? {
-                                id: "Mã POI", name: "Tên POI", zone: "Khu vực",
-                                category: "Danh mục", latitude: "Vĩ độ", longitude: "Kinh độ",
-                                radius: "Bán kính geofence", map: "Toạ độ bản đồ",
-                                status: "Trạng thái", short: "Mô tả ngắn", detail: "Mô tả chi tiết",
-                            }
-                            : code === "en"
-                                ? {
-                                    id: "POI ID", name: "Name", zone: "Area",
-                                    category: "Category", latitude: "Latitude", longitude: "Longitude",
-                                    radius: "Geofence radius", map: "Map coordinates",
-                                    status: "Status", short: "Short description", detail: "Detailed description",
-                                }
-                                : {
-                                    id: "POI编号", name: "名称", zone: "区域",
-                                    category: "类别", latitude: "纬度", longitude: "经度",
-                                    radius: "地理围栏半径", map: "地图坐标",
-                                    status: "状态", short: "简短描述", detail: "详细描述",
-                                };
-                        return [
-                            `=== ${language.label} (${language.short}) ===`,
-                            `${labels.id}: ${poiToExport.id}`,
-                            `${labels.name}: ${code === "vi" ? poiToExport.name : poiToExport.fieldTranslations[code].name}`,
-                            `${labels.zone}: ${code === "vi" ? poiToExport.zone : poiToExport.fieldTranslations[code].zone}`,
-                            `${labels.category}: ${categoryLabel}`,
-                            `${labels.latitude}: ${poiToExport.latitude}`,
-                            `${labels.longitude}: ${poiToExport.longitude}`,
-                            `${labels.radius}: ${poiToExport.geofenceRadius}m`,
-                            `${labels.map}: X=${poiToExport.mapX}, Y=${poiToExport.mapY}`,
-                            `${labels.status}: ${statusLabel}`,
-                            "",
-                            `${labels.short}:`,
-                            poiToExport.translations[code].short,
-                            "",
-                            `${labels.detail}:`,
-                            poiToExport.translations[code].detail,
-                            "",
-                        ];
-                    }),
-                ];
-                const blob = new Blob(["\uFEFF", lines.join("\n")], {
-                    type: "text/plain;charset=utf-8",
-                });
-                const downloadUrl = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                const safeFileName = `${poiToExport.id}-${poiToExport.name}`
-                    .replace(/[<>:"/\\|?*]/g, "_")
-                    .trim();
-                link.href = downloadUrl;
-                link.download = `${safeFileName || poiToExport.id}.txt`;
-                link.click();
-                window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-                showToast("Đã dịch đầy đủ VI/EN/ZH và tải file .txt — chưa lưu vào database");
+                const translations = Object.fromEntries(LANGUAGES.map(({ code }) => [
+                    code,
+                    {
+                        ...poiToExport.translations[code],
+                        name: code === "vi" ? poiToExport.name : poiToExport.fieldTranslations[code].name,
+                        zone: code === "vi" ? poiToExport.zone : poiToExport.fieldTranslations[code].zone,
+                    },
+                ]));
+                await api.createPoi(
+                    { ...poiToExport, translations },
+                    poiImages.map(({ file }) => file)
+                );
+                clearPoiImages();
+                setEditingPoi(null);
+                setPoiForm(null);
+                showToast("Đã lưu POI, bản dịch và ảnh vào hệ thống");
+                try {
+                    setPoiList(await api.getPois());
+                } catch (refreshError) {
+                    showToast(`POI đã lưu nhưng không thể tải lại danh sách: ${refreshError.message}`, "error");
+                }
+                return;
             } else {
                 await api.updatePoi(poiForm.dbId, poiForm);
                 showToast("Đã cập nhật POI");
@@ -472,15 +508,15 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     };
 
     const deletePoi = async (poi) => {
-        if (!window.confirm(`Xoá POI "${poi.name}"? Audio liên quan cũng sẽ bị gỡ.`)) return;
+        if (!window.confirm(`Xoá POI "${poi.name}"? Ảnh và audio liên quan cũng sẽ bị gỡ.`)) return;
         try {
-            await api.deletePoi(poi.dbId);
+            const result = await api.deletePoi(poi.dbId);
             const list = await api.getPois();
             setPoiList(list);
             if (audioPoiId === poi.dbId) {
                 setAudioPoiId(list[0]?.dbId || null);
             }
-            showToast("Đã xoá POI");
+            showToast(result.warning || "Đã xoá POI", result.warning ? "error" : "ok");
         } catch (err) {
             showToast(err.message, "error");
         }
@@ -518,43 +554,113 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
     const uploadAudio = async (lang) => {
         if (!audioPoiId) return showToast("Chọn POI trước", "error");
-        const dur = 60 + Math.floor(Math.random() * 60);
+        pendingAudioLanguage.current = lang;
+        pendingAudioPoiId.current = audioPoiId;
+        audioFileInputRef.current?.click();
+    };
+
+    const handleAudioFileSelect = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        const language = pendingAudioLanguage.current;
+        const poiDbId = pendingAudioPoiId.current;
+        pendingAudioLanguage.current = null;
+        pendingAudioPoiId.current = null;
+        if (!file || !language || !poiDbId) return;
+        if (file.size > 30 * 1024 * 1024) {
+            return showToast("Tệp audio không được vượt quá 30 MB", "error");
+        }
+
+        setIsUploadingAudio(true);
         try {
-            await api.createAudio({
-                poiDbId: audioPoiId,
-                language: lang,
+            const duration = await getAudioDuration(file);
+            const result = await api.createAudio({
+                poiDbId,
+                language,
                 source: "upload",
-                duration: dur,
-                sizeMb: +(dur * 0.015).toFixed(2),
-            });
-            await reloadAudio();
-            showToast(`Đã tải audio ${lang.toUpperCase()} (chờ publish)`);
+                duration,
+            }, file, file.name);
+            if (audioPoiId === poiDbId) await reloadAudio();
+            showToast(
+                result.warning || `Đã tải audio ${language.toUpperCase()} (chờ publish)`,
+                result.warning ? "error" : "ok"
+            );
         } catch (err) {
             showToast(err.message, "error");
+        } finally {
+            setIsUploadingAudio(false);
+        }
+    };
+
+    const translateAudioScript = async () => {
+        if (!aiScripts.vi.trim()) return showToast("Nhập kịch bản tiếng Việt trước khi dịch", "error");
+
+        setIsTranslatingScript(true);
+        try {
+            const response = await api.translateAudioScript(aiScripts.vi);
+            const translations = response.translations;
+            if (!translations?.en?.trim() || !translations?.zh?.trim()) {
+                throw new Error("Agent chưa trả về đầy đủ bản dịch tiếng Anh và tiếng Trung");
+            }
+            setAiScripts((previous) => ({
+                ...previous,
+                en: translations.en.trim(),
+                zh: translations.zh.trim(),
+            }));
+            showToast("Đã dịch kịch bản sang tiếng Anh và tiếng Trung");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setIsTranslatingScript(false);
         }
     };
 
     const generateAiAudio = async () => {
-        if (!aiScript.trim()) return showToast("Nhập kịch bản trước khi sinh audio AI", "error");
+        if (!aiScript.trim()) return showToast(`Nhập kịch bản ${aiLang.toUpperCase()} trước khi sinh audio`, "error");
         if (!audioPoiId) return showToast("Chọn POI trước", "error");
 
         setIsGenerating(true);
         try {
-            const dur = 45 + Math.floor(aiScript.length / 6);
-            await api.createAudio({
-                poiDbId: audioPoiId,
+            const audio = await api.generateAudio(aiScript.trim(), aiLang);
+            const blob = audio.type ? audio : new Blob([audio], { type: "audio/mpeg" });
+            const duration = await getAudioDuration(blob);
+            const url = URL.createObjectURL(blob);
+            setGeneratedAudio({
+                url,
+                blob,
                 language: aiLang,
-                source: "ai",
-                duration: dur,
-                sizeMb: +(dur * 0.015).toFixed(2),
+                poiDbId: audioPoiId,
+                duration,
+                saved: false,
             });
-            await reloadAudio();
-            setAiScript("");
-            showToast(`AI TTS đã sinh audio ${aiLang.toUpperCase()} — chờ publish`);
+            showToast(`Đã tạo MP3 ${aiLang.toUpperCase()}; nghe thử hoặc tải file về máy`);
         } catch (err) {
             showToast(err.message, "error");
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const saveGeneratedAudio = async () => {
+        if (!generatedAudio) return;
+        setIsSavingGeneratedAudio(true);
+        try {
+            const result = await api.createAudio({
+                poiDbId: generatedAudio.poiDbId,
+                language: generatedAudio.language,
+                source: "ai",
+                duration: generatedAudio.duration,
+            }, generatedAudio.blob, `poi-audio-${generatedAudio.language}.mp3`);
+            setGeneratedAudio((current) => current ? { ...current, saved: true } : current);
+            if (audioPoiId === generatedAudio.poiDbId) await reloadAudio();
+            showToast(
+                result.warning || "Đã lưu audio AI lên hệ thống",
+                result.warning ? "error" : "ok"
+            );
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setIsSavingGeneratedAudio(false);
         }
     };
 
@@ -574,9 +680,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const removeTrack = async (track) => {
         if (!window.confirm(`Gỡ audio ${track.language.toUpperCase()}?`)) return;
         try {
-            await api.deleteAudio(track.dbId);
+            const result = await api.deleteAudio(track.dbId);
             await reloadAudio();
-            showToast("Đã gỡ audio track");
+            showToast(result.warning || "Đã gỡ audio track", result.warning ? "error" : "ok");
         } catch (err) {
             showToast(err.message, "error");
         }
@@ -1079,6 +1185,13 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             )}
 
+                            <input
+                                ref={audioFileInputRef}
+                                type="file"
+                                accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/webm"
+                                hidden
+                                onChange={handleAudioFileSelect}
+                            />
                             <div className="audio-grid">
                                 {LANGUAGES.map((lang) => {
                                     const track = audioByPoi.find((a) => a.language === lang.code);
@@ -1103,16 +1216,16 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         Chưa có audio cho ngôn ngữ này.
                                                     </div>
                                                     <div className="audio-track__actions">
-                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId}>
-                                                            <Upload size={14} /> Upload file
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId || isUploadingAudio}>
+                                                            <Upload size={14} /> {isUploadingAudio ? "Đang tải..." : "Upload file"}
                                                         </button>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     <div className="audio-track__meta">
-                                                        <span><Clock size={12} /> {track.duration}s</span>
-                                                        <span><FileAudio size={12} /> {track.sizeMb} MB</span>
+                                                        <span><Clock size={12} /> {track.duration ? `${track.duration}s` : "—"}</span>
+                                                        <span><FileAudio size={12} /> {track.sizeMb ?? "—"} MB</span>
                                                         <span><Mic size={12} /> {track.source === "ai" ? "AI TTS" : "Upload"}</span>
                                                     </div>
                                                     <div>
@@ -1127,17 +1240,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                     </div>
 
                                                     <div className="audio-player">
-                                                        <button
-                                                            className="audio-player__btn"
-                                                            onClick={() => setPreviewTrackId(previewTrackId === track.id ? null : track.id)}
-                                                            title="Nghe thử"
-                                                        >
-                                                            {previewTrackId === track.id ? <Pause size={16} /> : <Play size={16} />}
-                                                        </button>
-                                                        <div className="audio-player__bar">
-                                                            <div className="audio-player__fill" style={{ "--progress": previewTrackId === track.id ? "35%" : "0%" }} />
-                                                        </div>
-                                                        <span className="audio-player__time">0:{String(track.duration).padStart(2, "0")}</span>
+                                                        {track.fileUrl
+                                                            ? <audio controls preload="none" src={track.fileUrl} aria-label={`Nghe audio ${lang.label}`} />
+                                                            : <span className="text-xs text-slate-400">Chưa có tệp audio.</span>}
                                                     </div>
 
                                                     <div className="audio-track__actions">
@@ -1152,7 +1257,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                                 )}
                                                             </button>
                                                         )}
-                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId}>
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId || isUploadingAudio}>
                                                             <RefreshCw size={14} /> Thay thế
                                                         </button>
                                                         <button className="btn-action-delete" onClick={() => removeTrack(track)} title="Gỡ">
@@ -1188,15 +1293,21 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="ai-note" style={{ marginBottom: 12 }}>
                                         <Sparkles size={14} />
                                         <div>
-                                            Nhập kịch bản thuyết minh — AI sẽ sinh audio với giọng đọc chuẩn ngôn ngữ đã chọn. Bản audio sau khi sinh sẽ ở trạng thái <strong>Bản nháp</strong>, cần rà soát trước khi publish.
+                                            Nhập kịch bản tiếng Việt rồi dịch sang EN/ZH. Chọn ngôn ngữ để tạo MP3 với voice tương ứng; audio chỉ được nghe/tải thử, chưa lưu lên server.
                                         </div>
                                     </div>
                                     <div className="script-box">
                                         <textarea
                                             rows={5}
-                                            placeholder="Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn. Đây là nơi sinh sống của..."
+                                            maxLength={5000}
+                                            placeholder={aiLang === "vi"
+                                                ? "Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn..."
+                                                : `Nhập hoặc dịch kịch bản sang ${aiLang.toUpperCase()}...`}
                                             value={aiScript}
-                                            onChange={(e) => setAiScript(e.target.value)}
+                                            onChange={(e) => setAiScripts((previous) => ({
+                                                ...previous,
+                                                [aiLang]: e.target.value,
+                                            }))}
                                             style={{
                                                 width: "100%", padding: 12, borderRadius: 10,
                                                 border: "1px solid var(--dash-border)",
@@ -1206,13 +1317,37 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <span className="script-box__count">{aiScript.length} ký tự</span>
                                     </div>
                                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating || !currentAudioPoi}>
+                                        <button className="btn-secondary-admin" onClick={translateAudioScript}
+                                            disabled={isTranslatingScript || isGenerating || !aiScripts.vi.trim()}>
+                                            {isTranslatingScript ? <><span className="btn-spinner" /> Đang dịch...</> : <><Languages size={14} /> Dịch VI → EN/ZH</>}
+                                        </button>
+                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating || isTranslatingScript || !currentAudioPoi}>
                                             {isGenerating ? <><span className="btn-spinner" /> Đang sinh...</> : <><Sparkles size={14} /> Sinh audio bằng AI</>}
                                         </button>
-                                        <button className="btn-secondary-admin" onClick={() => setAiScript("")} disabled={isGenerating}>
-                                            Xoá kịch bản
+                                        <button className="btn-secondary-admin" onClick={() => setAiScripts({ vi: "", en: "", zh: "" })} disabled={isGenerating || isTranslatingScript}>
+                                            Xoá tất cả kịch bản
                                         </button>
                                     </div>
+                                    {generatedAudio && (
+                                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
+                                            <audio controls src={generatedAudio.url} />
+                                            <a className="btn-secondary-admin" href={generatedAudio.url}
+                                                download={`poi-audio-${generatedAudio.language}.mp3`}>
+                                                <Download size={14} /> Tải MP3
+                                            </a>
+                                            <button
+                                                className="btn-primary-admin"
+                                                onClick={saveGeneratedAudio}
+                                                disabled={generatedAudio.saved || isSavingGeneratedAudio}
+                                            >
+                                                {isSavingGeneratedAudio
+                                                    ? <><span className="btn-spinner" /> Đang lưu...</>
+                                                    : generatedAudio.saved
+                                                        ? <><Check size={14} /> Đã lưu</>
+                                                        : <><Save size={14} /> Lưu audio vào POI</>}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1532,7 +1667,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
             {/* ================= MODAL POI (UC5) ================= */}
             {editingPoi && poiForm && (
-                <div className="admin-modal-backdrop" onClick={() => !savingPoi && (setEditingPoi(null), setPoiForm(null))}>
+                <div className="admin-modal-backdrop" onClick={() => !savingPoi && (setEditingPoi(null), setPoiForm(null), clearPoiImages())}>
                     <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
                         <div className="admin-modal__head">
                             <div>
@@ -1540,10 +1675,10 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     {editingPoi === "new" ? "Thêm POI mới" : `Chỉnh sửa ${poiForm.id}`}
                                 </h2>
                                 <p className="admin-modal__desc">
-                                    Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI mới được xuất thành file .txt để thử nghiệm, chưa ghi vào database.
+                                Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI cùng ảnh sẽ được lưu vào database và Supabase Storage.
                                 </p>
                             </div>
-                            <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); }} disabled={savingPoi}>
+                            <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); clearPoiImages(); }} disabled={savingPoi}>
                                 <X size={18} />
                             </button>
                         </div>
@@ -1713,9 +1848,50 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             </div>
                         </div>
 
+                        {editingPoi === "new" && (
+                            <section className="poi-image-uploader">
+                                <div className="poi-image-uploader__head">
+                                    <div>
+                                        <h3>Ảnh POI</h3>
+                                        <p>Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh không quá 8 MB.</p>
+                                    </div>
+                                    <label className="btn-secondary-admin poi-image-uploader__select">
+                                        <Upload size={14} /> Chọn ảnh
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            multiple
+                                            onChange={handlePoiImageSelect}
+                                            disabled={savingPoi}
+                                        />
+                                    </label>
+                                </div>
+                                {poiImages.length > 0 ? (
+                                    <div className="poi-image-grid">
+                                        {poiImages.map(({ file, url }, index) => (
+                                            <div className="poi-image-preview" key={`${file.name}-${file.lastModified}-${index}`}>
+                                                <img src={url} alt={file.name} />
+                                                <span title={file.name}>{file.name}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Bỏ ảnh ${file.name}`}
+                                                    onClick={() => removePoiImage(index)}
+                                                    disabled={savingPoi}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="poi-image-uploader__empty">Chưa chọn ảnh nào.</p>
+                                )}
+                            </section>
+                        )}
+
                         <div className="admin-modal__foot">
                             <button className="btn-secondary-admin"
-                                onClick={() => { setEditingPoi(null); setPoiForm(null); }}
+                                onClick={() => { setEditingPoi(null); setPoiForm(null); clearPoiImages(); }}
                                 disabled={savingPoi}>
                                 Huỷ
                             </button>
@@ -1723,7 +1899,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 {savingPoi ? (
                                     <><span className="btn-spinner" /> Đang xử lý...</>
                                 ) : (
-                                    <><Save size={16} /> {editingPoi === "new" ? "Dịch & tải .txt" : "Lưu POI"}</>
+                                    <><Save size={16} /> {editingPoi === "new" ? "Dịch & lưu POI" : "Lưu POI"}</>
                                 )}
                             </button>
                         </div>

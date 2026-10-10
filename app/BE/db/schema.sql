@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS poi_translation (
   UNIQUE (poi_id, language_code)
 );
 
+CREATE TABLE IF NOT EXISTS poi_image (
+  poi_image_id SERIAL PRIMARY KEY,
+  poi_id       INTEGER NOT NULL REFERENCES poi(poi_id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL UNIQUE,
+  public_url   TEXT NOT NULL,
+  alt_text     VARCHAR(200),
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS audio_track (
   audio_id      SERIAL PRIMARY KEY,
   poi_id        INTEGER REFERENCES poi(poi_id) ON DELETE CASCADE,
@@ -48,11 +58,15 @@ CREATE TABLE IF NOT EXISTS audio_track (
   duration_sec  INTEGER,
   size_mb       NUMERIC(6, 2),
   file_url      TEXT,
+  storage_path  TEXT,
   status        VARCHAR(20) DEFAULT 'draft',
   published_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE (poi_id, language_code)
 );
+
+ALTER TABLE audio_track
+  ADD COLUMN IF NOT EXISTS storage_path TEXT;
 
 CREATE TABLE IF NOT EXISTS audit_log (
   log_id     SERIAL PRIMARY KEY,

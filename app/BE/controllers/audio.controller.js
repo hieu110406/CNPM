@@ -37,6 +37,36 @@ export async function listAudio(req, res) {
   }
 }
 
+export async function listPublicAudio(req, res) {
+  const poiCode = typeof req.query.poiCode === "string" ? req.query.poiCode.trim() : "";
+  const requestedLanguage = typeof req.query.lang === "string" ? req.query.lang : "vi";
+  const language = LANGUAGES.has(requestedLanguage) ? requestedLanguage : "vi";
+  if (!poiCode) return res.status(400).json({ error: "Mã POI không hợp lệ." });
+
+  try {
+    const { rows } = await query(
+      `SELECT a.language_code, a.file_url, a.duration_sec
+       FROM audio_track a
+       JOIN poi p ON p.poi_id = a.poi_id
+       WHERE p.code = $1
+         AND p.is_active = TRUE
+         AND a.file_url IS NOT NULL
+         AND a.language_code IN ($2, 'vi')
+       ORDER BY CASE WHEN a.language_code = $2 THEN 0 ELSE 1 END
+       LIMIT 1`,
+      [poiCode, language]
+    );
+    if (!rows.length) return res.json(null);
+    return res.json({
+      language: rows[0].language_code,
+      fileUrl: rows[0].file_url,
+      duration: rows[0].duration_sec,
+    });
+  } catch (error) {
+    return sendAudioError(res, error);
+  }
+}
+
 export async function createAudio(req, res) {
   const poiDbId = Number(req.body?.poiDbId);
   const language = req.body?.language;
@@ -131,19 +161,6 @@ export async function createAudio(req, res) {
     return sendAudioError(res, error);
   } finally {
     client?.release();
-  }
-}
-
-export async function publishAudio(req, res) {
-  try {
-    const { rowCount } = await query(
-      `UPDATE audio_track SET status = 'published', published_at = NOW() WHERE audio_id = $1`,
-      [req.params.id]
-    );
-    if (!rowCount) return res.status(404).json({ error: "Không tìm thấy audio." });
-    return res.json({ ok: true });
-  } catch (error) {
-    return sendAudioError(res, error);
   }
 }
 

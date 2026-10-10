@@ -1,13 +1,11 @@
 // MapInfoCard.jsx
 // Thẻ thông tin chi tiết địa điểm: emoji đại diện, audio thuyết minh, giờ cho ăn, pop-up xem ảnh chi tiết & chỉ đường
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
   Clock,
-  Play,
-  Pause,
   Navigation,
   Share2,
   Heart,
@@ -17,15 +15,11 @@ import { MARKERS, TYPE_META } from "./mapData";
 import AnimalDetailModal from "./AnimalDetailModal";
 import RoutePickerModal from "./RoutePickerModal";
 import { useSettings } from "../../context/SettingsContext"; // chỉnh đường dẫn cho đúng
-
-const TOTAL_SECONDS = 45;
-const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
+import PoiAudioControl from "../audio/PoiAudioControl";
 
 export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPathReady }) {
-  const { t } = useSettings();
+  const { t, language } = useSettings();
 
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
@@ -34,25 +28,9 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPath
   // Đồng bộ reset state khi chuyển sang marker khác
   if (marker?.id !== prevId) {
     setPrevId(marker?.id);
-    setIsPlayingAudio(false);
-    setAudioProgress(0);
     setIsModalOpen(false);
     setShowRoute(false);
   }
-
-  useEffect(() => {
-    if (!isPlayingAudio) return;
-    const interval = setInterval(() => {
-      setAudioProgress((prev) => {
-        if (prev >= 100) {
-          setIsPlayingAudio(false);
-          return 0;
-        }
-        return prev + 2;
-      });
-    }, 200);
-    return () => clearInterval(interval);
-  }, [isPlayingAudio]);
 
   if (!marker) return null;
 
@@ -63,8 +41,6 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPath
     ? marker.fromDatabase ? marker.zone : t(`markers.${marker.id}.zone`, marker.zone)
     : "";
   const markerDesc = marker.fromDatabase ? marker.desc : t(`markers.${marker.id}.desc`, marker.desc);
-  const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);
-
   return (
     <>
       <div className="info-card">
@@ -126,38 +102,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onPath
             </div>
           )}
 
-          {marker.audioAvailable && (
-            <div className="audio">
-              <button
-                onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-                className="audio__play"
-                aria-label={
-                  isPlayingAudio
-                    ? t("map.infoCard.pause", "Tạm dừng")
-                    : t("map.infoCard.audioTitle", "Nghe thuyết minh")
-                }
-              >
-                {isPlayingAudio ? (
-                  <Pause size={12} fill="currentColor" />
-                ) : (
-                  <Play size={12} fill="currentColor" />
-                )}
-              </button>
-
-              <div className="audio__main">
-                <span className="audio__title">
-                  {t("map.infoCard.audioTitle", "Nghe thuyết minh")}
-                </span>
-                <div className="audio__track">
-                  <div className="audio__bar" style={{ width: `${audioProgress}%` }} />
-                </div>
-              </div>
-
-              <span className="audio__time">
-                {isPlayingAudio || audioProgress > 0 ? fmt(elapsed) : fmt(TOTAL_SECONDS)}
-              </span>
-            </div>
-          )}
+          <PoiAudioControl marker={marker} language={language} />
 
           <div className="info-card__actions">
             <button

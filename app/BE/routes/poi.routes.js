@@ -37,6 +37,6 @@ r.get("/public", listPublicPois);          // không cần đăng nhập, cho b�
 
 r.get("/", requireAuth, listPois);
 r.post("/", requireAuth, receivePoiImages, createPoi);
-r.put("/:dbId", requireAuth, updatePoi);
+r.put("/:dbId", requireAuth, receivePoiImages, updatePoi);
 r.delete("/:dbId", requireAuth, deletePoi);
 export default r;

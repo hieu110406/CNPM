@@ -18,13 +18,13 @@ async function request(path, options = {}) {
     return data;
 }
 
-async function requestFormData(path, formData) {
+async function requestFormData(path, formData, method = "POST") {
     const headers = {};
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const res = await fetch(`${BASE}${path}`, {
-        method: "POST",
+        method,
         headers,
         body: formData,
     });
@@ -75,6 +75,8 @@ export const api = {
     getPois: () => request("/pois"),
     getPublicPois: (language = "vi") =>
         request(`/pois/public?lang=${encodeURIComponent(language)}`),
+    getPublicAudio: (poiCode, language = "vi") =>
+        request(`/audio/public?poiCode=${encodeURIComponent(poiCode)}&lang=${encodeURIComponent(language)}`),
     translatePoi: (data) => requestTranslation("/translate-poi", data),
     createPoi: (data, images = []) => {
         const formData = new FormData();
@@ -82,7 +84,13 @@ export const api = {
         images.forEach((image) => formData.append("images", image));
         return requestFormData("/pois", formData);
     },
-    updatePoi: (dbId, data) => request(`/pois/${dbId}`, { method: "PUT", body: JSON.stringify(data) }),
+    updatePoi: (dbId, data, images = [], removedImageIds = []) => {
+        const formData = new FormData();
+        formData.append("poi", JSON.stringify(data));
+        formData.append("removedImageIds", JSON.stringify(removedImageIds));
+        images.forEach((image) => formData.append("images", image));
+        return requestFormData(`/pois/${dbId}`, formData, "PUT");
+    },
     deletePoi: (dbId) => request(`/pois/${dbId}`, { method: "DELETE" }),
 
     // UC6 - Audio
@@ -99,7 +107,6 @@ export const api = {
         formData.append("file", file, filename);
         return requestFormData("/audio", formData);
     },
-    publishAudio: (id) => request(`/audio/${id}/publish`, { method: "PUT" }),
     deleteAudio: (id) => request(`/audio/${id}`, { method: "DELETE" }),
 
     // UC7 - Admin & Analytics

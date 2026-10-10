@@ -717,6 +717,34 @@
   font-variant-numeric: tabular-nums;
 }
 
+.poi-audio-control {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.poi-audio-control__label {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.poi-audio-control audio {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+}
+
+.poi-audio-control__error {
+  color: #b91c1c;
+}
+
 /* Nút hành động */
 .info-card__actions {
   display: flex;

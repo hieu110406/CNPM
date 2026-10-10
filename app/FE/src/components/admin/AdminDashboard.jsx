@@ -34,7 +34,12 @@ function getPoiTranslationRequest(form) {
 }
 
 function getPoiTranslationSource(form) {
-    return JSON.stringify(getPoiTranslationRequest(form));
+    return JSON.stringify({
+        name: form.name.trim(),
+        zone: form.zone.trim(),
+        short: form.translations.vi.short.trim(),
+        detail: form.translations.vi.detail.trim(),
+    });
 }
 
 function mergePoiTranslations(form, translations) {
@@ -49,7 +54,17 @@ function mergePoiTranslations(form, translations) {
             }
             fieldTranslations[language][field] = value.trim();
         }
+        nextTranslations[language] = {
+            ...nextTranslations[language],
+            name: fieldTranslations[language].name,
+            zone: fieldTranslations[language].zone,
+        };
     }
+    nextTranslations.vi = {
+        ...nextTranslations.vi,
+        name: form.name.trim(),
+        zone: form.zone.trim(),
+    };
     for (const language of ["en", "zh"]) {
         const translation = translations?.[language];
         if (!translation?.short?.trim() || !translation?.detail?.trim()) {
@@ -62,6 +77,21 @@ function mergePoiTranslations(form, translations) {
         };
     }
     return { ...form, fieldTranslations, translations: nextTranslations };
+}
+
+function getPoiTranslations(form) {
+    return Object.fromEntries(LANGUAGES.map(({ code }) => [
+        code,
+        {
+            ...form.translations[code],
+            name: code === "vi"
+                ? form.name.trim()
+                : form.fieldTranslations?.[code]?.name || form.translations[code]?.name || null,
+            zone: code === "vi"
+                ? form.zone.trim()
+                : form.fieldTranslations?.[code]?.zone || form.translations[code]?.zone || null,
+        },
+    ]));
 }
 
 function getAudioDuration(file) {
@@ -160,6 +190,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [translatedPoiSource, setTranslatedPoiSource] = useState("");
     const [poiImages, setPoiImages] = useState([]);
     const poiImagesRef = useRef([]);
+    const [removedPoiImageIds, setRemovedPoiImageIds] = useState([]);
 
     useEffect(() => () => {
         poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
@@ -178,7 +209,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [generatedAudio, setGeneratedAudio] = useState(null);
     const [savedGeneratedLanguages, setSavedGeneratedLanguages] = useState([]);
     const [isSavingGeneratedAudio, setIsSavingGeneratedAudio] = useState(false);
-    const [audioSavingId, setAudioSavingId] = useState(null);
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
     const audioFileInputRef = useRef(null);
     const pendingAudioLanguage = useRef(null);
@@ -214,6 +244,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
         poiImagesRef.current = [];
         setPoiImages([]);
+        setRemovedPoiImageIds([]);
     };
 
     const removePoiImage = (index) => {
@@ -434,13 +465,20 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setEditingPoi(poi.id);
         clearPoiImages();
         setPoiLangTab("vi");
-        setTranslatedPoiSource("");
+        setTranslatedPoiSource(getPoiTranslationSource(poi));
+    };
+
+    const removeExistingPoiImage = (imageId) => {
+        setRemovedPoiImageIds((ids) => [...new Set([...ids, imageId])]);
     };
 
     const handlePoiImageSelect = (event) => {
         const selectedFiles = Array.from(event.target.files || []);
         event.target.value = "";
-        if (poiImagesRef.current.length + selectedFiles.length > 10) {
+        const retainedImageCount = (poiForm?.images || []).filter(
+            (image) => !removedPoiImageIds.includes(image.id)
+        ).length;
+        if (retainedImageCount + poiImagesRef.current.length + selectedFiles.length > 10) {
             return showToast("Mỗi POI chỉ được chọn tối đa 10 ảnh", "error");
         }
         const invalidFile = selectedFiles.find((file) =>
@@ -475,23 +513,16 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
         setSavingPoi(true);
         try {
-            if (editingPoi === "new") {
-                let poiToExport = poiForm;
-                if (translatedPoiSource !== getPoiTranslationSource(poiForm)) {
-                    const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
-                    poiToExport = mergePoiTranslations(poiForm, result.translations);
-                }
+            let poiToExport = poiForm;
+            if (translatedPoiSource !== getPoiTranslationSource(poiForm)) {
+                const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
+                poiToExport = mergePoiTranslations(poiForm, result.translations);
+            }
+            const poiData = { ...poiToExport, translations: getPoiTranslations(poiToExport) };
 
-                const translations = Object.fromEntries(LANGUAGES.map(({ code }) => [
-                    code,
-                    {
-                        ...poiToExport.translations[code],
-                        name: code === "vi" ? poiToExport.name : poiToExport.fieldTranslations[code].name,
-                        zone: code === "vi" ? poiToExport.zone : poiToExport.fieldTranslations[code].zone,
-                    },
-                ]));
+            if (editingPoi === "new") {
                 await api.createPoi(
-                    { ...poiToExport, translations },
+                    poiData,
                     poiImages.map(({ file }) => file)
                 );
                 clearPoiImages();
@@ -505,10 +536,25 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                 }
                 return;
             } else {
-                await api.updatePoi(poiForm.dbId, poiForm);
-                showToast("Đã cập nhật POI");
-                const list = await api.getPois();
-                setPoiList(list);
+                const result = await api.updatePoi(
+                    poiForm.dbId,
+                    poiData,
+                    poiImages.map(({ file }) => file),
+                    removedPoiImageIds
+                );
+                clearPoiImages();
+                setEditingPoi(null);
+                setPoiForm(null);
+                try {
+                    setPoiList(await api.getPois());
+                    showToast(result.warning || "Đã cập nhật POI", result.warning ? "error" : "ok");
+                } catch (refreshError) {
+                    showToast(
+                        `POI đã cập nhật${result.warning ? `; ${result.warning}` : ""}, nhưng không thể tải lại danh sách: ${refreshError.message}`,
+                        "error"
+                    );
+                }
+                return;
             }
             setEditingPoi(null);
             setPoiForm(null);
@@ -594,7 +640,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             }, file, file.name);
             if (audioPoiId === poiDbId) await reloadAudio();
             showToast(
-                result.warning || `Đã tải audio ${language.toUpperCase()} (chờ publish)`,
+                result.warning || `Đã lưu audio ${language.toUpperCase()} vào database`,
                 result.warning ? "error" : "ok"
             );
         } catch (err) {
@@ -720,19 +766,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             showToast(message, "error");
         } finally {
             setIsSavingGeneratedAudio(false);
-        }
-    };
-
-    const publishTrack = async (track) => {
-        setAudioSavingId(track.dbId);
-        try {
-            await api.publishAudio(track.dbId);
-            await reloadAudio();
-            showToast("Đã publish — audio vào gói offline");
-        } catch (err) {
-            showToast(err.message, "error");
-        } finally {
-            setAudioSavingId(null);
         }
     };
 
@@ -1199,7 +1232,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý Audio &amp; Nội dung AI</h1>
                                     <p className="admin-tab-desc">
-                                        UC6 — Upload file ghi âm hoặc sinh audio bằng AI Text-to-Speech, rà soát rồi publish cho VI/EN/ZH
+                                        UC6 — Upload hoặc tạo audio VI/EN/ZH; audio đã lưu có thể nghe, thay thế hoặc xóa
                                     </p>
                                 </div>
                                 <div className="admin-tab-actions">
@@ -1258,6 +1291,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="audio-grid">
                                 {LANGUAGES.map((lang) => {
                                     const track = audioByPoi.find((a) => a.language === lang.code);
+                                    const previewTrack = generatedAudio?.poiDbId === audioPoiId
+                                        ? generatedAudio.tracks.find((audio) => audio.language === lang.code)
+                                        : null;
                                     const isEmpty = !track;
                                     return (
                                         <div
@@ -1291,16 +1327,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         <span><FileAudio size={12} /> {track.sizeMb ?? "—"} MB</span>
                                                         <span><Mic size={12} /> {track.source === "ai" ? "AI TTS" : "Upload"}</span>
                                                     </div>
-                                                    <div>
-                                                        {track.status === "published"
-                                                            ? <span className="status-badge status-badge--published"><CheckCircle2 size={12} /> Đã publish</span>
-                                                            : <span className="status-badge status-badge--draft"><Clock size={12} /> Bản nháp</span>}
-                                                    </div>
-                                                    <div className="audio-track__source">
-                                                        {track.publishedAt
-                                                            ? `Publish: ${new Date(track.publishedAt).toLocaleDateString("vi-VN")}`
-                                                            : "Chưa publish — chưa vào gói offline"}
-                                                    </div>
+                                                    <div className="audio-track__source">Đã có trong database — có thể thay thế hoặc xóa.</div>
 
                                                     <div className="audio-player">
                                                         {track.fileUrl
@@ -1309,17 +1336,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                     </div>
 
                                                     <div className="audio-track__actions">
-                                                        {track.status !== "published" && (
-                                                            <button className="btn-primary-admin"
-                                                                onClick={() => publishTrack(track)}
-                                                                disabled={audioSavingId === track.dbId}>
-                                                                {audioSavingId === track.dbId ? (
-                                                                    <><span className="btn-spinner" /> Đang lưu...</>
-                                                                ) : (
-                                                                    <><Check size={14} /> Publish</>
-                                                                )}
-                                                            </button>
-                                                        )}
                                                         <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId || isUploadingAudio}>
                                                             <RefreshCw size={14} /> Thay thế
                                                         </button>
@@ -1329,10 +1345,53 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                     </div>
                                                 </>
                                             )}
+
+                                            {previewTrack && (
+                                                <div className="audio-preview">
+                                                    <div className="audio-track__meta">
+                                                        <span><Sparkles size={12} /> AI preview — chưa lưu</span>
+                                                        <span><Clock size={12} /> {previewTrack.duration}s</span>
+                                                    </div>
+                                                    <div className="audio-player">
+                                                        <audio
+                                                            controls
+                                                            preload="metadata"
+                                                            src={previewTrack.url}
+                                                            aria-label={`Nghe thử audio ${lang.label}`}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
                             </div>
+                            {generatedAudio?.tracks.length > 0 && generatedAudio.poiDbId === audioPoiId && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                                    <button
+                                        className="btn-primary-admin"
+                                        onClick={saveGeneratedAudio}
+                                        disabled={isSavingGeneratedAudio || isGenerating}
+                                    >
+                                        {isSavingGeneratedAudio
+                                            ? <><span className="btn-spinner" /> Đang lưu...</>
+                                            : <><Save size={14} /> Lưu / thay thế audio</>}
+                                    </button>
+                                    <button
+                                        className="btn-secondary-admin"
+                                        onClick={() => {
+                                            setGeneratedAudio(null);
+                                            setSavedGeneratedLanguages([]);
+                                        }}
+                                        disabled={isSavingGeneratedAudio}
+                                    >
+                                        Bỏ preview
+                                    </button>
+                                    <span className="audio-track__source">
+                                        Nghe thử từng ngôn ngữ ở các thẻ phía trên; lưu sẽ cập nhật các audio tương ứng.
+                                    </span>
+                                </div>
+                            )}
 
                             <div className="dash-card" style={{ marginTop: 20 }}>
                                 <div className="dash-card__head">
@@ -1356,7 +1415,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="ai-note" style={{ marginBottom: 12 }}>
                                         <Sparkles size={14} />
                                         <div>
-                                            Nhập kịch bản tiếng Việt rồi tạo 3 bản để nghe thử ngay bên dưới. Audio chỉ được lưu vào POI sau khi bạn bấm nút Lưu màu xanh.
+                                            Nhập kịch bản tiếng Việt rồi tạo 3 bản để nghe thử trong các thẻ ngôn ngữ phía trên. Audio chỉ được lưu vào POI sau khi bạn bấm nút Lưu màu xanh.
                                         </div>
                                     </div>
                                     <div className="script-box">
@@ -1401,42 +1460,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             Xoá tất cả kịch bản
                                         </button>
                                     </div>
-                                    {generatedAudio?.tracks.length > 0 && (
-                                        <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
-                                            {generatedAudio.tracks.map((track) => {
-                                                const language = LANGUAGES.find(({ code }) => code === track.language);
-                                                return (
-                                                    <div key={track.language} className="audio-track">
-                                                        <div className="audio-track__head">
-                                                            <strong>{language?.label || track.language.toUpperCase()}</strong>
-                                                            <span className="audio-track__code">{savedGeneratedLanguages.includes(track.language) ? "Đã lưu" : `${track.duration}s`}</span>
-                                                        </div>
-                                                        <div className="audio-player">
-                                                            <audio controls preload="metadata" src={track.url} aria-label={`Nghe thử audio ${language?.label || track.language}`} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                                <button
-                                                    className="btn-primary-admin"
-                                                    onClick={saveGeneratedAudio}
-                                                    disabled={isSavingGeneratedAudio || isGenerating}
-                                                >
-                                                    {isSavingGeneratedAudio
-                                                        ? <><span className="btn-spinner" /> Đang lưu...</>
-                                                        : <><Save size={14} /> Lưu audio vào POI</>}
-                                                </button>
-                                                <button
-                                                    className="btn-secondary-admin"
-                                                    onClick={() => setGeneratedAudio(null)}
-                                                    disabled={isSavingGeneratedAudio}
-                                                >
-                                                    Bỏ preview
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1937,46 +1960,67 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             </div>
                         </div>
 
-                        {editingPoi === "new" && (
-                            <section className="poi-image-uploader">
-                                <div className="poi-image-uploader__head">
-                                    <div>
-                                        <h3>Ảnh POI</h3>
-                                        <p>Tối đa 10 ảnh JPEG, PNG hoặc WebP; mỗi ảnh không quá 8 MB.</p>
-                                    </div>
-                                    <label className="btn-secondary-admin poi-image-uploader__select">
-                                        <Upload size={14} /> Chọn ảnh
-                                        <input
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/webp"
-                                            multiple
-                                            onChange={handlePoiImageSelect}
-                                            disabled={savingPoi}
-                                        />
-                                    </label>
+                        <section className="poi-image-uploader">
+                            <div className="poi-image-uploader__head">
+                                <div>
+                                    <h3>Ảnh POI</h3>
+                                    <p>
+                                        Thêm hoặc xóa ảnh; tối đa 10 ảnh JPEG, PNG hoặc WebP, mỗi ảnh không quá 8 MB.
+                                        {" "}Đang có {(poiForm.images || []).filter((image) => !removedPoiImageIds.includes(image.id)).length + poiImages.length}/10 ảnh.
+                                    </p>
                                 </div>
-                                {poiImages.length > 0 ? (
-                                    <div className="poi-image-grid">
-                                        {poiImages.map(({ file, url }, index) => (
-                                            <div className="poi-image-preview" key={`${file.name}-${file.lastModified}-${index}`}>
-                                                <img src={url} alt={file.name} />
-                                                <span title={file.name}>{file.name}</span>
+                                <label className="btn-secondary-admin poi-image-uploader__select">
+                                    <Upload size={14} /> Chọn ảnh
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        multiple
+                                        onChange={handlePoiImageSelect}
+                                        disabled={savingPoi}
+                                    />
+                                </label>
+                            </div>
+                            {(poiForm.images || []).length > 0 || poiImages.length > 0 ? (
+                                <div className="poi-image-grid">
+                                    {(poiForm.images || []).map((image) => {
+                                        const isRemoved = removedPoiImageIds.includes(image.id);
+                                        return (
+                                            <div className={`poi-image-preview ${isRemoved ? "is-removed" : ""}`} key={`saved-${image.id}`}>
+                                                <img src={image.url} alt={image.alt || poiForm.name} />
+                                                <span title={image.alt || image.url}>{isRemoved ? "Sẽ xóa khi lưu" : "Ảnh đã lưu"}</span>
                                                 <button
                                                     type="button"
-                                                    aria-label={`Bỏ ảnh ${file.name}`}
-                                                    onClick={() => removePoiImage(index)}
+                                                    aria-label={isRemoved ? "Khôi phục ảnh" : "Xóa ảnh"}
+                                                    title={isRemoved ? "Khôi phục ảnh" : "Xóa ảnh"}
+                                                    onClick={() => isRemoved
+                                                        ? setRemovedPoiImageIds((ids) => ids.filter((id) => id !== image.id))
+                                                        : removeExistingPoiImage(image.id)}
                                                     disabled={savingPoi}
                                                 >
-                                                    <X size={14} />
+                                                    {isRemoved ? <RefreshCw size={13} /> : <X size={14} />}
                                                 </button>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="poi-image-uploader__empty">Chưa chọn ảnh nào.</p>
-                                )}
-                            </section>
-                        )}
+                                        );
+                                    })}
+                                    {poiImages.map(({ file, url }, index) => (
+                                        <div className="poi-image-preview" key={`${file.name}-${file.lastModified}-${index}`}>
+                                            <img src={url} alt={file.name} />
+                                            <span title={file.name}>{file.name}</span>
+                                            <button
+                                                type="button"
+                                                aria-label={`Bỏ ảnh ${file.name}`}
+                                                onClick={() => removePoiImage(index)}
+                                                disabled={savingPoi}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="poi-image-uploader__empty">POI chưa có ảnh. Chọn ảnh để tải lên.</p>
+                            )}
+                        </section>
 
                         <div className="admin-modal__foot">
                             <button className="btn-secondary-admin"

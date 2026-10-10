@@ -8,8 +8,6 @@ import {
   ChevronRight,
   Clock,
   Sparkles,
-  Play,
-  Pause,
   Navigation,
   Share2,
   Heart,
@@ -22,17 +20,13 @@ import {
 import { getMarkerDetails } from "./animalMediaData";
 import { TYPE_META } from "./mapData";
 import { useSettings } from "../../context/SettingsContext";
+import PoiAudioControl from "../audio/PoiAudioControl";
 import RoutePickerModal from "./RoutePickerModal";
 import "./animalModal.css";
 
-const TOTAL_SECONDS = 45;
-const fmt = (s) => `00:${String(s).padStart(2, "0")}`;
-
 export default function AnimalDetailModal({ marker, markers = [], onClose, onPathReady }) {
-  const { t } = useSettings();
+  const { t, language } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
 
@@ -58,21 +52,6 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onPat
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  // Audio countdown
-  useEffect(() => {
-    if (!isPlayingAudio) return;
-    const interval = setInterval(() => {
-      setAudioProgress((prev) => {
-        if (prev >= 100) {
-          setIsPlayingAudio(false);
-          return 0;
-        }
-        return prev + 2;
-      });
-    }, 200);
-    return () => clearInterval(interval);
-  }, [isPlayingAudio]);
-
   if (!marker || !details) return null;
 
   const images = marker.fromDatabase && marker.images?.length
@@ -80,8 +59,6 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onPat
     : details.images || [];
   const currentImage = images[currentImgIndex] || images[0];
   const meta = TYPE_META[marker.type] || TYPE_META.animal;
-  const elapsed = Math.floor((audioProgress / 100) * TOTAL_SECONDS);
-
   const handlePrevImg = (e) => {
     e.stopPropagation();
     setCurrentImgIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
@@ -220,38 +197,7 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onPat
           </div>
 
           {/* Audio thuyết minh */}
-          {marker.audioAvailable && (
-            <div className="animal-modal-audio">
-              <button
-                type="button"
-                onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-                className="animal-modal-audio__play"
-                aria-label={isPlayingAudio ? "Tạm dừng" : "Nghe thuyết minh"}
-              >
-                {isPlayingAudio ? (
-                  <Pause size={16} fill="currentColor" />
-                ) : (
-                  <Play size={16} fill="currentColor" />
-                )}
-              </button>
-
-              <div className="animal-modal-audio__info">
-                <span className="animal-modal-audio__title">
-                  🎧 Thuyết minh âm thanh AI (Tiếng Việt tiêu chuẩn)
-                </span>
-                <div className="animal-modal-audio__track">
-                  <div
-                    className="animal-modal-audio__bar"
-                    style={{ width: `${audioProgress}%` }}
-                  />
-                </div>
-              </div>
-
-              <span className="animal-modal-audio__time">
-                {isPlayingAudio || audioProgress > 0 ? fmt(elapsed) : fmt(TOTAL_SECONDS)}
-              </span>
-            </div>
-          )}
+          <PoiAudioControl marker={marker} language={language} />
 
           {/* Lưới thông số sinh học & điều kiện sống */}
           <div className="animal-modal-grid">

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { listAudio, createAudio, publishAudio, deleteAudio } from "../controllers/audio.controller.js";
+import { listAudio, listPublicAudio, createAudio, deleteAudio } from "../controllers/audio.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const r = Router();
@@ -32,8 +32,8 @@ function receiveAudioFile(req, res, next) {
   });
 }
 
+r.get("/public", listPublicAudio);
 r.get("/", requireAuth, listAudio);
 r.post("/", requireAuth, receiveAudioFile, createAudio);
-r.put("/:id/publish", requireAuth, publishAudio);
 r.delete("/:id", requireAuth, deleteAudio);
 export default r;

@@ -104,6 +104,33 @@ function readPoiInput(body) {
   };
 }
 
+function readPoiRequestBody(body) {
+  if (typeof body.poi !== "string") return body;
+  try {
+    return JSON.parse(body.poi);
+  } catch {
+    return null;
+  }
+}
+
+function readRemovedImageIds(value) {
+  if (value === undefined) return { value: [] };
+  let ids = value;
+  if (typeof value === "string") {
+    try {
+      ids = JSON.parse(value);
+    } catch {
+      return { error: "Danh sách ảnh cần xóa không hợp lệ." };
+    }
+  }
+  if (!Array.isArray(ids)) return { error: "Danh sách ảnh cần xóa không hợp lệ." };
+  const normalized = ids.map(Number);
+  if (normalized.some((id) => !Number.isInteger(id) || id < 1)) {
+    return { error: "Danh sách ảnh cần xóa không hợp lệ." };
+  }
+  return { value: [...new Set(normalized)] };
+}
+
 async function getCategoryId(client, category) {
   const { rows } = await client.query(
     `SELECT category_id FROM category WHERE name = $1`,
@@ -161,6 +188,12 @@ function respondWithError(res, error) {
   if (error.code === "POI_NOT_FOUND") {
     return res.status(404).json({ error: "Không tìm thấy POI." });
   }
+  if (error.code === "INVALID_IMAGE_SELECTION") {
+    return res.status(400).json({ error: error.message });
+  }
+  if (error.code === "POI_IMAGE_LIMIT") {
+    return res.status(400).json({ error: error.message });
+  }
 
   console.error("POI database error:", error);
   return res.status(500).json({ error: "Không thể xử lý dữ liệu POI." });
@@ -185,7 +218,7 @@ export async function listPublicPois(req, res) {
          COALESCE(t.fun_fact, v.fun_fact) AS "funFact",
          COALESCE((
            SELECT jsonb_agg(
-             jsonb_build_object('url', pi.public_url, 'alt', pi.alt_text)
+             jsonb_build_object('id', pi.poi_image_id, 'url', pi.public_url, 'alt', pi.alt_text)
              ORDER BY pi.sort_order, pi.poi_image_id
            )
            FROM poi_image pi
@@ -226,7 +259,7 @@ export async function listPois(req, res) {
         p.updated_at AS "updatedAt",
         COALESCE((
           SELECT jsonb_agg(
-            jsonb_build_object('url', pi.public_url, 'alt', pi.alt_text)
+            jsonb_build_object('id', pi.poi_image_id, 'url', pi.public_url, 'alt', pi.alt_text)
             ORDER BY pi.sort_order, pi.poi_image_id
           )
           FROM poi_image pi
@@ -267,14 +300,8 @@ export async function listPois(req, res) {
 
 /* POST /api/pois */
 export async function createPoi(req, res) {
-  let body = req.body || {};
-  if (typeof body.poi === "string") {
-    try {
-      body = JSON.parse(body.poi);
-    } catch {
-      return res.status(400).json({ error: "Dữ liệu POI không hợp lệ." });
-    }
-  }
+  const body = readPoiRequestBody(req.body || {});
+  if (!body) return res.status(400).json({ error: "Dữ liệu POI không hợp lệ." });
   const parsed = readPoiInput(body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const poi = parsed.value;
@@ -340,15 +367,22 @@ export async function createPoi(req, res) {
 
 /* PUT /api/pois/:dbId */
 export async function updatePoi(req, res) {
-  const parsed = readPoiInput(req.body || {});
+  const body = readPoiRequestBody(req.body || {});
+  if (!body) return res.status(400).json({ error: "Dữ liệu POI không hợp lệ." });
+  const parsed = readPoiInput(body);
   if (parsed.error) return res.status(400).json({ error: parsed.error });
   const poi = parsed.value;
+  const imageFiles = req.files || [];
+  const removedResult = readRemovedImageIds(req.body?.removedImageIds);
+  if (removedResult.error) return res.status(400).json({ error: removedResult.error });
+  const removedImageIds = removedResult.value;
   const dbId = Number(req.params.dbId);
   if (!Number.isInteger(dbId) || dbId < 1) {
     return res.status(400).json({ error: "ID POI không hợp lệ." });
   }
 
   let client;
+  const uploadedPaths = [];
   try {
     client = await pool.connect();
     await client.query("BEGIN");
@@ -370,6 +404,39 @@ export async function updatePoi(req, res) {
       error.code = "POI_NOT_FOUND";
       throw error;
     }
+
+    const { rows: imageCountRows } = await client.query(
+      `SELECT COUNT(*)::int AS count FROM poi_image WHERE poi_id = $1`,
+      [dbId]
+    );
+    let imageCount = imageCountRows[0].count;
+    let removedImagePaths = [];
+    if (removedImageIds.length) {
+      const { rows: removedRows } = await client.query(
+        `DELETE FROM poi_image
+         WHERE poi_id = $1 AND poi_image_id = ANY($2::int[])
+         RETURNING storage_path`,
+        [dbId, removedImageIds]
+      );
+      if (removedRows.length !== removedImageIds.length) {
+        const error = new Error("Danh sách ảnh cần xóa không thuộc POI này.");
+        error.code = "INVALID_IMAGE_SELECTION";
+        throw error;
+      }
+      imageCount -= removedRows.length;
+      removedImagePaths = removedRows.map((row) => row.storage_path).filter(Boolean);
+    }
+    if (imageCount + imageFiles.length > 10) {
+      const error = new Error("Mỗi POI chỉ được có tối đa 10 ảnh.");
+      error.code = "POI_IMAGE_LIMIT";
+      throw error;
+    }
+    const { rows: sortOrderRows } = await client.query(
+      `SELECT COALESCE(MAX(sort_order), -1) + 1 AS "nextSortOrder"
+       FROM poi_image WHERE poi_id = $1`,
+      [dbId]
+    );
+    const nextSortOrder = sortOrderRows[0].nextSortOrder;
 
     await client.query(
       `
@@ -408,13 +475,38 @@ export async function updatePoi(req, res) {
 
     await saveTranslations(client, dbId, poi.translations);
     await syncMapNode(client, poi);
+
+    for (const [index, file] of imageFiles.entries()) {
+      const image = await uploadPoiImage(file, poi.code);
+      uploadedPaths.push(image.path);
+      await client.query(
+        `INSERT INTO poi_image (poi_id, storage_path, public_url, alt_text, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [dbId, image.path, image.publicUrl, poi.name, nextSortOrder + index]
+      );
+    }
     await client.query("COMMIT");
-    return res.json({ dbId, id: poi.code });
+    let warning;
+    try {
+      await deleteStorageObjects(removedImagePaths);
+    } catch (cleanupError) {
+      console.error("POI was updated but removed images could not be deleted from Storage:", cleanupError);
+      warning = "POI đã cập nhật nhưng chưa xoá được một số ảnh trên Storage.";
+    }
+    return res.json({ dbId, id: poi.code, warning });
   } catch (error) {
     if (client) {
       await client.query("ROLLBACK").catch((rollbackError) => {
         console.error("POI transaction rollback failed:", rollbackError);
       });
+    }
+    try {
+      await deleteStorageObjects(uploadedPaths);
+    } catch (cleanupError) {
+      console.error("POI image cleanup failed after update rollback:", cleanupError);
+    }
+    if (error instanceof StorageServiceError) {
+      return res.status(error.status).json({ error: error.message });
     }
     return respondWithError(res, error);
   } finally {

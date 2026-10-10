@@ -1652,6 +1652,14 @@
     object-fit: cover;
 }
 
+.poi-image-preview.is-removed img {
+    opacity: 0.3;
+}
+
+.poi-image-preview.is-removed span {
+    color: var(--dash-red);
+}
+
 .poi-image-preview span {
     display: block;
     overflow: hidden;
@@ -1968,6 +1976,13 @@
 .audio-track__source {
     font-size: 11px;
     color: var(--dash-text-3);
+}
+
+.audio-preview {
+    display: grid;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #a7f3d0;
 }
 
 .audio-track__actions {

@@ -98,6 +98,10 @@ class PoiTranslationResponse(BaseModel):
     zh: LanguageTranslation
 
 
+class PoiTranslationApiResponse(BaseModel):
+    translations: PoiTranslationResponse
+
+
 class ScriptTranslationRequest(BaseModel):
     script: str = Field(min_length=1, max_length=5000)
 
@@ -176,8 +180,8 @@ def parse_json_response(
         ) from error
 
 
-@app.post("/translate-poi")
-def translate_poi(request: PoiTranslationRequest) -> dict[str, dict[str, dict[str, str]]]:
+@app.post("/translate-poi", response_model=PoiTranslationApiResponse)
+def translate_poi(request: PoiTranslationRequest) -> PoiTranslationApiResponse:
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -230,7 +234,7 @@ Mô tả chi tiết: {detail}""",
 
     translations = parse_json_response(result.content, PoiTranslationResponse)
 
-    return {"translations": translations.model_dump()}
+    return PoiTranslationApiResponse(translations=translations)
 
 
 @app.post("/translate-script")

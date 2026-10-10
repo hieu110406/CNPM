@@ -5,18 +5,6 @@ const IMAGE_EXTENSIONS = {
   "image/png": "png",
   "image/webp": "webp",
 };
-const AUDIO_EXTENSIONS = {
-  "audio/mpeg": "mp3",
-  "audio/mp3": "mp3",
-  "audio/wav": "wav",
-  "audio/x-wav": "wav",
-  "audio/ogg": "ogg",
-  "audio/mp4": "m4a",
-  "audio/x-m4a": "m4a",
-  "audio/aac": "aac",
-  "audio/x-aac": "aac",
-  "audio/webm": "webm",
-};
 const GENERIC_AUDIO_MIME_TYPES = new Set(["application/octet-stream"]);
 
 export class StorageServiceError extends Error {
@@ -72,36 +60,25 @@ function assertImageContent(file) {
 
 function getAudioFormat(file) {
   const { buffer, mimetype } = file;
-  const isAllowedMimeType = AUDIO_EXTENSIONS[mimetype] || GENERIC_AUDIO_MIME_TYPES.has(mimetype);
-  const isMpeg = buffer.subarray(0, 3).toString("ascii") === "ID3"
-    || (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0);
-  const isWav = (
-    mimetype === "audio/wav"
-    || mimetype === "audio/x-wav"
+  const isAllowedMimeType = mimetype.startsWith("audio/")
     || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
-  )
-    && buffer.length >= 12
-    && buffer.toString("ascii", 0, 4) === "RIFF"
-    && buffer.toString("ascii", 8, 12) === "WAVE";
-  const isOgg = (
-    mimetype === "audio/ogg" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
-  ) && buffer.toString("ascii", 0, 4) === "OggS";
-  const isMp4 = (
-    mimetype === "audio/mp4"
-    || mimetype === "audio/x-m4a"
-    || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
-  )
-    && buffer.length >= 12
-    && buffer.toString("ascii", 4, 8) === "ftyp";
-  const isAac = (
-    mimetype === "audio/aac" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
-  ) && buffer.length >= 2
+    || mimetype === "video/mp4";
+  const isAac = buffer.length >= 2
     && buffer[0] === 0xff
     && (buffer[1] & 0xf6) === 0xf0;
-  const isWebm = (
-    mimetype === "audio/webm" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
-  )
-    && buffer.length >= 4
+  let isMpeg = buffer.subarray(0, 3).toString("ascii") === "ID3";
+  for (let offset = 0; !isMpeg && offset < Math.min(buffer.length - 3, 4096); offset += 1) {
+    isMpeg = buffer[offset] === 0xff
+      && (buffer[offset + 1] & 0xe0) === 0xe0
+      && (buffer[offset + 1] & 0x06) !== 0;
+  }
+  const isWav = buffer.length >= 12
+    && buffer.toString("ascii", 0, 4) === "RIFF"
+    && buffer.toString("ascii", 8, 12) === "WAVE";
+  const isOgg = buffer.toString("ascii", 0, 4) === "OggS";
+  const isMp4 = buffer.length >= 12
+    && buffer.toString("ascii", 4, 8) === "ftyp";
+  const isWebm = buffer.length >= 4
     && buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
 
   if (!isAllowedMimeType || !(isMpeg || isWav || isOgg || isMp4 || isAac || isWebm)) {

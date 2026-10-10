@@ -1,4 +1,5 @@
-const BASE = "http://localhost:5000/api";
+﻿const BASE = "http://localhost:5000/api";
+const TRANSLATION_API_URL = import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com";
 
 function getToken() {
     return localStorage.getItem("admin_token");
@@ -13,6 +14,19 @@ async function request(path, options = {}) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Lỗi API");
     return data;
+}
+
+async function requestTranslation(path, body) {
+    const res = await fetch(`${TRANSLATION_API_URL}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || data.error || "Không dịch được");
+    }
+    return res.json();
 }
 
 async function requestAgentAudio(path, body) {

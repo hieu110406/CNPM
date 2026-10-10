@@ -11,7 +11,7 @@ Agent FastAPI dịch thông tin POI và kịch bản tiếng Việt sang tiếng
 
 Agent cung cấp `GET /health`, `POST /translate-poi`, `POST /translate-script` và `POST /text-to-speech`. Thêm các biến API key tương ứng vào `agent/.env` khi chạy local và vào Environment của Render khi deploy. Không đặt API key trong frontend hoặc commit vào Git.
 
-Tab Audio có thể dịch kịch bản VI sang EN/ZH, chọn bản dịch/ngôn ngữ, rồi tạo và tải MP3. Audio tiếng Việt dùng Zalo TTS; tiếng Anh/Trung dùng ElevenLabs. File MP3 được trả trực tiếp về trình duyệt để nghe/tải thử; backend hiện chưa lưu file audio vào kho bền vững.
+Tab Audio có thể dịch kịch bản VI sang EN/ZH rồi bấm một lần để tạo và lưu audio cho cả ba ngôn ngữ vào POI. Audio tiếng Việt dùng Zalo TTS; tiếng Anh/Trung dùng ElevenLabs. Các file được lưu trong Supabase Storage dưới dạng bản nháp, hiển thị ở danh sách audio để nghe thử và publish.
 
 ## Dịch thông tin POI
 

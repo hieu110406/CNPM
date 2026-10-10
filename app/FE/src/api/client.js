@@ -52,9 +52,13 @@ async function requestAgentAudio(path, body) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
     });
+    const contentType = res.headers.get("content-type") || "";
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || data.error || "Không tạo được audio");
+    }
+    if (!contentType.toLowerCase().startsWith("audio/")) {
+        throw new Error("Translation agent không trả về tệp audio hợp lệ.");
     }
     return res.blob();
 }

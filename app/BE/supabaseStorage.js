@@ -12,8 +12,12 @@ const AUDIO_EXTENSIONS = {
   "audio/x-wav": "wav",
   "audio/ogg": "ogg",
   "audio/mp4": "m4a",
+  "audio/x-m4a": "m4a",
+  "audio/aac": "aac",
+  "audio/x-aac": "aac",
   "audio/webm": "webm",
 };
+const GENERIC_AUDIO_MIME_TYPES = new Set(["application/octet-stream"]);
 
 export class StorageServiceError extends Error {
   constructor(message, status = 502) {
@@ -66,28 +70,50 @@ function assertImageContent(file) {
   }
 }
 
-function assertAudioContent(file) {
+function getAudioFormat(file) {
   const { buffer, mimetype } = file;
-  const isMpeg = (mimetype === "audio/mpeg" || mimetype === "audio/mp3")
-    && (
-      buffer.subarray(0, 3).toString("ascii") === "ID3"
-      || (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
-    );
-  const isWav = (mimetype === "audio/wav" || mimetype === "audio/x-wav")
+  const isAllowedMimeType = AUDIO_EXTENSIONS[mimetype] || GENERIC_AUDIO_MIME_TYPES.has(mimetype);
+  const isMpeg = buffer.subarray(0, 3).toString("ascii") === "ID3"
+    || (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0);
+  const isWav = (
+    mimetype === "audio/wav"
+    || mimetype === "audio/x-wav"
+    || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
+  )
     && buffer.length >= 12
     && buffer.toString("ascii", 0, 4) === "RIFF"
     && buffer.toString("ascii", 8, 12) === "WAVE";
-  const isOgg = mimetype === "audio/ogg" && buffer.toString("ascii", 0, 4) === "OggS";
-  const isMp4 = mimetype === "audio/mp4"
+  const isOgg = (
+    mimetype === "audio/ogg" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
+  ) && buffer.toString("ascii", 0, 4) === "OggS";
+  const isMp4 = (
+    mimetype === "audio/mp4"
+    || mimetype === "audio/x-m4a"
+    || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
+  )
     && buffer.length >= 12
     && buffer.toString("ascii", 4, 8) === "ftyp";
-  const isWebm = mimetype === "audio/webm"
+  const isAac = (
+    mimetype === "audio/aac" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
+  ) && buffer.length >= 2
+    && buffer[0] === 0xff
+    && (buffer[1] & 0xf6) === 0xf0;
+  const isWebm = (
+    mimetype === "audio/webm" || GENERIC_AUDIO_MIME_TYPES.has(mimetype)
+  )
     && buffer.length >= 4
     && buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
 
-  if (!AUDIO_EXTENSIONS[mimetype] || !(isMpeg || isWav || isOgg || isMp4 || isWebm)) {
+  if (!isAllowedMimeType || !(isMpeg || isWav || isOgg || isMp4 || isAac || isWebm)) {
     throw new StorageServiceError("Tệp tải lên không phải audio hợp lệ thuộc định dạng được hỗ trợ.", 400);
   }
+
+  if (isAac) return { extension: "aac", contentType: "audio/aac" };
+  if (isMpeg) return { extension: "mp3", contentType: "audio/mpeg" };
+  if (isWav) return { extension: "wav", contentType: "audio/wav" };
+  if (isOgg) return { extension: "ogg", contentType: "audio/ogg" };
+  if (isMp4) return { extension: "m4a", contentType: "audio/mp4" };
+  return { extension: "webm", contentType: "audio/webm" };
 }
 
 export async function uploadPoiImage(file, poiCode) {
@@ -97,10 +123,9 @@ export async function uploadPoiImage(file, poiCode) {
 }
 
 export async function uploadPoiAudio(file, poiCode, language) {
-  const extension = AUDIO_EXTENSIONS[file.mimetype];
-  assertAudioContent(file);
-  const path = `audio/${poiCode}/${language}/${randomUUID()}.${extension}`;
-  return uploadStorageObject(path, file.buffer, file.mimetype);
+  const format = getAudioFormat(file);
+  const path = `audio/${poiCode}/${language}/${randomUUID()}.${format.extension}`;
+  return uploadStorageObject(path, file.buffer, format.contentType);
 }
 
 async function uploadStorageObject(path, buffer, contentType) {

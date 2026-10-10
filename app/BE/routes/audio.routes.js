@@ -4,14 +4,16 @@ import { listAudio, createAudio, publishAudio, deleteAudio } from "../controller
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const r = Router();
+const acceptedAudioMimeTypes = new Set([
+  "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+  "audio/ogg", "audio/mp4", "audio/x-m4a", "audio/aac", "audio/x-aac", "audio/webm",
+  "application/octet-stream",
+]);
 const audioUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 30 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, callback) => {
-    if (![
-      "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
-      "audio/ogg", "audio/mp4", "audio/webm",
-    ].includes(file.mimetype)) {
+    if (!acceptedAudioMimeTypes.has(file.mimetype)) {
       return callback(new Error("Chỉ hỗ trợ audio MP3, WAV, OGG, M4A hoặc WebM."));
     }
     return callback(null, true);

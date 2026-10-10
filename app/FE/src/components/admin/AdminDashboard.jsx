@@ -159,12 +159,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [audioPoiId, setAudioPoiId] = useState(null);
     const [aiScripts, setAiScripts] = useState({ vi: "", en: "", zh: "" });
     const [aiLang, setAiLang] = useState("vi");
+    const [aiTranslationsSource, setAiTranslationsSource] = useState("");
     const [isTranslatingScript, setIsTranslatingScript] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedAudio, setGeneratedAudio] = useState(null);
     const [audioSavingId, setAudioSavingId] = useState(null);
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
-    const [isSavingGeneratedAudio, setIsSavingGeneratedAudio] = useState(false);
     const audioFileInputRef = useRef(null);
     const pendingAudioLanguage = useRef(null);
     const pendingAudioPoiId = useRef(null);
@@ -231,13 +230,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         })();
         return () => { cancelled = true; };
     }, []);
-
-    useEffect(() => {
-        const url = generatedAudio?.url;
-        return () => {
-            if (url) URL.revokeObjectURL(url);
-        };
-    }, [generatedAudio?.url]);
 
     // 2. POIs
     useEffect(() => {
@@ -607,6 +599,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                 en: translations.en.trim(),
                 zh: translations.zh.trim(),
             }));
+            setAiTranslationsSource(aiScripts.vi.trim());
             showToast("Đã dịch kịch bản sang tiếng Anh và tiếng Trung");
         } catch (err) {
             showToast(err.message, "error");
@@ -616,51 +609,59 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     };
 
     const generateAiAudio = async () => {
-        if (!aiScript.trim()) return showToast(`Nhập kịch bản ${aiLang.toUpperCase()} trước khi sinh audio`, "error");
+        const sourceScript = aiScripts.vi.trim();
+        if (!sourceScript) return showToast("Nhập kịch bản tiếng Việt trước khi tạo 3 audio", "error");
         if (!audioPoiId) return showToast("Chọn POI trước", "error");
 
         setIsGenerating(true);
+        const poiDbId = audioPoiId;
+        const savedLanguages = [];
         try {
-            const audio = await api.generateAudio(aiScript.trim(), aiLang);
-            const blob = audio.type ? audio : new Blob([audio], { type: "audio/mpeg" });
-            const duration = await getAudioDuration(blob);
-            const url = URL.createObjectURL(blob);
-            setGeneratedAudio({
-                url,
-                blob,
-                language: aiLang,
-                poiDbId: audioPoiId,
-                duration,
-                saved: false,
-            });
-            showToast(`Đã tạo MP3 ${aiLang.toUpperCase()}; nghe thử hoặc tải file về máy`);
+            let scripts = aiScripts;
+            if (aiTranslationsSource !== sourceScript) {
+                const response = await api.translateAudioScript(sourceScript);
+                const translations = response.translations;
+                if (!translations?.en?.trim() || !translations?.zh?.trim()) {
+                    throw new Error("Agent chưa trả về đầy đủ bản dịch tiếng Anh và tiếng Trung");
+                }
+                scripts = {
+                    vi: sourceScript,
+                    en: translations.en.trim(),
+                    zh: translations.zh.trim(),
+                };
+                setAiScripts(scripts);
+                setAiTranslationsSource(sourceScript);
+            }
+
+            for (const { code } of LANGUAGES) {
+                const audio = await api.generateAudio(scripts[code].trim(), code);
+                const blob = audio.type ? audio : new Blob([audio], { type: "audio/mpeg" });
+                const duration = await getAudioDuration(blob);
+                await api.createAudio({
+                    poiDbId,
+                    language: code,
+                    source: "ai",
+                    duration,
+                }, blob, `poi-audio-${code}.mp3`);
+                savedLanguages.push(code.toUpperCase());
+            }
+
+            if (audioPoiId === poiDbId) await reloadAudio();
+            showToast("Đã tạo và lưu audio VI, EN, ZH vào POI");
         } catch (err) {
-            showToast(err.message, "error");
+            let message = savedLanguages.length
+                ? `Đã lưu ${savedLanguages.join(", ")}; không thể hoàn tất 3 audio: ${err.message}`
+                : err.message;
+            if (savedLanguages.length && audioPoiId === poiDbId) {
+                try {
+                    await reloadAudio();
+                } catch (refreshError) {
+                    message += ` Không tải lại được danh sách audio: ${refreshError.message}`;
+                }
+            }
+            showToast(message, "error");
         } finally {
             setIsGenerating(false);
-        }
-    };
-
-    const saveGeneratedAudio = async () => {
-        if (!generatedAudio) return;
-        setIsSavingGeneratedAudio(true);
-        try {
-            const result = await api.createAudio({
-                poiDbId: generatedAudio.poiDbId,
-                language: generatedAudio.language,
-                source: "ai",
-                duration: generatedAudio.duration,
-            }, generatedAudio.blob, `poi-audio-${generatedAudio.language}.mp3`);
-            setGeneratedAudio((current) => current ? { ...current, saved: true } : current);
-            if (audioPoiId === generatedAudio.poiDbId) await reloadAudio();
-            showToast(
-                result.warning || "Đã lưu audio AI lên hệ thống",
-                result.warning ? "error" : "ok"
-            );
-        } catch (err) {
-            showToast(err.message, "error");
-        } finally {
-            setIsSavingGeneratedAudio(false);
         }
     };
 
@@ -1188,7 +1189,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <input
                                 ref={audioFileInputRef}
                                 type="file"
-                                accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/webm"
+                                accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/x-aac,audio/webm"
                                 hidden
                                 onChange={handleAudioFileSelect}
                             />
@@ -1293,7 +1294,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="ai-note" style={{ marginBottom: 12 }}>
                                         <Sparkles size={14} />
                                         <div>
-                                            Nhập kịch bản tiếng Việt rồi dịch sang EN/ZH. Chọn ngôn ngữ để tạo MP3 với voice tương ứng; audio chỉ được nghe/tải thử, chưa lưu lên server.
+                                            Nhập kịch bản tiếng Việt. Một lần bấm sẽ dịch sang EN/ZH nếu cần, tạo và lưu cả 3 audio vào POI; các bản audio sẽ hiện ở danh sách phía trên.
                                         </div>
                                     </div>
                                     <div className="script-box">
@@ -1304,10 +1305,13 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                 ? "Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn..."
                                                 : `Nhập hoặc dịch kịch bản sang ${aiLang.toUpperCase()}...`}
                                             value={aiScript}
-                                            onChange={(e) => setAiScripts((previous) => ({
-                                                ...previous,
-                                                [aiLang]: e.target.value,
-                                            }))}
+                                            onChange={(e) => {
+                                                setAiScripts((previous) => ({
+                                                    ...previous,
+                                                    [aiLang]: e.target.value,
+                                                }));
+                                                if (aiLang === "vi") setAiTranslationsSource("");
+                                            }}
                                             style={{
                                                 width: "100%", padding: 12, borderRadius: 10,
                                                 border: "1px solid var(--dash-border)",
@@ -1321,33 +1325,16 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             disabled={isTranslatingScript || isGenerating || !aiScripts.vi.trim()}>
                                             {isTranslatingScript ? <><span className="btn-spinner" /> Đang dịch...</> : <><Languages size={14} /> Dịch VI → EN/ZH</>}
                                         </button>
-                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating || isTranslatingScript || !currentAudioPoi}>
-                                            {isGenerating ? <><span className="btn-spinner" /> Đang sinh...</> : <><Sparkles size={14} /> Sinh audio bằng AI</>}
+                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating || isTranslatingScript || !currentAudioPoi || !aiScripts.vi.trim()}>
+                                            {isGenerating ? <><span className="btn-spinner" /> Đang tạo 3 audio...</> : <><Sparkles size={14} /> Sinh &amp; lưu 3 audio</>}
                                         </button>
-                                        <button className="btn-secondary-admin" onClick={() => setAiScripts({ vi: "", en: "", zh: "" })} disabled={isGenerating || isTranslatingScript}>
+                                        <button className="btn-secondary-admin" onClick={() => {
+                                            setAiScripts({ vi: "", en: "", zh: "" });
+                                            setAiTranslationsSource("");
+                                        }} disabled={isGenerating || isTranslatingScript}>
                                             Xoá tất cả kịch bản
                                         </button>
                                     </div>
-                                    {generatedAudio && (
-                                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
-                                            <audio controls src={generatedAudio.url} />
-                                            <a className="btn-secondary-admin" href={generatedAudio.url}
-                                                download={`poi-audio-${generatedAudio.language}.mp3`}>
-                                                <Download size={14} /> Tải MP3
-                                            </a>
-                                            <button
-                                                className="btn-primary-admin"
-                                                onClick={saveGeneratedAudio}
-                                                disabled={generatedAudio.saved || isSavingGeneratedAudio}
-                                            >
-                                                {isSavingGeneratedAudio
-                                                    ? <><span className="btn-spinner" /> Đang lưu...</>
-                                                    : generatedAudio.saved
-                                                        ? <><Check size={14} /> Đã lưu</>
-                                                        : <><Save size={14} /> Lưu audio vào POI</>}
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>

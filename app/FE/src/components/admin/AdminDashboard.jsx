@@ -139,25 +139,10 @@ const CATEGORY_OPTIONS = [
 ];
 
 const DEFAULT_POI_ZONES = [
-    "Lối vào chính",
-    "Lối vào phụ",
-    "Khu di tích lịch sử",
-    "Khu thú lớn",
-    "Khu thú ăn thịt",
-    "Khu thú săn mồi",
-    "Khu thú lớn ngập nước",
-    "Khu thú ăn cỏ",
-    "Khu móng guốc",
-    "Khu linh trưởng",
-    "Khu chim cảnh",
-    "Vườn thực vật",
-    "Khu trò chơi",
-    "Sân khấu trung tâm",
-    "Điểm Check-in",
-    "Dịch vụ vận chuyển",
-    "Ẩm thực & Giải khát",
-    "Tiện ích vệ sinh",
-    "Hỗ trợ y tế",
+    "Lối vào chính", "Lối vào phụ", "Khu di tích lịch sử", "Khu thú lớn", "Khu thú ăn thịt",
+    "Khu thú săn mồi", "Khu thú lớn ngập nước", "Khu thú ăn cỏ", "Khu móng guốc", "Khu linh trưởng",
+    "Khu chim cảnh", "Vườn thực vật", "Khu trò chơi", "Sân khấu trung tâm", "Điểm Check-in",
+    "Dịch vụ vận chuyển", "Ẩm thực & Giải khát", "Tiện ích vệ sinh", "Hỗ trợ y tế",
 ];
 
 const ROLE_OPTIONS = [
@@ -214,6 +199,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const pendingAudioLanguage = useRef(null);
     const pendingAudioPoiId = useRef(null);
     const aiScript = aiScripts[aiLang];
+
     /* ---- UC7: Analytics ---- */
     const [analytics, setAnalytics] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -259,8 +245,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     /* =========================================================
        LOAD DỮ LIỆU
        ========================================================= */
-
-    // 1. Admins
     useEffect(() => {
         const tracks = generatedAudio?.tracks || [];
         return () => tracks.forEach(({ url }) => URL.revokeObjectURL(url));
@@ -282,7 +266,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; };
     }, []);
 
-    // 2. POIs
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -304,7 +287,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; };
     }, []);
 
-    // 3. Analytics
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -321,7 +303,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; };
     }, []);
 
-    // 4. Audit logs
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -338,7 +319,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; };
     }, []);
 
-    // 5. Audio — reload khi audioPoiId thay đổi
     useEffect(() => {
         if (!audioPoiId) {
             setAudioList([]);
@@ -556,8 +536,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                 }
                 return;
             }
-            setEditingPoi(null);
-            setPoiForm(null);
         } catch (err) {
             showToast(err.message, "error");
         } finally {
@@ -1085,9 +1063,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý POI &amp; Hạ Tầng</h1>
-                                    <p className="admin-tab-desc">
-                                        UC5 — Tạo, cập nhật POI với toạ độ GPS, bán kính geofence và mô tả đa ngôn ngữ (VI/EN/ZH)
-                                    </p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <button onClick={startCreatePoi} className="btn-primary-admin">
@@ -1231,9 +1206,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý Audio &amp; Nội dung AI</h1>
-                                    <p className="admin-tab-desc">
-                                        UC6 — Upload hoặc tạo audio VI/EN/ZH; audio đã lưu có thể nghe, thay thế hoặc xóa
-                                    </p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <select
@@ -1471,7 +1443,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Phân Tích &amp; Thống Kê</h1>
-                                    <p className="admin-tab-desc">UC7 — Theo dõi lượt dùng, phân bổ ngôn ngữ, mức độ phổ biến POI và tải gói offline</p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <div className="admin-filter-tabs">
@@ -1633,7 +1604,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Tài Khoản Admin &amp; Phân Quyền</h1>
-                                    <p className="admin-tab-desc">UC7 — Thêm, sửa, vô hiệu hoá tài khoản; gán quyền và MFA</p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <button className="btn-primary-admin" onClick={() => setShowAddAdminModal(true)}>
@@ -1733,9 +1703,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="admin-tab-head">
                                 <div>
                                     <h1 className="admin-tab-title">Audit Log</h1>
-                                    <p className="admin-tab-desc">
-                                        UC4/UC7 — Mọi sự kiện đăng nhập, thay đổi nội dung, phân quyền đều được ghi nhật ký
-                                    </p>
                                 </div>
                             </div>
 
@@ -1787,7 +1754,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     {editingPoi === "new" ? "Thêm POI mới" : `Chỉnh sửa ${poiForm.id}`}
                                 </h2>
                                 <p className="admin-modal__desc">
-                                Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI cùng ảnh sẽ được lưu vào database và Supabase Storage.
+                                    Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI cùng ảnh sẽ được lưu vào database và Supabase Storage.
                                 </p>
                             </div>
                             <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); clearPoiImages(); }} disabled={savingPoi}>

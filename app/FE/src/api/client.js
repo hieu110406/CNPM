@@ -129,4 +129,10 @@ export const api = {
     updateAdmin: (id, data) => request(`/admin-accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     getAnalytics: () => request("/analytics/overview"),
     getAuditLogs: () => request("/audit-logs"),
+
+    // API Bổ trợ cho Khu Nổi Bật (Tự động)
+    getTopPopularPois: (language = "vi") =>
+        request(`/analytics/top-popular?lang=${encodeURIComponent(language)}`),
+    getCategories: () =>
+        request("/analytics/categories"),
 };

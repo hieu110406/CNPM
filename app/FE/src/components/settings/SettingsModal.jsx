@@ -131,8 +131,8 @@ export default function SettingsModal() {
               <label className="settings-label">
                 <span>{t("tabLang")}</span>
                 <span className="settings-label__hint">
-                  Chọn ngôn ngữ hiển thị trên toàn bộ ứng dụng
-                </span>
+                {t("settings.languageHint")}
+</span>
               </label>
 
               <div className="lang-grid">

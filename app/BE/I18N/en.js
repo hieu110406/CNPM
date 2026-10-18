@@ -51,7 +51,9 @@ const EN = {
 
   settings: {
     title: "System Settings",
-    description: "Customize language, text size, and display preferences",
+    description:
+      "Customize language, text size, and display preferences",
+    languageHint: "Choose the display language for the entire application",
 
     tabs: {
       language: "Language",
@@ -76,7 +78,8 @@ const EN = {
 
     motion: {
       label: "Smooth Animations",
-      description: "Enable fluid panning, zooming, and transitions",
+      description:
+        "Enable fluid panning, zooming, and transitions",
     },
 
     audio: {
@@ -136,6 +139,14 @@ const EN = {
   },
 
   map: {
+    canvas: {
+      hint: "Drag to move • Scroll to zoom in / out",
+      start: "Start",
+      destination: "Destination",
+      imageAlt: "Saigon Zoo and Botanical Gardens map",
+      clearRoute: "Clear navigation route",
+    },
+
     legend: {
       title: "Location Categories",
       reset: "Clear filter",
@@ -145,7 +156,8 @@ const EN = {
       gate: "Gate",
       close: "Close",
       viewDetails: "View details & photos",
-      viewDetailsTitle: "Open the detailed info panel and photo album",
+      viewDetailsTitle:
+        "Open the detailed info panel and photo album",
       viewMore: "View more",
       didYouKnow: "Did you know?",
       feedingTime: "Feeding time",
@@ -206,8 +218,7 @@ const EN = {
     giraffe: {
       name: "Giraffe",
       zone: "Big Animals Zone",
-      desc:
-        "A place to observe giraffes in their habitat.",
+      desc: "A place to observe giraffes in their habitat.",
     },
 
     tiger: {
@@ -227,22 +238,19 @@ const EN = {
     bear: {
       name: "Asiatic Black Bear & Sun Bear",
       zone: "Predators Zone",
-      desc:
-        "Two bear species native to Asia.",
+      desc: "Two bear species native to Asia.",
     },
 
     rhino_hippo: {
       name: "Hippopotamus",
       zone: "Big Animals Zone",
-      desc:
-        "A pool where hippos can swim and cool off.",
+      desc: "A pool where hippos can swim and cool off.",
     },
 
     rhino: {
       name: "Rhinoceros",
       zone: "Grazing Animals Zone",
-      desc:
-        "Explore the rhinoceros area.",
+      desc: "Explore the rhinoceros area.",
     },
 
     deer_area: {
@@ -269,8 +277,7 @@ const EN = {
     birds_pool: {
       name: "Water Birds",
       zone: "Bird Zone",
-      desc:
-        "A pond where waterfowl swim and forage.",
+      desc: "A pond where waterfowl swim and forage.",
     },
 
     botanical_garden: {
@@ -297,8 +304,7 @@ const EN = {
     photo_spot_bridge: {
       name: "Glass Bridge & Lotus Garden",
       zone: "Photo Spot",
-      desc:
-        "A popular spot for taking photos at the zoo.",
+      desc: "A popular spot for taking photos at the zoo.",
     },
 
     tram_station: {

@@ -338,6 +338,27 @@ const ZH = {
       desc: "为游客提供基本医疗和紧急救助服务。",
     },
   },
+
+  route: {
+    startBtn: "路线导航",
+    mapChoice: "在地图上选择2个点",
+    pickTwoPoints: "在地图上选择起点和终点",
+    complete: "已找到最短路线",
+    distance: "距离",
+    selectStart: "请在地图上选择起点",
+    selectDestination: "请在地图上选择终点",
+    finding: "正在规划路线...",
+    cancelBtn: "取消导航",
+    errorSamePoint: "起点和终点不能相同。",
+    errorMissingPoint: "请选择起点和终点。",
+    errorNotFound: "未找到所选景点。",
+    errorNoRoute: "两点之间未找到可行路线。",
+    errorGeneric: "暂时无法规划路线，请重试。",
+  },
 };
 
+<<<<<<< HEAD
 export default ZH;
+=======
+export default ZH;
+>>>>>>> main

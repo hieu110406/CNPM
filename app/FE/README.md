@@ -75,3 +75,7 @@ app/
 ## Lưu ý
 
 Đây là cấu trúc chuẩn hóa cho dự án tương lai, phù hợp để phát triển lâu dài. Khi app đang triển khai, có thể chưa cần theo đúng 100% ngay từ đầu, nhưng nên giữ nguyên hướng tổ chức này để dễ mở rộng.
+
+## POI trên bản đồ
+
+Bản đồ tải POI đang hoạt động từ `GET /api/pois/public` và dùng dữ liệu tĩnh làm dự phòng khi backend không truy cập được. Để nạp các POI mặc định vào database lần đầu, chạy `npm run seed:pois` trong thư mục `app/BE`; lệnh này chỉ thêm POI chưa có và đồng bộ chúng vào `map_node`.

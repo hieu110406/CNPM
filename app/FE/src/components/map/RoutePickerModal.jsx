@@ -3,42 +3,36 @@
 
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Loader2, ChevronRight } from "lucide-react";
+import { X, Navigation, Loader2, ChevronRight, MapPinned } from "lucide-react";
 import { MARKERS } from "./mapData";
+import { shortestPath } from "./mapGraph";
+import { useSettings } from "../../context/SettingsContext";
 import "./routePickerModal.css";
 
-const BASE = "http://localhost:5000/api";
-
-async function apiFindPath(from, to) {
-  const res = await fetch(`${BASE}/pathfinding`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Lỗi tìm đường");
-  return data;
-}
-
-function RoutePickerModalInner({ destination, onClose, onPathReady }) {
+function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onStartRouteMode }) {
+  const { t } = useSettings();
   const [fromId, setFromId]   = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
   const [result, setResult]   = useState(null);
 
-  const nodeOptions = MARKERS.filter((m) => m.id !== destination?.id);
-  const fromName    = MARKERS.find((m) => m.id === fromId)?.name ?? "";
+  const nodeOptions = markers.filter((m) => m.id !== destination?.id);
+  const fromName    = markers.find((m) => m.id === fromId)?.name ?? "";
 
-  const handleFind = useCallback(async () => {
+  const handleFind = useCallback(() => {
     if (!fromId) { setError("Vui lòng chọn điểm xuất phát."); return; }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const data = await apiFindPath(fromId, destination.id);
-      setResult(data);
+      const data = shortestPath(fromId, destination.id);
+      if (!data) {
+        setError("Không tìm thấy đường đi giữa 2 địa điểm này.");
+      } else {
+        setResult(data);
+      }
     } catch (e) {
-      setError(e.message);
+      setError(e.message || "Lỗi tìm đường");
     } finally {
       setLoading(false);
     }
@@ -114,6 +108,19 @@ function RoutePickerModalInner({ destination, onClose, onPathReady }) {
             }
           </button>
 
+          {/* Chọn 2 điểm ngay trên bản đồ */}
+          <button
+            type="button"
+            className="rp-pick-btn"
+            onClick={() => {
+              onStartRouteMode?.();
+              onClose();
+            }}
+          >
+            <MapPinned size={14} />
+            {t("route.mapChoice", "Chọn 2 điểm trên bản đồ")}
+          </button>
+
           {/* Lỗi */}
           {error && <div className="rp-error">{error}</div>}
 
@@ -170,13 +177,15 @@ function RoutePickerModalInner({ destination, onClose, onPathReady }) {
   );
 }
 
-export default function RoutePickerModal({ destination, onClose, onPathReady }) {
+export default function RoutePickerModal({ destination, markers = MARKERS, onClose, onPathReady, onStartRouteMode }) {
   if (!destination || typeof document === "undefined") return null;
   return createPortal(
     <RoutePickerModalInner
       destination={destination}
+      markers={markers}
       onClose={onClose}
       onPathReady={onPathReady}
+      onStartRouteMode={onStartRouteMode}
     />,
     document.body
   );

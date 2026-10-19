@@ -185,6 +185,27 @@
   cursor: not-allowed;
 }
 
+/* ── Nút "Chọn 2 điểm trên bản đồ" (outline) ── */
+.rp-pick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1.5px solid #2e7d32;
+  background: #ffffff;
+  color: #2e7d32;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.rp-pick-btn:hover {
+  background: #e8f5e9;
+}
+
 /* Spinner */
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

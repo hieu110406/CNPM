@@ -1,9 +1,13 @@
 import express from "express";
-import { findShortestPath, listNodes } from "../controllers/pathfinding.controller.js";
+import {
+  findShortestPath,
+  listNodes,
+} from "../controllers/pathfinding.controller.js";
 
 const router = express.Router();
 
 router.get("/nodes", listNodes);
+router.get("/", findShortestPath);
 router.post("/", findShortestPath);
 
 export default router;

@@ -107,6 +107,21 @@
   pointer-events: auto;
 }
 
+.poi-load-warning {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 6px;
+  max-width: min(420px, calc(100vw - 52px));
+  padding: 7px 11px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
 .filter-chip {
   display: flex;
   flex-shrink: 0;
@@ -388,6 +403,75 @@
   backdrop-filter: blur(12px);
   pointer-events: none;
   transition: opacity 0.2s;
+}
+
+.map-route-start,
+.map-route-cancel {
+  position: absolute;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #047857;
+  box-shadow: var(--sh-lg);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.map-route-start {
+  top: 20px;
+  right: 20px;
+}
+
+.map-route-cancel {
+  top: 20px;
+  right: 20px;
+  bottom: auto;
+  color: #b91c1c;
+}
+
+.map-route-start:hover {
+  background: #ecfdf5;
+}
+
+.map-route-cancel:hover {
+  background: #fef2f2;
+}
+
+.map-route-status {
+  position: absolute;
+  z-index: 25;
+  top: 20px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(460px, calc(100% - 230px));
+  padding: 9px 16px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #334155;
+  box-shadow: var(--sh-lg);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
+.map-route-status__error {
+  color: #b91c1c;
+  font-weight: 500;
 }
 
 /* ==========================================================================
@@ -700,6 +784,34 @@
   font-size: 10.5px;
   color: #94a3b8;
   font-variant-numeric: tabular-nums;
+}
+
+.poi-audio-control {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.poi-audio-control__label {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.poi-audio-control audio {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+}
+
+.poi-audio-control__error {
+  color: #b91c1c;
 }
 
 /* Nút hành động */

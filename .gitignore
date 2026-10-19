@@ -33,3 +33,6 @@ app/BE/package.json
 app/BE/package.json
 app/BE/package-lock.json
 app/BE/package.json
+app/agent/.env.example
+app/FE/.env.example
+app/BE/.env.example

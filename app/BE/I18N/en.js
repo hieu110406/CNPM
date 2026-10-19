@@ -342,6 +342,23 @@ const EN = {
         "A station providing first aid and visitor assistance.",
     },
   },
+
+  route: {
+    startBtn: "Find Route",
+    mapChoice: "Pick 2 points on the map",
+    pickTwoPoints: "Select a starting point and a destination on the map",
+    complete: "Shortest route found",
+    distance: "Distance",
+    selectStart: "Select starting point on the map",
+    selectDestination: "Select destination on the map",
+    finding: "Finding route...",
+    cancelBtn: "Cancel route",
+    errorSamePoint: "Starting point and destination cannot be the same.",
+    errorMissingPoint: "Please select both starting point and destination.",
+    errorNotFound: "Selected attraction not found.",
+    errorNoRoute: "No route found between these two locations.",
+    errorGeneric: "Unable to find a route right now. Please try again.",
+  },
 };
 
 export default EN;

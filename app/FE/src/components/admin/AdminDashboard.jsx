@@ -1,14 +1,14 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
     LayoutDashboard, MapPin, Headphones, BarChart3, Users, ShieldCheck,
     Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
-    CheckCircle2, Clock, Download, Upload, Sparkles, Play, Pause,
+    CheckCircle2, Clock, Download, Upload, Sparkles,
     Languages, FileAudio, History, Activity, TrendingUp, ArrowUpRight,
-    Calendar, Edit3, Globe, ExternalLink, Eye, Volume2, KeyRound,
-    UserCog, PawPrint, TreePine, Info, Server, Zap, FileText, Mic,
-    RefreshCw, Save, Lock, Unlock,
+    Edit3, Globe, ExternalLink, KeyRound, UserCog, Info, Server, Zap,
+    FileText, Mic, RefreshCw, Save, Lock, Unlock,
 } from "lucide-react";
-import { MARKERS } from "../map/mapData";
+import { api } from "../../api/client";
+import PoiMapPicker from "./PoiMapPicker";
 import "./dashboard.css";
 
 
@@ -18,78 +18,152 @@ const LANGUAGES = [
     { code: "zh", label: "中文", short: "ZH" },
 ];
 
+function getPoiTranslationRequest(form) {
+    return {
+        poi: {
+            name: form.name.trim(),
+            zone: form.zone.trim(),
+            category: form.category,
+            status: form.isActive ? "active" : "closed",
+        },
+        descriptionsVi: {
+            short: form.translations.vi.short.trim(),
+            detail: form.translations.vi.detail.trim(),
+        },
+    };
+}
+
+function getPoiTranslationSource(form) {
+    return JSON.stringify({
+        name: form.name.trim(),
+        zone: form.zone.trim(),
+        short: form.translations.vi.short.trim(),
+        detail: form.translations.vi.detail.trim(),
+    });
+}
+
+function mergePoiTranslations(form, translations) {
+    const nextTranslations = { ...form.translations };
+    const fieldTranslations = {};
+    for (const language of ["en", "zh"]) {
+        fieldTranslations[language] = {};
+        for (const field of ["name", "zone"]) {
+            const value = translations?.poi?.[field]?.[language];
+            if (typeof value !== "string" || !value.trim()) {
+                throw new Error(`Agent chưa dịch trường ${field === "name" ? "tên POI" : "khu vực"} sang ${language.toUpperCase()}`);
+            }
+            fieldTranslations[language][field] = value.trim();
+        }
+        nextTranslations[language] = {
+            ...nextTranslations[language],
+            name: fieldTranslations[language].name,
+            zone: fieldTranslations[language].zone,
+        };
+    }
+    nextTranslations.vi = {
+        ...nextTranslations.vi,
+        name: form.name.trim(),
+        zone: form.zone.trim(),
+    };
+    for (const language of ["en", "zh"]) {
+        const translation = translations?.[language];
+        if (!translation?.short?.trim() || !translation?.detail?.trim()) {
+            throw new Error(`Agent chưa trả về đầy đủ thông tin POI cho ${language.toUpperCase()}`);
+        }
+        nextTranslations[language] = {
+            ...nextTranslations[language],
+            short: translation.short.trim(),
+            detail: translation.detail.trim(),
+        };
+    }
+    return { ...form, fieldTranslations, translations: nextTranslations };
+}
+
+function getPoiTranslations(form) {
+    return Object.fromEntries(LANGUAGES.map(({ code }) => [
+        code,
+        {
+            ...form.translations[code],
+            name: code === "vi"
+                ? form.name.trim()
+                : form.fieldTranslations?.[code]?.name || form.translations[code]?.name || null,
+            zone: code === "vi"
+                ? form.zone.trim()
+                : form.fieldTranslations?.[code]?.zone || form.translations[code]?.zone || null,
+        },
+    ]));
+}
+
+function getAudioDuration(file) {
+    const url = URL.createObjectURL(file);
+    return new Promise((resolve, reject) => {
+        const audio = new Audio();
+        let settled = false;
+        const timeout = window.setTimeout(
+            () => finish(null, new Error("Không đọc được metadata audio; hãy thử file MP3, WAV, OGG, M4A, AAC hoặc WebM hợp lệ.")),
+            10000
+        );
+        const finish = (duration, error) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            URL.revokeObjectURL(url);
+            if (error) {
+                reject(error);
+            } else if (Number.isFinite(duration) && duration > 0) {
+                resolve(Math.round(duration));
+            } else {
+                reject(new Error("Tệp audio không đọc được thời lượng hoặc không phải audio hợp lệ."));
+            }
+        };
+        audio.addEventListener("loadedmetadata", () => finish(audio.duration), { once: true });
+        audio.addEventListener(
+            "error",
+            () => finish(null, new Error("Trình duyệt không phát được tệp audio này. Hãy thử định dạng MP3, WAV, OGG, M4A, AAC hoặc WebM.")),
+            { once: true }
+        );
+        audio.src = url;
+    });
+}
+
 const CATEGORY_OPTIONS = [
-    { value: "animal", label: "Động vật" },
-    { value: "plant", label: "Thực vật" },
-    { value: "facility", label: "Cơ sở hạ tầng" },
-    { value: "service", label: "Dịch vụ" },
-    { value: "entrance", label: "Cổng vào" },
+    { value: "animal", labels: { vi: "Động vật", en: "Animal", zh: "动物" } },
+    { value: "plant", labels: { vi: "Thực vật", en: "Plant", zh: "植物" } },
+    { value: "building", labels: { vi: "Công trình & Cổng", en: "Buildings & gates", zh: "建筑与大门" } },
+    { value: "entertainment", labels: { vi: "Vui chơi & Giải trí", en: "Entertainment", zh: "娱乐设施" } },
+    { value: "restaurant", labels: { vi: "Nhà hàng & Cà phê", en: "Restaurants & cafés", zh: "餐厅与咖啡馆" } },
+    { value: "restroom", labels: { vi: "Nhà vệ sinh", en: "Restrooms", zh: "洗手间" } },
+    { value: "service", labels: { vi: "Dịch vụ", en: "Services", zh: "服务设施" } },
+    { value: "medical", labels: { vi: "Trạm y tế & Sơ cứu", en: "Medical & first aid", zh: "医疗与急救站" } },
+    { value: "photo", labels: { vi: "Điểm check-in", en: "Photo spot", zh: "拍照打卡点" } },
+];
+
+const DEFAULT_POI_ZONES = [
+    "Lối vào chính",
+    "Lối vào phụ",
+    "Khu di tích lịch sử",
+    "Khu thú lớn",
+    "Khu thú ăn thịt",
+    "Khu thú săn mồi",
+    "Khu thú lớn ngập nước",
+    "Khu thú ăn cỏ",
+    "Khu móng guốc",
+    "Khu linh trưởng",
+    "Khu chim cảnh",
+    "Vườn thực vật",
+    "Khu trò chơi",
+    "Sân khấu trung tâm",
+    "Điểm Check-in",
+    "Dịch vụ vận chuyển",
+    "Ẩm thực & Giải khát",
+    "Tiện ích vệ sinh",
+    "Hỗ trợ y tế",
 ];
 
 const ROLE_OPTIONS = [
     { value: "admin", label: "Admin", cls: "role-badge--super" },
 ];
 
-/* --- POI mẫu (lấy từ MARKERS để đồng bộ với bản đồ du khách) --- */
-const buildInitialPois = () =>
-    (MARKERS || []).slice(0, 10).map((m, i) => ({
-        id: m.id || `POI-${String(i + 1).padStart(3, "0")}`,
-        name: m.name || `Điểm tham quan ${i + 1}`,
-        category: m.type || "animal",
-        zone: m.zone || "Khu trung tâm",
-        latitude: (10.7875 + (i % 4) * 0.0003).toFixed(6),
-        longitude: (106.7050 + Math.floor(i / 4) * 0.0004).toFixed(6),
-        geofenceRadius: 15 + (i % 4) * 5, // mét
-        isActive: true,
-        updatedAt: "21-09-2026",
-        translations: {
-            vi: m.name || "",
-            en: i % 3 === 0 ? "" : `Guide for ${m.name || "POI"}`,
-            zh: i % 2 === 0 ? "" : `导览：${m.name || "景点"}`,
-        },
-    }));
-
-/* --- Audio track mẫu (bám AUDIO_TRACK trong ERD) --- */
-const buildInitialAudio = (pois) => {
-    const rows = [];
-    let idx = 1;
-    pois.forEach((p, i) => {
-        LANGUAGES.forEach((l, j) => {
-            // Bỏ trống 1 vài ô để demo trạng thái "missing"
-            const missing = (i + j) % 5 === 0;
-            if (missing) return;
-            rows.push({
-                id: `AUD-${String(idx++).padStart(3, "0")}`,
-                poiId: p.id,
-                language: l.code,
-                source: (i + j) % 2 === 0 ? "upload" : "ai",
-                duration: 60 + ((i * 7 + j * 13) % 90),
-                sizeMb: +(0.8 + ((i + j) % 5) * 0.3).toFixed(2),
-                status: j === 2 && i % 3 === 0 ? "draft" : "published",
-                publishedAt: j === 2 && i % 3 === 0 ? null : "20-09-2026",
-            });
-        });
-    });
-    return rows;
-};
-
-
-const INITIAL_ADMINS = [
-    { id: "AD-001", name: "Nguyễn Trung Hiếu", email: "hieu.nguyen@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "21-09-2026 08:14" },
-    { id: "AD-002", name: "Huỳnh Lê Khánh Ly", email: "ly.huynh@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "21-09-2026 07:52" },
-    { id: "AD-003", name: "Nguyễn Hoàng Khởi", email: "khoi.nguyen@saigonzoo.net", role: "admin", mfa: true, status: "active", lastLogin: "20-09-2026 17:30" },
-];
-
-/* --- Audit log mẫu (bám AUDIT_LOG) --- */
-const INITIAL_AUDIT = [
-    { id: 1, admin: "Nguyễn Trung Hiếu", type: "success", event: "Đăng nhập thành công", detail: "MFA hợp lệ • IP 113.161.x.x", time: "21-09-2026 08:14" },
-    { id: 2, admin: "Huỳnh Lê Khánh Ly", type: "change", event: "Cập nhật POI", detail: "POI-003 • thêm bản dịch tiếng Trung", time: "21-09-2026 08:02" },
-    { id: 3, admin: "Nguyễn Hoàng Khởi", type: "success", event: "Publish audio track", detail: "AUD-014 • EN • POI-002", time: "21-09-2026 07:58" },
-    { id: 4, admin: "Trần Minh Quân", type: "failed", event: "Đăng nhập thất bại (lần 5)", detail: "Khoá tài khoản 15 phút", time: "18-09-2026 09:05" },
-    { id: 5, admin: "Nguyễn Trung Hiếu", type: "lock", event: "Reset mật khẩu", detail: "AD-005 • link gửi qua email", time: "02-08-2026 14:25" },
-];
-
-/* --- Gói offline mẫu --- */
 const OFFLINE_PACKAGE = {
     version: "v2026.09.21",
     totalMb: 148.6,
@@ -98,41 +172,67 @@ const OFFLINE_PACKAGE = {
     downloads: { android: 1284, ios: 972, web: 305 },
 };
 
-/* =========================================================
-   1. COMPONENT
-   ========================================================= */
-
 export default function AdminDashboard({ user, onLogout, onGoToMap }) {
-    /* ---- State: điều hướng ---- */
+    /* ---- Điều hướng ---- */
     const [currentTab, setCurrentTab] = useState("overview");
     const [toast, setToast] = useState(null);
 
     /* ---- UC5: POI ---- */
-    const [poiList, setPoiList] = useState(buildInitialPois);
+    const [poiList, setPoiList] = useState([]);
+    const [poiLoading, setPoiLoading] = useState(false);
+    const [savingPoi, setSavingPoi] = useState(false);
     const [poiSearch, setPoiSearch] = useState("");
     const [poiCategory, setPoiCategory] = useState("all");
-    const [editingPoi, setEditingPoi] = useState(null); // null | object | "new"
+    const [editingPoi, setEditingPoi] = useState(null);
     const [poiLangTab, setPoiLangTab] = useState("vi");
     const [poiForm, setPoiForm] = useState(null);
     const [isTranslating, setIsTranslating] = useState(false);
+    const [translatedPoiSource, setTranslatedPoiSource] = useState("");
+    const [poiImages, setPoiImages] = useState([]);
+    const poiImagesRef = useRef([]);
+    const [removedPoiImageIds, setRemovedPoiImageIds] = useState([]);
+
+    useEffect(() => () => {
+        poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+        poiImagesRef.current = [];
+    }, []);
 
     /* ---- UC6: Audio ---- */
-    const [audioList, setAudioList] = useState(() => buildInitialAudio(buildInitialPois()));
-    const [audioPoiId, setAudioPoiId] = useState(() => buildInitialPois()[0]?.id);
-    const [aiScript, setAiScript] = useState("");
+    const [audioList, setAudioList] = useState([]);
+    const [audioLoading, setAudioLoading] = useState(false);
+    const [audioPoiId, setAudioPoiId] = useState(null);
+    const [aiScripts, setAiScripts] = useState({ vi: "", en: "", zh: "" });
     const [aiLang, setAiLang] = useState("vi");
+    const [aiTranslationsSource, setAiTranslationsSource] = useState("");
+    const [isTranslatingScript, setIsTranslatingScript] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [previewTrack, setPreviewTrack] = useState(null);
-
+    const [generatedAudio, setGeneratedAudio] = useState(null);
+    const [savedGeneratedLanguages, setSavedGeneratedLanguages] = useState([]);
+    const [isSavingGeneratedAudio, setIsSavingGeneratedAudio] = useState(false);
+    const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+    const audioFileInputRef = useRef(null);
+    const pendingAudioLanguage = useRef(null);
+    const pendingAudioPoiId = useRef(null);
+    const aiScript = aiScripts[aiLang];
     /* ---- UC7: Analytics ---- */
+    const [analytics, setAnalytics] = useState(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [range, setRange] = useState("7d");
     const [exporting, setExporting] = useState(false);
 
     /* ---- UC7: Admin accounts ---- */
-    const [adminList, setAdminList] = useState(INITIAL_ADMINS);
+    const [adminList, setAdminList] = useState([]);
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+    const [newAdminForm, setNewAdminForm] = useState({ name: "", email: "", password: "", mfa: true });
+    const [savingAdmin, setSavingAdmin] = useState(false);
+    const [showEditAdminModal, setShowEditAdminModal] = useState(false);
+    const [editAdminForm, setEditAdminForm] = useState(null);
+    const [savingEditAdmin, setSavingEditAdmin] = useState(false);
 
     /* ---- UC4: Audit log ---- */
-    const [auditLogs] = useState(INITIAL_AUDIT);
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [auditLoading, setAuditLoading] = useState(false);
 
     /* ---- Helper ---- */
     const showToast = (msg, tone = "ok") => {
@@ -140,155 +240,544 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setTimeout(() => setToast(null), 2600);
     };
 
-    /* ---- Derived ---- */
-    const filteredPois = useMemo(() => {
-        return poiList.filter((p) => {
-            const okCat = poiCategory === "all" || p.category === poiCategory;
-            const kw = poiSearch.trim().toLowerCase();
-            const okKw =
-                !kw ||
-                p.name.toLowerCase().includes(kw) ||
-                p.id.toLowerCase().includes(kw) ||
-                p.zone.toLowerCase().includes(kw);
-            return okCat && okKw;
-        });
-    }, [poiList, poiSearch, poiCategory]);
+    const clearPoiImages = () => {
+        poiImagesRef.current.forEach(({ url }) => URL.revokeObjectURL(url));
+        poiImagesRef.current = [];
+        setPoiImages([]);
+        setRemovedPoiImageIds([]);
+    };
 
-    const audioByPoi = useMemo(
-        () => audioList.filter((a) => a.poiId === audioPoiId),
-        [audioList, audioPoiId]
-    );
-
-    const currentAudioPoi = useMemo(
-        () => poiList.find((p) => p.id === audioPoiId),
-        [poiList, audioPoiId]
-    );
+    const removePoiImage = (index) => {
+        const removed = poiImagesRef.current[index];
+        if (!removed) return;
+        URL.revokeObjectURL(removed.url);
+        const remaining = poiImagesRef.current.filter((_, fileIndex) => fileIndex !== index);
+        poiImagesRef.current = remaining;
+        setPoiImages(remaining);
+    };
 
     /* =========================================================
-       UC5 — HÀNH ĐỘNG POI
+       LOAD DỮ LIỆU
+       ========================================================= */
+
+    // 1. Admins
+    useEffect(() => {
+        const tracks = generatedAudio?.tracks || [];
+        return () => tracks.forEach(({ url }) => URL.revokeObjectURL(url));
+    }, [generatedAudio]);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAdminLoading(true);
+            try {
+                const data = await api.getAdmins();
+                if (!cancelled) setAdminList(data);
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setAdminLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 2. POIs
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setPoiLoading(true);
+            try {
+                const data = await api.getPois();
+                if (!cancelled) {
+                    setPoiList(data);
+                    if (data.length > 0) {
+                        setAudioPoiId((prev) => prev || data[0].dbId);
+                    }
+                }
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setPoiLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 3. Analytics
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAnalyticsLoading(true);
+            try {
+                const data = await api.getAnalytics();
+                if (!cancelled) setAnalytics(data);
+            } catch (err) {
+                if (!cancelled) console.error("Analytics:", err.message);
+            } finally {
+                if (!cancelled) setAnalyticsLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 4. Audit logs
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setAuditLoading(true);
+            try {
+                const data = await api.getAuditLogs();
+                if (!cancelled) setAuditLogs(data);
+            } catch (err) {
+                if (!cancelled) console.error("Audit:", err.message);
+            } finally {
+                if (!cancelled) setAuditLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // 5. Audio — reload khi audioPoiId thay đổi
+    useEffect(() => {
+        if (!audioPoiId) {
+            setAudioList([]);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            setAudioLoading(true);
+            try {
+                const data = await api.getAudio(audioPoiId);
+                if (!cancelled) setAudioList(data);
+            } catch (err) {
+                if (!cancelled) showToast(err.message, "error");
+            } finally {
+                if (!cancelled) setAudioLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [audioPoiId]);
+
+    /* =========================================================
+       UC7 — ADMIN
+       ========================================================= */
+    const handleCreateAdmin = async (e) => {
+        e.preventDefault();
+        if (!newAdminForm.name.trim()) return showToast("Vui lòng nhập họ tên", "error");
+        if (!newAdminForm.email.trim()) return showToast("Vui lòng nhập email", "error");
+        if (newAdminForm.password.length < 6) return showToast("Mật khẩu tối thiểu 6 ký tự", "error");
+
+        setSavingAdmin(true);
+        try {
+            const created = await api.createAdmin(newAdminForm);
+            setAdminList((prev) => [...prev, created]);
+            setShowAddAdminModal(false);
+            setNewAdminForm({ name: "", email: "", password: "", mfa: true });
+            showToast("Đã tạo tài khoản mới");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setSavingAdmin(false);
+        }
+    };
+
+    const handleOpenEditAdmin = (a) => {
+        setEditAdminForm({
+            dbId: a.dbId, id: a.id, name: a.name,
+            email: a.email, mfa: a.mfa, status: a.status,
+        });
+        setShowEditAdminModal(true);
+    };
+
+    const handleSaveEditAdmin = async (e) => {
+        e.preventDefault();
+        if (!editAdminForm.name.trim()) return showToast("Vui lòng nhập họ tên", "error");
+        if (!editAdminForm.email.trim()) return showToast("Vui lòng nhập email", "error");
+
+        setSavingEditAdmin(true);
+        try {
+            const updated = await api.updateAdmin(editAdminForm.dbId, {
+                name: editAdminForm.name,
+                email: editAdminForm.email,
+                mfa: editAdminForm.mfa,
+                status: editAdminForm.status,
+            });
+            setAdminList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+            setShowEditAdminModal(false);
+            setEditAdminForm(null);
+            showToast("Đã cập nhật tài khoản");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setSavingEditAdmin(false);
+        }
+    };
+
+    const handleDeactivateAdmin = async (a) => {
+        if (!window.confirm(`Vô hiệu hoá tài khoản ${a.email}?`)) return;
+        try {
+            await api.deactivateAdmin(a.dbId);
+            setAdminList((prev) =>
+                prev.map((x) => (x.id === a.id ? { ...x, status: "deactivated" } : x))
+            );
+            showToast("Đã vô hiệu hoá tài khoản");
+        } catch (err) {
+            showToast(err.message, "error");
+        }
+    };
+
+    /* =========================================================
+       UC5 — POI
        ========================================================= */
     const startCreatePoi = () => {
+        const maxNum = poiList.reduce((max, p) => {
+            const num = parseInt(p.id?.replace("POI-", "") || "0", 10);
+            return isNaN(num) ? max : Math.max(max, num);
+        }, 0);
+        const nextId = `POI-${String(maxNum + 1).padStart(3, "0")}`;
+
         setPoiForm({
-            id: `POI-${String(poiList.length + 1).padStart(3, "0")}`,
-            name: "",
-            category: "animal",
-            zone: "",
-            latitude: "10.787500",
-            longitude: "106.705000",
-            geofenceRadius: 20,
-            isActive: true,
-            translations: { vi: "", en: "", zh: "" },
+            id: nextId, name: "", category: "animal", zone: "",
+            latitude: "10.787500", longitude: "106.705000",
+            mapX: 50, mapY: 50,
+            geofenceRadius: 20, isActive: true,
+            translations: {
+                vi: { short: "", detail: "" },
+                en: { short: "", detail: "" },
+                zh: { short: "", detail: "" },
+            },
         });
         setEditingPoi("new");
+        clearPoiImages();
         setPoiLangTab("vi");
+        setTranslatedPoiSource("");
     };
 
     const startEditPoi = (poi) => {
-        setPoiForm(JSON.parse(JSON.stringify(poi)));
+        setPoiForm({
+            ...JSON.parse(JSON.stringify(poi)),
+            dbId: poi.dbId,
+            mapX: poi.mapX ?? 50,
+            mapY: poi.mapY ?? 50,
+            translations: { vi: "", en: "", zh: "", ...poi.translations },
+        });
         setEditingPoi(poi.id);
+        clearPoiImages();
         setPoiLangTab("vi");
+        setTranslatedPoiSource(getPoiTranslationSource(poi));
+    };
+
+    const removeExistingPoiImage = (imageId) => {
+        setRemovedPoiImageIds((ids) => [...new Set([...ids, imageId])]);
+    };
+
+    const handlePoiImageSelect = (event) => {
+        const selectedFiles = Array.from(event.target.files || []);
+        event.target.value = "";
+        const retainedImageCount = (poiForm?.images || []).filter(
+            (image) => !removedPoiImageIds.includes(image.id)
+        ).length;
+        if (retainedImageCount + poiImagesRef.current.length + selectedFiles.length > 10) {
+            return showToast("Mỗi POI chỉ được chọn tối đa 10 ảnh", "error");
+        }
+        const invalidFile = selectedFiles.find((file) =>
+            !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+            || file.size > 8 * 1024 * 1024
+        );
+        if (invalidFile) {
+            return showToast("Chỉ nhận JPEG, PNG hoặc WebP; mỗi ảnh tối đa 8 MB", "error");
+        }
+        const added = selectedFiles.map((file) => ({
+            file,
+            url: URL.createObjectURL(file),
+        }));
+        const next = [...poiImagesRef.current, ...added];
+        poiImagesRef.current = next;
+        setPoiImages(next);
     };
 
     const validatePoiForm = (f) => {
         if (!f.name.trim()) return "Thiếu tên POI";
         if (!f.zone.trim()) return "Thiếu phân khu";
-        if (!f.translations.vi.trim()) return "Thiếu mô tả tiếng Việt";
+        if (!f.translations.vi.detail.trim()) return "Thiếu mô tả chi tiết tiếng Việt";
+        if (!f.translations.vi.short.trim()) return "Thiếu mô tả ngắn tiếng Việt";
         if (f.geofenceRadius < 5 || f.geofenceRadius > 200) return "Bán kính geofence phải trong khoảng 5–200m";
+        if (f.mapX < 0 || f.mapX > 100 || f.mapY < 0 || f.mapY > 100) return "Toạ độ bản đồ X/Y phải trong khoảng 0–100";
         return null;
     };
 
-    const savePoi = () => {
+    const savePoi = async () => {
         const err = validatePoiForm(poiForm);
         if (err) return showToast(err, "error");
-        if (editingPoi === "new") {
-            setPoiList((prev) => [poiForm, ...prev]);
-            showToast("Đã tạo POI mới (UC5)");
-        } else {
-            setPoiList((prev) => prev.map((p) => (p.id === poiForm.id ? poiForm : p)));
-            showToast("Đã cập nhật POI (UC5)");
+
+        setSavingPoi(true);
+        try {
+            let poiToExport = poiForm;
+            if (translatedPoiSource !== getPoiTranslationSource(poiForm)) {
+                const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
+                poiToExport = mergePoiTranslations(poiForm, result.translations);
+            }
+            const poiData = { ...poiToExport, translations: getPoiTranslations(poiToExport) };
+
+            if (editingPoi === "new") {
+                await api.createPoi(
+                    poiData,
+                    poiImages.map(({ file }) => file)
+                );
+                clearPoiImages();
+                setEditingPoi(null);
+                setPoiForm(null);
+                showToast("Đã lưu POI, bản dịch và ảnh vào hệ thống");
+                try {
+                    setPoiList(await api.getPois());
+                } catch (refreshError) {
+                    showToast(`POI đã lưu nhưng không thể tải lại danh sách: ${refreshError.message}`, "error");
+                }
+                return;
+            } else {
+                const result = await api.updatePoi(
+                    poiForm.dbId,
+                    poiData,
+                    poiImages.map(({ file }) => file),
+                    removedPoiImageIds
+                );
+                clearPoiImages();
+                setEditingPoi(null);
+                setPoiForm(null);
+                try {
+                    setPoiList(await api.getPois());
+                    showToast(result.warning || "Đã cập nhật POI", result.warning ? "error" : "ok");
+                } catch (refreshError) {
+                    showToast(
+                        `POI đã cập nhật${result.warning ? `; ${result.warning}` : ""}, nhưng không thể tải lại danh sách: ${refreshError.message}`,
+                        "error"
+                    );
+                }
+                return;
+            }
+            setEditingPoi(null);
+            setPoiForm(null);
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setSavingPoi(false);
         }
-        setEditingPoi(null);
-        setPoiForm(null);
     };
 
-    const deletePoi = (id) => {
-        if (!window.confirm("Xoá POI này? Audio liên quan cũng sẽ bị gỡ khỏi gói offline.")) return;
-        setPoiList((prev) => prev.filter((p) => p.id !== id));
-        setAudioList((prev) => prev.filter((a) => a.poiId !== id));
-        showToast("Đã xoá POI", "error");
+    const deletePoi = async (poi) => {
+        if (!window.confirm(`Xoá POI "${poi.name}"? Ảnh và audio liên quan cũng sẽ bị gỡ.`)) return;
+        try {
+            const result = await api.deletePoi(poi.dbId);
+            const list = await api.getPois();
+            setPoiList(list);
+            if (audioPoiId === poi.dbId) {
+                setAudioPoiId(list[0]?.dbId || null);
+            }
+            showToast(result.warning || "Đã xoá POI", result.warning ? "error" : "ok");
+        } catch (err) {
+            showToast(err.message, "error");
+        }
     };
 
-    /* --- A1: AI-assisted translation (UC5 Alternative) --- */
-    const handleAiTranslate = () => {
-        const src = poiForm.translations.vi.trim();
-        if (!src) return showToast("Cần nhập mô tả tiếng Việt trước khi dịch", "error");
+    const handleAiTranslate = async () => {
+        if (!poiForm.translations.vi.short.trim()) {
+            return showToast("Cần nhập mô tả ngắn tiếng Việt trước khi dịch", "error");
+        }
+        if (!poiForm.translations.vi.detail.trim()) {
+            return showToast("Cần nhập mô tả chi tiết tiếng Việt trước khi dịch", "error");
+        }
         setIsTranslating(true);
-        // Giả lập gọi AI content service
-        setTimeout(() => {
-            setPoiForm((f) => ({
-                ...f,
-                translations: {
-                    ...f.translations,
-                    en: f.translations.en || `[AI draft EN] ${src}`,
-                    zh: f.translations.zh || `[AI 草稿 ZH] ${src}`,
-                },
-            }));
+        try {
+            const result = await api.translatePoi(getPoiTranslationRequest(poiForm));
+            const translatedForm = mergePoiTranslations(poiForm, result.translations);
+            setPoiForm(translatedForm);
+            setTranslatedPoiSource(getPoiTranslationSource(poiForm));
+            showToast("Agent đã dịch thông tin POI và mô tả sang tiếng Anh, tiếng Trung");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
             setIsTranslating(false);
-            showToast("AI đã sinh bản nháp EN/ZH — vui lòng rà soát lại");
-        }, 900);
+        }
     };
 
     /* =========================================================
-       UC6 — HÀNH ĐỘNG AUDIO
+       UC6 — AUDIO
        ========================================================= */
-    const uploadAudio = (lang) => {
-        const dur = 60 + Math.floor(Math.random() * 60);
-        const newTrack = {
-            id: `AUD-${String(audioList.length + 1).padStart(3, "0")}`,
-            poiId: audioPoiId,
-            language: lang,
-            source: "upload",
-            duration: dur,
-            sizeMb: +(dur * 0.015).toFixed(2),
-            status: "draft",
-            publishedAt: null,
-        };
-        setAudioList((prev) => [...prev, newTrack]);
-        showToast(`Đã tải audio ${lang.toUpperCase()} (chờ publish)`);
+    const reloadAudio = async () => {
+        if (!audioPoiId) return;
+        const data = await api.getAudio(audioPoiId);
+        setAudioList(data);
     };
 
-    const generateAiAudio = () => {
-        if (!aiScript.trim()) return showToast("Nhập kịch bản trước khi sinh audio AI", "error");
+    const uploadAudio = async (lang) => {
+        if (!audioPoiId) return showToast("Chọn POI trước", "error");
+        pendingAudioLanguage.current = lang;
+        pendingAudioPoiId.current = audioPoiId;
+        audioFileInputRef.current?.click();
+    };
+
+    const handleAudioFileSelect = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        const language = pendingAudioLanguage.current;
+        const poiDbId = pendingAudioPoiId.current;
+        pendingAudioLanguage.current = null;
+        pendingAudioPoiId.current = null;
+        if (!file || !language || !poiDbId) return;
+        if (file.size > 30 * 1024 * 1024) {
+            return showToast("Tệp audio không được vượt quá 30 MB", "error");
+        }
+
+        setIsUploadingAudio(true);
+        try {
+            const duration = await getAudioDuration(file);
+            const result = await api.createAudio({
+                poiDbId,
+                language,
+                source: "upload",
+                duration,
+            }, file, file.name);
+            if (audioPoiId === poiDbId) await reloadAudio();
+            showToast(
+                result.warning || `Đã lưu audio ${language.toUpperCase()} vào database`,
+                result.warning ? "error" : "ok"
+            );
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setIsUploadingAudio(false);
+        }
+    };
+
+    const translateAudioScript = async () => {
+        if (!aiScripts.vi.trim()) return showToast("Nhập kịch bản tiếng Việt trước khi dịch", "error");
+
+        setIsTranslatingScript(true);
+        try {
+            const response = await api.translateAudioScript(aiScripts.vi);
+            const translations = response.translations;
+            if (!translations?.en?.trim() || !translations?.zh?.trim()) {
+                throw new Error("Agent chưa trả về đầy đủ bản dịch tiếng Anh và tiếng Trung");
+            }
+            setAiScripts((previous) => ({
+                ...previous,
+                en: translations.en.trim(),
+                zh: translations.zh.trim(),
+            }));
+            setAiTranslationsSource(aiScripts.vi.trim());
+            showToast("Đã dịch kịch bản sang tiếng Anh và tiếng Trung");
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            setIsTranslatingScript(false);
+        }
+    };
+
+    const generateAiAudio = async () => {
+        const sourceScript = aiScripts.vi.trim();
+        if (!sourceScript) return showToast("Nhập kịch bản tiếng Việt trước khi tạo 3 audio", "error");
+        if (!audioPoiId) return showToast("Chọn POI trước", "error");
+
         setIsGenerating(true);
-        setTimeout(() => {
-            const dur = 45 + Math.floor(aiScript.length / 6);
-            const newTrack = {
-                id: `AUD-${String(audioList.length + 1).padStart(3, "0")}`,
-                poiId: audioPoiId,
-                language: aiLang,
-                source: "ai",
-                duration: dur,
-                sizeMb: +(dur * 0.015).toFixed(2),
-                status: "draft",
-                publishedAt: null,
-            };
-            setAudioList((prev) => [...prev, newTrack]);
+        const poiDbId = audioPoiId;
+        setGeneratedAudio(null);
+        setSavedGeneratedLanguages([]);
+        const tracks = [];
+        try {
+            let scripts = aiScripts;
+            if (aiTranslationsSource !== sourceScript) {
+                const response = await api.translateAudioScript(sourceScript);
+                const translations = response.translations;
+                if (!translations?.en?.trim() || !translations?.zh?.trim()) {
+                    throw new Error("Agent chưa trả về đầy đủ bản dịch tiếng Anh và tiếng Trung");
+                }
+                scripts = {
+                    vi: sourceScript,
+                    en: translations.en.trim(),
+                    zh: translations.zh.trim(),
+                };
+                setAiScripts(scripts);
+                setAiTranslationsSource(sourceScript);
+            }
+
+            for (const { code } of LANGUAGES) {
+                const audio = await api.generateAudio(scripts[code].trim(), code);
+                const blob = audio.type ? audio : new Blob([audio], { type: "audio/mpeg" });
+                const duration = await getAudioDuration(blob);
+                const url = URL.createObjectURL(blob);
+                tracks.push({ language: code, blob, url, duration });
+            }
+
+            setGeneratedAudio({ poiDbId, tracks });
+            showToast("Đã tạo 3 audio. Nghe thử rồi bấm Lưu audio nếu đồng ý.");
+        } catch (err) {
+            if (tracks.length) setGeneratedAudio({ poiDbId, tracks });
+            showToast(
+                tracks.length
+                    ? `Mới tạo được ${tracks.length}/3 audio; nghe thử bản đã tạo hoặc thử tạo lại. ${err.message}`
+                    : err.message,
+                "error"
+            );
+        } finally {
             setIsGenerating(false);
-            setAiScript("");
-            showToast(`AI TTS đã sinh audio ${aiLang.toUpperCase()} — chờ publish`);
-        }, 1200);
+        }
     };
 
-    const publishTrack = (id) => {
-        setAudioList((prev) =>
-            prev.map((a) => (a.id === id ? { ...a, status: "published", publishedAt: "21-09-2026" } : a))
-        );
-        showToast("Đã publish — audio vào gói offline");
+    const saveGeneratedAudio = async () => {
+        if (!generatedAudio?.tracks.length) return;
+        if (audioPoiId !== generatedAudio.poiDbId) {
+            return showToast("POI đang chọn đã thay đổi; hãy chọn lại POI của audio preview trước khi lưu.", "error");
+        }
+
+        setIsSavingGeneratedAudio(true);
+        const savedLanguages = [];
+        const savedLanguageSet = new Set(savedGeneratedLanguages);
+        try {
+            for (const track of generatedAudio.tracks) {
+                if (savedLanguageSet.has(track.language)) continue;
+                await api.createAudio({
+                    poiDbId: generatedAudio.poiDbId,
+                    language: track.language,
+                    source: "ai",
+                    duration: track.duration,
+                }, track.blob, `poi-audio-${track.language}.mp3`);
+                savedLanguages.push(track.language.toUpperCase());
+                savedLanguageSet.add(track.language);
+                setSavedGeneratedLanguages([...savedLanguageSet]);
+            }
+            setGeneratedAudio(null);
+            setSavedGeneratedLanguages([]);
+            try {
+                await reloadAudio();
+                showToast(`Đã lưu audio ${generatedAudio.tracks.map(({ language }) => language.toUpperCase()).join(", ")} vào POI`);
+            } catch (refreshError) {
+                showToast(`Đã lưu audio nhưng không tải lại được danh sách: ${refreshError.message}`, "error");
+            }
+        } catch (err) {
+            let message = savedLanguages.length
+                ? `Đã lưu ${savedLanguages.join(", ")}; không lưu được các audio còn lại: ${err.message}`
+                : err.message;
+            try {
+                await reloadAudio();
+            } catch (refreshError) {
+                message += ` Không tải lại được danh sách audio: ${refreshError.message}`;
+            }
+            showToast(message, "error");
+        } finally {
+            setIsSavingGeneratedAudio(false);
+        }
     };
 
-    const removeTrack = (id) => {
-        setAudioList((prev) => prev.filter((a) => a.id !== id));
-        showToast("Đã gỡ audio track", "error");
+    const removeTrack = async (track) => {
+        if (!window.confirm(`Gỡ audio ${track.language.toUpperCase()}?`)) return;
+        try {
+            const result = await api.deleteAudio(track.dbId);
+            await reloadAudio();
+            showToast(result.warning || "Đã gỡ audio track", result.warning ? "error" : "ok");
+        } catch (err) {
+            showToast(err.message, "error");
+        }
     };
 
     /* =========================================================
@@ -301,6 +790,29 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             showToast(`Đã xuất báo cáo ${fmt} (UC7)`);
         }, 700);
     };
+
+    /* =========================================================
+       DERIVED
+       ========================================================= */
+    const filteredPois = useMemo(() => {
+        return poiList.filter((p) => {
+            const okCat = poiCategory === "all" || p.category === poiCategory;
+            const kw = poiSearch.trim().toLowerCase();
+            const okKw =
+                !kw ||
+                p.name.toLowerCase().includes(kw) ||
+                p.id.toLowerCase().includes(kw) ||
+                (p.zone || "").toLowerCase().includes(kw);
+            return okCat && okKw;
+        });
+    }, [poiList, poiSearch, poiCategory]);
+
+    const audioByPoi = audioList;
+
+    const currentAudioPoi = useMemo(
+        () => poiList.find((p) => p.dbId === audioPoiId),
+        [poiList, audioPoiId]
+    );
 
     /* =========================================================
        RENDER
@@ -424,12 +936,18 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="stats-grid">
                                 <div className="stat-card">
                                     <div className="stat-card__head">
-                                        <div className="stat-card__icon stat-card__icon--blue"><Users size={20} /></div>
-                                        <span className="stat-card__trend stat-card__trend--up"><ArrowUpRight size={13} /> +14.2%</span>
+                                        <div className="stat-card__icon stat-card__icon--blue"><Activity size={20} /></div>
+                                        <span className="stat-card__trend stat-card__trend--up">
+                                            <ArrowUpRight size={13} /> Live
+                                        </span>
                                     </div>
-                                    <div className="stat-card__value">8,640</div>
-                                    <div className="stat-card__label">Lượt truy cập hôm nay</div>
-                                    <div className="stat-card__foot">Mobile 71% • Web 29%</div>
+                                    <div className="stat-card__value">
+                                        {analytics ? analytics.totalPlays.toLocaleString() : "—"}
+                                    </div>
+                                    <div className="stat-card__label">Lượt nghe audio (tổng)</div>
+                                    <div className="stat-card__foot">
+                                        Tỉ lệ hoàn thành ≥80%: {analytics ? `${analytics.completedRate}%` : "—"}
+                                    </div>
                                 </div>
 
                                 <div className="stat-card">
@@ -437,10 +955,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <div className="stat-card__icon stat-card__icon--emerald"><MapPin size={20} /></div>
                                         <span className="stat-card__badge-sub">{poiList.length} POI</span>
                                     </div>
-                                    <div className="stat-card__value">{poiList.filter((p) => p.isActive).length}</div>
+                                    <div className="stat-card__value">
+                                        {poiList.filter((p) => p.isActive).length}
+                                    </div>
                                     <div className="stat-card__label">POI đang hoạt động</div>
                                     <div className="stat-card__foot">
-                                        {poiList.filter((p) => LANGUAGES.every((l) => p.translations[l.code])).length} POI đủ 3 ngôn ngữ
+                                        {poiList.filter((p) => LANGUAGES.every((l) => p.translations?.[l.code]?.detail)).length} POI đủ 3 ngôn ngữ
                                     </div>
                                 </div>
 
@@ -449,10 +969,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <div className="stat-card__icon stat-card__icon--amber"><Headphones size={20} /></div>
                                         <span className="stat-card__badge-sub">VI/EN/ZH</span>
                                     </div>
-                                    <div className="stat-card__value">{audioList.filter((a) => a.status === "published").length}</div>
+                                    <div className="stat-card__value">
+                                        {analytics ? analytics.totalAudioPublished : "—"}
+                                    </div>
                                     <div className="stat-card__label">Audio track đã publish</div>
                                     <div className="stat-card__foot">
-                                        {audioList.filter((a) => a.status === "draft").length} bản nháp • {audioList.filter((a) => a.source === "ai").length} do AI sinh
+                                        Tổng số {analytics?.totalAdmins ?? "—"} quản trị viên
                                     </div>
                                 </div>
 
@@ -470,7 +992,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             </div>
 
                             <div className="dash-grid-2">
-                                {/* Language distribution */}
                                 <div className="dash-card">
                                     <div className="dash-card__head">
                                         <div>
@@ -479,58 +1000,56 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         </div>
                                     </div>
                                     <div className="dash-card__body">
-                                        <div className="lang-dist__bar">
-                                            <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": "58%" }} />
-                                            <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": "27%" }} />
-                                            <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": "15%" }} />
-                                        </div>
-                                        <div className="lang-dist__legend">
-                                            {[
-                                                { c: "var(--lang-vi)", n: "Tiếng Việt (VI)", v: "58%" },
-                                                { c: "var(--lang-en)", n: "English (EN)", v: "27%" },
-                                                { c: "var(--lang-zh)", n: "中文 (ZH)", v: "15%" },
-                                            ].map((x, i) => (
-                                                <div key={i} className="lang-dist__item">
-                                                    <span className="lang-dist__swatch" style={{ "--c": x.c }} />
-                                                    <span className="lang-dist__name">{x.n}</span>
-                                                    <span className="lang-dist__val">{x.v}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        {(() => {
+                                            const d = analytics?.languageDist || { vi: 0, en: 0, zh: 0 };
+                                            return (
+                                                <>
+                                                    <div className="lang-dist__bar">
+                                                        <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": `${d.vi}%` }} />
+                                                        <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": `${d.en}%` }} />
+                                                        <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": `${d.zh}%` }} />
+                                                    </div>
+                                                    <div className="lang-dist__legend">
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-vi)" }} /><span className="lang-dist__name">Tiếng Việt (VI)</span><span className="lang-dist__val">{d.vi}%</span></div>
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-en)" }} /><span className="lang-dist__name">English (EN)</span><span className="lang-dist__val">{d.en}%</span></div>
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-zh)" }} /><span className="lang-dist__name">中文 (ZH)</span><span className="lang-dist__val">{d.zh}%</span></div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* POI popularity */}
                                 <div className="dash-card">
                                     <div className="dash-card__head">
                                         <div>
                                             <h3 className="dash-card__title"><Activity size={17} className="text-amber" /> Top POI được nghe nhiều nhất</h3>
-                                            <p className="dash-card__desc">Lượt auto-play + manual play 7 ngày qua</p>
+                                            <p className="dash-card__desc">Lượt auto-play + manual play</p>
                                         </div>
                                     </div>
                                     <div className="zones-rank-list">
-                                        {[
-                                            { n: "Khu Voi Châu Á", v: "3,840", p: 92, c: "#10b981" },
-                                            { n: "Chuồng Hổ Bengal", v: "2,910", p: 75, c: "#34d399" },
-                                            { n: "Hồ Hồng Hạc", v: "2,450", p: 64, c: "#60a5fa" },
-                                            { n: "Đảo Linh Trưởng", v: "1,820", p: 48, c: "#f59e0b" },
-                                            { n: "Vườn Lan Cổ Thụ", v: "1,340", p: 36, c: "#a78bfa" },
-                                        ].map((z, i) => (
-                                            <div key={i} className="zone-rank-item">
-                                                <div className="zone-rank-item__row">
-                                                    <span className="zone-rank-name"><strong>#{i + 1}</strong> {z.n}</span>
-                                                    <span className="zone-rank-views">{z.v} lượt</span>
+                                        {(analytics?.topPois?.length > 0 ? analytics.topPois : [
+                                            { name: "Chưa có dữ liệu", plays: 0 },
+                                        ]).map((z, i) => {
+                                            const maxPlays = analytics?.topPois?.[0]?.plays || 1;
+                                            const pct = Math.max(5, Math.round((z.plays / maxPlays) * 100));
+                                            const colors = ["#10b981", "#34d399", "#60a5fa", "#f59e0b", "#a78bfa"];
+                                            return (
+                                                <div key={i} className="zone-rank-item">
+                                                    <div className="zone-rank-item__row">
+                                                        <span className="zone-rank-name"><strong>#{i + 1}</strong> {z.name}</span>
+                                                        <span className="zone-rank-views">{z.plays} lượt</span>
+                                                    </div>
+                                                    <div className="zone-rank-bar">
+                                                        <div className="zone-rank-bar__fill" style={{ width: `${pct}%`, background: colors[i % colors.length] }} />
+                                                    </div>
                                                 </div>
-                                                <div className="zone-rank-bar">
-                                                    <div className="zone-rank-bar__fill" style={{ width: `${z.p}%`, background: z.c }} />
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Gói offline status */}
                             <div className="dash-card" style={{ marginTop: 16 }}>
                                 <div className="dash-card__head">
                                     <div>
@@ -577,7 +1096,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             </div>
 
-                            {/* Filter bar */}
                             <div className="admin-filter-bar">
                                 <div className="admin-search-box">
                                     <Search size={16} className="text-slate-400" />
@@ -598,13 +1116,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <button key={c.value}
                                             className={`filter-btn ${poiCategory === c.value ? "is-active" : ""}`}
                                             onClick={() => setPoiCategory(c.value)}>
-                                            {c.label} ({poiList.filter((p) => p.category === c.value).length})
+                                            {c.labels.vi} ({poiList.filter((p) => p.category === c.value).length})
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Table */}
                             <div className="dash-card">
                                 <div className="table-responsive">
                                     <table className="admin-table">
@@ -621,8 +1138,23 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredPois.map((p) => {
-                                                const doneLangs = LANGUAGES.filter((l) => p.translations[l.code]);
+                                            {poiLoading && (
+                                                <tr>
+                                                    <td colSpan={8} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Đang tải danh sách POI...
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!poiLoading && filteredPois.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={8} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Chưa có POI nào
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!poiLoading && filteredPois.map((p) => {
+                                                const tr = p.translations || {};
+                                                const doneLangs = LANGUAGES.filter((l) => tr[l.code]?.detail);
                                                 return (
                                                     <tr key={p.id}>
                                                         <td><span className="code-badge">{p.id}</span></td>
@@ -637,7 +1169,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         </td>
                                                         <td>
                                                             <span className="category-pill">
-                                                                {CATEGORY_OPTIONS.find((c) => c.value === p.category)?.label || p.category}
+                                                                {CATEGORY_OPTIONS.find((c) => c.value === p.category)?.labels.vi || p.category}
                                                             </span>
                                                         </td>
                                                         <td><code>{p.latitude}, {p.longitude}</code></td>
@@ -645,7 +1177,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         <td>
                                                             <div style={{ display: "flex", gap: 4 }}>
                                                                 {LANGUAGES.map((l) => {
-                                                                    const done = !!p.translations[l.code];
+                                                                    const done = !!tr[l.code]?.detail;
                                                                     return (
                                                                         <span key={l.code}
                                                                             className={`lang-tab__dot ${done ? "is-complete" : ""}`}
@@ -678,7 +1210,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                                 <button className="btn-action-edit" title="Sửa" onClick={() => startEditPoi(p)}>
                                                                     <Edit3 size={15} />
                                                                 </button>
-                                                                <button className="btn-action-delete" title="Xoá" onClick={() => deletePoi(p.id)}>
+                                                                <button className="btn-action-delete" title="Xoá" onClick={() => deletePoi(p)}>
                                                                     <Trash2 size={15} />
                                                                 </button>
                                                             </div>
@@ -700,13 +1232,17 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 <div>
                                     <h1 className="admin-tab-title">Quản Lý Audio &amp; Nội dung AI</h1>
                                     <p className="admin-tab-desc">
-                                        UC6 — Upload file ghi âm hoặc sinh audio bằng AI Text-to-Speech, rà soát rồi publish cho VI/EN/ZH
+                                        UC6 — Upload hoặc tạo audio VI/EN/ZH; audio đã lưu có thể nghe, thay thế hoặc xóa
                                     </p>
                                 </div>
                                 <div className="admin-tab-actions">
                                     <select
-                                        value={audioPoiId}
-                                        onChange={(e) => setAudioPoiId(e.target.value)}
+                                        value={audioPoiId || ""}
+                                        onChange={(e) => {
+                                            setAudioPoiId(+e.target.value || null);
+                                            setGeneratedAudio(null);
+                                            setSavedGeneratedLanguages([]);
+                                        }}
                                         style={{
                                             height: 40, padding: "0 12px", borderRadius: 8,
                                             border: "1px solid var(--dash-border)",
@@ -714,28 +1250,50 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             color: "var(--dash-text-1)",
                                         }}
                                     >
+                                        <option value="">-- Chọn POI --</option>
                                         {poiList.map((p) => (
-                                            <option key={p.id} value={p.id}>{p.id} — {p.name}</option>
+                                            <option key={p.id} value={p.dbId}>{p.id} — {p.name}</option>
                                         ))}
                                     </select>
                                 </div>
                             </div>
 
-                            {/* Thông tin POI đang chọn */}
                             {currentAudioPoi && (
                                 <div className="admin-banner admin-banner--ok" style={{ marginBottom: 16 }}>
                                     <Info size={16} />
                                     <div>
                                         <strong>{currentAudioPoi.name}</strong> — {currentAudioPoi.zone} • Geofence{" "}
-                                        {currentAudioPoi.geofenceRadius}m • {LANGUAGES.filter((l) => currentAudioPoi.translations[l.code]).length}/3 ngôn ngữ đã có mô tả
+                                        {currentAudioPoi.geofenceRadius}m • {LANGUAGES.filter((l) => currentAudioPoi.translations?.[l.code]?.detail).length}/3 ngôn ngữ đã có mô tả
                                     </div>
                                 </div>
                             )}
 
-                            {/* 3 language cards */}
+                            {!currentAudioPoi && (
+                                <div className="admin-banner admin-banner--warn" style={{ marginBottom: 16 }}>
+                                    <Info size={16} />
+                                    <div>Chưa có POI nào. Vui lòng tạo POI trước ở tab <strong>POI &amp; Hạ tầng</strong>.</div>
+                                </div>
+                            )}
+
+                            {audioLoading && (
+                                <div className="admin-banner admin-banner--ok" style={{ marginBottom: 16 }}>
+                                    <Clock size={16} /> Đang tải danh sách audio...
+                                </div>
+                            )}
+
+                            <input
+                                ref={audioFileInputRef}
+                                type="file"
+                                accept="audio/*,video/mp4,.mp3,.wav,.ogg,.m4a,.aac,.webm"
+                                hidden
+                                onChange={handleAudioFileSelect}
+                            />
                             <div className="audio-grid">
                                 {LANGUAGES.map((lang) => {
                                     const track = audioByPoi.find((a) => a.language === lang.code);
+                                    const previewTrack = generatedAudio?.poiDbId === audioPoiId
+                                        ? generatedAudio.tracks.find((audio) => audio.language === lang.code)
+                                        : null;
                                     const isEmpty = !track;
                                     return (
                                         <div
@@ -757,68 +1315,89 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         Chưa có audio cho ngôn ngữ này.
                                                     </div>
                                                     <div className="audio-track__actions">
-                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)}>
-                                                            <Upload size={14} /> Upload file
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId || isUploadingAudio}>
+                                                            <Upload size={14} /> {isUploadingAudio ? "Đang tải..." : "Upload file"}
                                                         </button>
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     <div className="audio-track__meta">
-                                                        <span><Clock size={12} /> {track.duration}s</span>
-                                                        <span><FileAudio size={12} /> {track.sizeMb} MB</span>
+                                                        <span><Clock size={12} /> {track.duration ? `${track.duration}s` : "—"}</span>
+                                                        <span><FileAudio size={12} /> {track.sizeMb ?? "—"} MB</span>
                                                         <span><Mic size={12} /> {track.source === "ai" ? "AI TTS" : "Upload"}</span>
                                                     </div>
-                                                    <div>
-                                                        {track.status === "published"
-                                                            ? <span className="status-badge status-badge--published"><CheckCircle2 size={12} /> Đã publish</span>
-                                                            : <span className="status-badge status-badge--draft"><Clock size={12} /> Bản nháp</span>}
-                                                    </div>
-                                                    <div className="audio-track__source">
-                                                        {track.publishedAt ? `Publish: ${track.publishedAt}` : "Chưa publish — chưa vào gói offline"}
-                                                    </div>
+                                                    <div className="audio-track__source">Đã có trong database — có thể thay thế hoặc xóa.</div>
 
-                                                    {/* Preview player */}
                                                     <div className="audio-player">
-                                                        <button
-                                                            className="audio-player__btn"
-                                                            onClick={() => setPreviewTrack(previewTrack?.id === track.id ? null : track)}
-                                                            title="Nghe thử"
-                                                        >
-                                                            {previewTrack?.id === track.id ? <Pause size={16} /> : <Play size={16} />}
-                                                        </button>
-                                                        <div className="audio-player__bar">
-                                                            <div className="audio-player__fill" style={{ "--progress": previewTrack?.id === track.id ? "35%" : "0%" }} />
-                                                        </div>
-                                                        <span className="audio-player__time">0:{String(track.duration).padStart(2, "0")}</span>
+                                                        {track.fileUrl
+                                                            ? <audio controls preload="none" src={track.fileUrl} aria-label={`Nghe audio ${lang.label}`} />
+                                                            : <span className="text-xs text-slate-400">Chưa có tệp audio.</span>}
                                                     </div>
 
                                                     <div className="audio-track__actions">
-                                                        {track.status !== "published" && (
-                                                            <button className="btn-primary-admin" onClick={() => publishTrack(track.id)}>
-                                                                <Check size={14} /> Publish
-                                                            </button>
-                                                        )}
-                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)}>
+                                                        <button className="btn-secondary-admin" onClick={() => uploadAudio(lang.code)} disabled={!audioPoiId || isUploadingAudio}>
                                                             <RefreshCw size={14} /> Thay thế
                                                         </button>
-                                                        <button className="btn-action-delete" onClick={() => removeTrack(track.id)} title="Gỡ">
+                                                        <button className="btn-action-delete" onClick={() => removeTrack(track)} title="Gỡ">
                                                             <Trash2 size={15} />
                                                         </button>
                                                     </div>
                                                 </>
                                             )}
+
+                                            {previewTrack && (
+                                                <div className="audio-preview">
+                                                    <div className="audio-track__meta">
+                                                        <span><Sparkles size={12} /> AI preview — chưa lưu</span>
+                                                        <span><Clock size={12} /> {previewTrack.duration}s</span>
+                                                    </div>
+                                                    <div className="audio-player">
+                                                        <audio
+                                                            controls
+                                                            preload="metadata"
+                                                            src={previewTrack.url}
+                                                            aria-label={`Nghe thử audio ${lang.label}`}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
                             </div>
+                            {generatedAudio?.tracks.length > 0 && generatedAudio.poiDbId === audioPoiId && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                                    <button
+                                        className="btn-primary-admin"
+                                        onClick={saveGeneratedAudio}
+                                        disabled={isSavingGeneratedAudio || isGenerating}
+                                    >
+                                        {isSavingGeneratedAudio
+                                            ? <><span className="btn-spinner" /> Đang lưu...</>
+                                            : <><Save size={14} /> Lưu / thay thế audio</>}
+                                    </button>
+                                    <button
+                                        className="btn-secondary-admin"
+                                        onClick={() => {
+                                            setGeneratedAudio(null);
+                                            setSavedGeneratedLanguages([]);
+                                        }}
+                                        disabled={isSavingGeneratedAudio}
+                                    >
+                                        Bỏ preview
+                                    </button>
+                                    <span className="audio-track__source">
+                                        Nghe thử từng ngôn ngữ ở các thẻ phía trên; lưu sẽ cập nhật các audio tương ứng.
+                                    </span>
+                                </div>
+                            )}
 
-                            {/* AI Generator */}
                             <div className="dash-card" style={{ marginTop: 20 }}>
                                 <div className="dash-card__head">
                                     <div>
                                         <h3 className="dash-card__title"><Sparkles size={17} className="text-amber" /> Sinh audio bằng AI Text-to-Speech</h3>
-                                        <p className="dash-card__desc">Áp dụng cho POI: <strong>{currentAudioPoi?.name}</strong></p>
+                                        <p className="dash-card__desc">Áp dụng cho POI: <strong>{currentAudioPoi?.name || "—"}</strong></p>
                                     </div>
                                     <select
                                         value={aiLang}
@@ -836,16 +1415,26 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="ai-note" style={{ marginBottom: 12 }}>
                                         <Sparkles size={14} />
                                         <div>
-                                            Nhập kịch bản thuyết minh — AI sẽ sinh audio với giọng đọc chuẩn ngôn ngữ đã chọn. Bản audio sau khi sinh sẽ ở trạng thái <strong>Bản nháp</strong>, cần rà soát trước khi publish.
+                                            Nhập kịch bản tiếng Việt rồi tạo 3 bản để nghe thử trong các thẻ ngôn ngữ phía trên. Audio chỉ được lưu vào POI sau khi bạn bấm nút Lưu màu xanh.
                                         </div>
                                     </div>
                                     <div className="script-box">
                                         <textarea
                                             rows={5}
-                                            placeholder="Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn. Đây là nơi sinh sống của..."
+                                            maxLength={5000}
+                                            placeholder={aiLang === "vi"
+                                                ? "Ví dụ: Chào mừng bạn đến với khu Voi Châu Á của Thảo Cầm Viên Sài Gòn..."
+                                                : `Nhập hoặc dịch kịch bản sang ${aiLang.toUpperCase()}...`}
                                             value={aiScript}
-                                            onChange={(e) => setAiScript(e.target.value)}
-                                            className="admin-modal__form"
+                                            onChange={(e) => {
+                                                setGeneratedAudio(null);
+                                                setSavedGeneratedLanguages([]);
+                                                setAiScripts((previous) => ({
+                                                    ...previous,
+                                                    [aiLang]: e.target.value,
+                                                }));
+                                                if (aiLang === "vi") setAiTranslationsSource("");
+                                            }}
                                             style={{
                                                 width: "100%", padding: 12, borderRadius: 10,
                                                 border: "1px solid var(--dash-border)",
@@ -855,11 +1444,20 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <span className="script-box__count">{aiScript.length} ký tự</span>
                                     </div>
                                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating}>
-                                            {isGenerating ? <><span className="btn-spinner" /> Đang sinh...</> : <><Sparkles size={14} /> Sinh audio bằng AI</>}
+                                        <button className="btn-secondary-admin" onClick={translateAudioScript}
+                                            disabled={isTranslatingScript || isGenerating || !aiScripts.vi.trim()}>
+                                            {isTranslatingScript ? <><span className="btn-spinner" /> Đang dịch...</> : <><Languages size={14} /> Dịch VI → EN/ZH</>}
                                         </button>
-                                        <button className="btn-secondary-admin" onClick={() => setAiScript("")} disabled={isGenerating}>
-                                            Xoá kịch bản
+                                        <button className="btn-ai" onClick={generateAiAudio} disabled={isGenerating || isTranslatingScript || !currentAudioPoi || !aiScripts.vi.trim()}>
+                                            {isGenerating ? <><span className="btn-spinner" /> Đang tạo 3 audio...</> : <><Sparkles size={14} /> Tạo 3 audio để nghe thử</>}
+                                        </button>
+                                        <button className="btn-secondary-admin" onClick={() => {
+                                            setAiScripts({ vi: "", en: "", zh: "" });
+                                            setAiTranslationsSource("");
+                                            setGeneratedAudio(null);
+                                            setSavedGeneratedLanguages([]);
+                                        }} disabled={isGenerating || isTranslatingScript}>
+                                            Xoá tất cả kịch bản
                                         </button>
                                     </div>
                                 </div>
@@ -894,19 +1492,28 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             </div>
 
-                            {/* KPIs */}
+                            {analyticsLoading && (
+                                <div className="admin-banner admin-banner--ok" style={{ marginBottom: 16 }}>
+                                    <Clock size={16} /> Đang tải dữ liệu phân tích...
+                                </div>
+                            )}
+
                             <div className="stats-grid">
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--blue"><TrendingUp size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>52,384</div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
+                                        {analytics?.totalPlays?.toLocaleString() ?? "—"}
+                                    </div>
                                     <div className="stat-card__label">Tổng lượt nghe audio</div>
-                                    <div className="stat-card__foot">7 ngày gần nhất</div>
+                                    <div className="stat-card__foot">Từ toàn bộ USAGE_LOG</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--emerald"><Activity size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>2,140</div>
-                                    <div className="stat-card__label">Người dùng hoạt động (DAU)</div>
-                                    <div className="stat-card__foot">+9.2% so với tuần trước</div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
+                                        {analytics ? `${analytics.completedRate}%` : "—"}
+                                    </div>
+                                    <div className="stat-card__label">Tỉ lệ nghe hoàn thành ≥80%</div>
+                                    <div className="stat-card__foot">Theo dõi qua cột completed</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--amber"><Download size={20} /></div>
@@ -917,34 +1524,43 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="stat-card__foot">Android • iOS • Web</div>
                                 </div>
                                 <div className="stat-card">
-                                    <div className="stat-card__icon stat-card__icon--purple"><Zap size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>1.6s</div>
-                                    <div className="stat-card__label">Độ trễ audio trung bình</div>
-                                    <div className="stat-card__foot">Mục tiêu PRD: &lt; 2s</div>
+                                    <div className="stat-card__icon stat-card__icon--purple"><Server size={20} /></div>
+                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
+                                        {analytics?.totalAudioPublished ?? "—"}
+                                    </div>
+                                    <div className="stat-card__label">Audio đã publish</div>
+                                    <div className="stat-card__foot">
+                                        Trên tổng {analytics?.totalPois ?? "—"} POI
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="dash-grid-2">
-                                {/* Language distribution */}
                                 <div className="dash-card">
                                     <div className="dash-card__head">
                                         <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ</h3>
                                     </div>
                                     <div className="dash-card__body">
-                                        <div className="lang-dist__bar">
-                                            <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": "58%" }} />
-                                            <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": "27%" }} />
-                                            <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": "15%" }} />
-                                        </div>
-                                        <div className="lang-dist__legend">
-                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-vi)" }} /><span className="lang-dist__name">Tiếng Việt</span><span className="lang-dist__val">58%</span></div>
-                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-en)" }} /><span className="lang-dist__name">English</span><span className="lang-dist__val">27%</span></div>
-                                            <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-zh)" }} /><span className="lang-dist__name">中文</span><span className="lang-dist__val">15%</span></div>
-                                        </div>
+                                        {(() => {
+                                            const d = analytics?.languageDist || { vi: 0, en: 0, zh: 0 };
+                                            return (
+                                                <>
+                                                    <div className="lang-dist__bar">
+                                                        <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": `${d.vi}%` }} />
+                                                        <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": `${d.en}%` }} />
+                                                        <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": `${d.zh}%` }} />
+                                                    </div>
+                                                    <div className="lang-dist__legend">
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-vi)" }} /><span className="lang-dist__name">Tiếng Việt</span><span className="lang-dist__val">{d.vi}%</span></div>
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-en)" }} /><span className="lang-dist__name">English</span><span className="lang-dist__val">{d.en}%</span></div>
+                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-zh)" }} /><span className="lang-dist__name">中文</span><span className="lang-dist__val">{d.zh}%</span></div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Package card */}
                                 <div className="dash-card">
                                     <div className="dash-card__head">
                                         <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline</h3>
@@ -976,11 +1592,10 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             </div>
 
-                            {/* POI popularity table */}
                             <div className="dash-card" style={{ marginTop: 16 }}>
                                 <div className="dash-card__head">
-                                    <h3 className="dash-card__title"><MapPin size={17} className="text-emerald" /> Mức độ phổ biến POI</h3>
-                                    <p className="dash-card__desc">Xếp hạng theo lượt play audio</p>
+                                    <h3 className="dash-card__title"><MapPin size={17} className="text-emerald" /> Top 5 POI phổ biến nhất</h3>
+                                    <p className="dash-card__desc">Xếp hạng theo lượt play audio từ USAGE_LOG</p>
                                 </div>
                                 <div className="table-responsive">
                                     <table className="admin-table">
@@ -989,28 +1604,22 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                 <th>#</th>
                                                 <th>POI</th>
                                                 <th>Lượt nghe</th>
-                                                <th>Hoàn thành ≥80%</th>
-                                                <th>Tỉ lệ replay</th>
-                                                <th>Ngôn ngữ phổ biến</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {[
-                                                { n: "Khu Voi Châu Á", p: "3,840", c: "78%", r: "12%", l: "VI" },
-                                                { n: "Chuồng Hổ Bengal", p: "2,910", c: "72%", r: "9%", l: "EN" },
-                                                { n: "Hồ Hồng Hạc", p: "2,450", c: "81%", r: "15%", l: "ZH" },
-                                                { n: "Đảo Linh Trưởng", p: "1,820", c: "66%", r: "8%", l: "VI" },
-                                                { n: "Vườn Lan Cổ Thụ", p: "1,340", c: "54%", r: "5%", l: "EN" },
-                                            ].map((row, i) => (
+                                            {analytics?.topPois?.length > 0 ? analytics.topPois.map((row, i) => (
                                                 <tr key={i}>
                                                     <td><strong>#{i + 1}</strong></td>
-                                                    <td>{row.n}</td>
-                                                    <td><span className="price-badge">{row.p}</span></td>
-                                                    <td>{row.c}</td>
-                                                    <td>{row.r}</td>
-                                                    <td><span className="method-badge">{row.l}</span></td>
+                                                    <td>{row.name}</td>
+                                                    <td><span className="price-badge">{row.plays}</span></td>
                                                 </tr>
-                                            ))}
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={3} style={{ textAlign: "center", padding: 20, color: "var(--dash-text-3)" }}>
+                                                        Chưa có dữ liệu
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1027,10 +1636,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <p className="admin-tab-desc">UC7 — Thêm, sửa, vô hiệu hoá tài khoản; gán quyền và MFA</p>
                                 </div>
                                 <div className="admin-tab-actions">
-                                    <button
-                                        className="btn-primary-admin"
-                                        onClick={() => showToast("Demo: mở form thêm tài khoản")}
-                                    >
+                                    <button className="btn-primary-admin" onClick={() => setShowAddAdminModal(true)}>
                                         <Plus size={16} /> Thêm tài khoản
                                     </button>
                                 </div>
@@ -1058,7 +1664,21 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {adminList.map((a) => {
+                                            {adminLoading && (
+                                                <tr>
+                                                    <td colSpan={7} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Đang tải danh sách tài khoản...
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!adminLoading && adminList.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={7} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                        Chưa có tài khoản nào
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!adminLoading && adminList.map((a) => {
                                                 const role = ROLE_OPTIONS.find((r) => r.value === a.role);
                                                 return (
                                                     <tr key={a.id}>
@@ -1088,16 +1708,11 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         <td className="text-xs text-slate-400">{a.lastLogin}</td>
                                                         <td style={{ textAlign: "right" }}>
                                                             <div className="table-actions">
-                                                                <button className="btn-action-edit" title="Sửa" onClick={() => showToast("Demo: sửa tài khoản")}>
+                                                                <button className="btn-action-edit" title="Sửa" onClick={() => handleOpenEditAdmin(a)}>
                                                                     <UserCog size={15} />
                                                                 </button>
                                                                 <button className="btn-action-delete" title="Vô hiệu hoá"
-                                                                    onClick={() => {
-                                                                        setAdminList((prev) =>
-                                                                            prev.map((x) => (x.id === a.id ? { ...x, status: "deactivated" } : x))
-                                                                        );
-                                                                        showToast("Đã vô hiệu hoá tài khoản");
-                                                                    }}>
+                                                                    onClick={() => handleDeactivateAdmin(a)}>
                                                                     <Lock size={15} />
                                                                 </button>
                                                             </div>
@@ -1126,7 +1741,17 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
                             <div className="dash-card">
                                 <div className="audit-list">
-                                    {auditLogs.map((log) => (
+                                    {auditLoading && (
+                                        <div className="audit-item" style={{ justifyContent: "center", padding: 30 }}>
+                                            Đang tải nhật ký...
+                                        </div>
+                                    )}
+                                    {!auditLoading && auditLogs.length === 0 && (
+                                        <div className="audit-item" style={{ justifyContent: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                            Chưa có bản ghi nào
+                                        </div>
+                                    )}
+                                    {!auditLoading && auditLogs.map((log) => (
                                         <div key={log.id} className={`audit-item audit-item--${log.type}`}>
                                             <div className="audit-item__icon">
                                                 {log.type === "success" && <CheckCircle2 size={16} />}
@@ -1140,7 +1765,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                     {log.admin} • {log.detail}
                                                 </div>
                                             </div>
-                                            <div className="audit-item__time">{log.time}</div>
+                                            <div className="audit-item__time">
+                                                {log.time ? new Date(log.time).toLocaleString("vi-VN") : "—"}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -1152,7 +1779,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
             {/* ================= MODAL POI (UC5) ================= */}
             {editingPoi && poiForm && (
-                <div className="admin-modal-backdrop" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                <div className="admin-modal-backdrop" onClick={() => !savingPoi && (setEditingPoi(null), setPoiForm(null), clearPoiImages())}>
                     <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
                         <div className="admin-modal__head">
                             <div>
@@ -1160,16 +1787,15 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     {editingPoi === "new" ? "Thêm POI mới" : `Chỉnh sửa ${poiForm.id}`}
                                 </h2>
                                 <p className="admin-modal__desc">
-                                    Nhập thông tin POI và mô tả đa ngôn ngữ. Có thể dùng AI để sinh bản dịch.
+                                Nhập thông tin POI và mô tả tiếng Việt; agent sẽ dịch tên, khu vực và mô tả sang EN/ZH. POI cùng ảnh sẽ được lưu vào database và Supabase Storage.
                                 </p>
                             </div>
-                            <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                            <button className="clear-btn" onClick={() => { setEditingPoi(null); setPoiForm(null); clearPoiImages(); }} disabled={savingPoi}>
                                 <X size={18} />
                             </button>
                         </div>
 
                         <div className="poi-editor">
-                            {/* Cột trái: form */}
                             <div>
                                 <div className="form-row-2" style={{ marginBottom: 12 }}>
                                     <div className="form-group">
@@ -1179,8 +1805,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="form-group">
                                         <label>Loại</label>
                                         <select value={poiForm.category}
-                                            onChange={(e) => setPoiForm({ ...poiForm, category: e.target.value })}>
-                                            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                            onChange={(e) => setPoiForm({ ...poiForm, category: e.target.value })}
+                                            disabled={savingPoi}>
+                                            {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.labels.vi}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1188,15 +1815,22 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 <div className="form-row-2" style={{ marginBottom: 12 }}>
                                     <div className="form-group">
                                         <label>Tên POI</label>
-                                        <input type="text" value={poiForm.name}
+                                        <input type="text" value={typeof poiForm.name === "string" ? poiForm.name : poiForm.name.vi}
                                             placeholder="VD: Chuồng Hổ Bengal"
-                                            onChange={(e) => setPoiForm({ ...poiForm, name: e.target.value })} />
+                                            onChange={(e) => setPoiForm({ ...poiForm, name: e.target.value })}
+                                            disabled={savingPoi} />
                                     </div>
                                     <div className="form-group">
                                         <label>Phân khu</label>
-                                        <input type="text" value={poiForm.zone}
-                                            placeholder="VD: Khu Thú săn mồi"
-                                            onChange={(e) => setPoiForm({ ...poiForm, zone: e.target.value })} />
+                                        <select
+                                            value={typeof poiForm.zone === "string" ? poiForm.zone : poiForm.zone.vi}
+                                            onChange={(e) => setPoiForm({ ...poiForm, zone: e.target.value, translations: { ...poiForm.translations, en: { ...poiForm.translations.en, zone: "" }, zh: { ...poiForm.translations.zh, zone: "" } } })}
+                                            disabled={savingPoi}
+                                        >
+                                            <option value="">-- Chọn khu vực --</option>
+                                            {[...new Set([...DEFAULT_POI_ZONES, ...poiList.map((poi) => typeof poi.zone === "string" ? poi.zone : poi.zone?.vi).filter(Boolean)])]
+                                                .map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                                        </select>
                                     </div>
                                 </div>
 
@@ -1204,87 +1838,118 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <div className="form-group">
                                         <label>Vĩ độ (Lat)</label>
                                         <input type="text" value={poiForm.latitude}
-                                            onChange={(e) => setPoiForm({ ...poiForm, latitude: e.target.value })} />
+                                            onChange={(e) => setPoiForm({ ...poiForm, latitude: e.target.value })}
+                                            disabled={savingPoi} />
                                     </div>
                                     <div className="form-group">
                                         <label>Kinh độ (Lng)</label>
                                         <input type="text" value={poiForm.longitude}
-                                            onChange={(e) => setPoiForm({ ...poiForm, longitude: e.target.value })} />
+                                            onChange={(e) => setPoiForm({ ...poiForm, longitude: e.target.value })}
+                                            disabled={savingPoi} />
                                     </div>
                                     <div className="form-group">
                                         <label>Bán kính geofence (m)</label>
                                         <input type="number" min={5} max={200} value={poiForm.geofenceRadius}
-                                            onChange={(e) => setPoiForm({ ...poiForm, geofenceRadius: +e.target.value })} />
+                                            onChange={(e) => setPoiForm({ ...poiForm, geofenceRadius: +e.target.value })}
+                                            disabled={savingPoi} />
                                     </div>
                                 </div>
 
-                                {/* Language tabs */}
                                 <div className="lang-tabs">
                                     {LANGUAGES.map((l) => {
-                                        const done = !!poiForm.translations[l.code].trim();
+                                        const done = !!(poiForm.translations[l.code]?.detail || "").trim();
                                         return (
-                                            <button
-                                                key={l.code}
-                                                type="button"
-                                                data-lang={l.code}
+                                            <button key={l.code} type="button" data-lang={l.code}
                                                 className={`lang-tab ${poiLangTab === l.code ? "is-active" : ""}`}
-                                                onClick={() => setPoiLangTab(l.code)}
-                                            >
+                                                onClick={() => setPoiLangTab(l.code)}>
                                                 <span className={`lang-tab__dot ${done ? "is-complete" : ""}`} />
                                                 {l.label}
                                             </button>
                                         );
                                     })}
                                     <div className="lang-tabs__spacer" />
-                                    <button type="button" className="btn-ai" onClick={handleAiTranslate} disabled={isTranslating}>
-                                        {isTranslating ? <><span className="btn-spinner" /> AI đang dịch...</> : <><Sparkles size={14} /> Dịch bằng AI</>}
+                                    <button type="button" className="btn-ai" onClick={handleAiTranslate} disabled={isTranslating || savingPoi}>
+                                        {isTranslating ? <><span className="btn-spinner" /> Agent đang dịch...</> : <><Sparkles size={14} /> Dịch bằng AI</>}
                                     </button>
                                 </div>
 
+                                {/* Mô tả ngắn */}
                                 <div className="form-group">
-                                    <label>Mô tả — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}</label>
-                                    <textarea
-                                        rows={6}
-                                        value={poiForm.translations[poiLangTab]}
-                                        placeholder={poiLangTab === "vi" ? "Nhập mô tả tiếng Việt (bắt buộc)..." : "Bản dịch sẽ do AI sinh, vui lòng rà soát lại..."}
-                                        onChange={(e) =>
-                                            setPoiForm({
-                                                ...poiForm,
-                                                translations: { ...poiForm.translations, [poiLangTab]: e.target.value },
-                                            })
-                                        }
-                                    />
+                                    <label>
+                                        Mô tả ngắn — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}
+                                        <span style={{ fontSize: 11, color: "var(--dash-text-3)", marginLeft: 8 }}>
+                                            (card danh sách)
+                                        </span>
+                                    </label>
+                                    <textarea rows={2}
+                                        value={poiForm.translations[poiLangTab]?.short || ""}
+                                        placeholder="VD: S2 Nguyễn Bỉnh Khiêm, P. Bến Nghé, Q.1..."
+                                        maxLength={180}
+                                        onChange={(e) => setPoiForm({
+                                            ...poiForm,
+                                            translations: {
+                                                ...poiForm.translations,
+                                                [poiLangTab]: {
+                                                    ...poiForm.translations[poiLangTab],
+                                                    short: e.target.value,
+                                                },
+                                            },
+                                        })}
+                                        disabled={savingPoi} />
+                                    <span className="field-hint">
+                                        {(poiForm.translations[poiLangTab]?.short || "").length}/180 ký tự — ngắn gọn 1-2 câu.
+                                    </span>
+                                </div>
+
+                                {/* Mô tả chi tiết */}
+                                <div className="form-group" style={{ marginTop: 12 }}>
+                                    <label>
+                                        Mô tả chi tiết — {LANGUAGES.find((l) => l.code === poiLangTab)?.label}
+                                        <span style={{ fontSize: 11, color: "var(--dash-text-3)", marginLeft: 8 }}>
+                                            (modal chi tiết)
+                                        </span>
+                                    </label>
+                                    <textarea rows={6}
+                                        value={poiForm.translations[poiLangTab]?.detail || ""}
+                                        placeholder={poiLangTab === "vi" ? "Nhập mô tả chi tiết tiếng Việt (bắt buộc)..." : "Bản dịch chi tiết do AI sinh..."}
+                                        onChange={(e) => setPoiForm({
+                                            ...poiForm,
+                                            translations: {
+                                                ...poiForm.translations,
+                                                [poiLangTab]: {
+                                                    ...poiForm.translations[poiLangTab],
+                                                    detail: e.target.value,
+                                                },
+                                            },
+                                        })}
+                                        disabled={savingPoi} />
                                     <span className="field-hint">
                                         Ngôn ngữ mặc định của hệ thống là Tiếng Việt (dùng khi bản dịch ngôn ngữ khác chưa có).
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Cột phải: geofence preview */}
                             <div>
                                 <div className="form-group" style={{ marginBottom: 10 }}>
-                                    <label>Xem trước vùng Geofence</label>
+                                    <label>Chọn vị trí trên bản đồ</label>
                                 </div>
-                                <div className="geofence-preview">
-                                    <div
-                                        className="geofence-preview__ring"
-                                        style={{ "--ring-size": `${Math.min(90, 20 + poiForm.geofenceRadius / 2)}%` }}
-                                    />
-                                    <div className="geofence-preview__pin" />
-                                    <div className="geofence-preview__caption">
-                                        Bán kính: {poiForm.geofenceRadius}m • Toạ độ: {poiForm.latitude}, {poiForm.longitude}
-                                    </div>
-                                </div>
+                                <PoiMapPicker
+                                    mapX={poiForm.mapX}
+                                    mapY={poiForm.mapY}
+                                    geofenceRadius={poiForm.geofenceRadius}
+                                    disabled={savingPoi}
+                                    onChange={({ mapX, mapY }) =>
+                                        setPoiForm((current) => ({ ...current, mapX, mapY }))
+                                    }
+                                />
 
                                 <div className="form-group" style={{ marginTop: 14 }}>
                                     <label>Trạng thái hoạt động</label>
                                     <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                         <span className="switch">
-                                            <input
-                                                type="checkbox"
-                                                checked={poiForm.isActive}
+                                            <input type="checkbox" checked={poiForm.isActive}
                                                 onChange={(e) => setPoiForm({ ...poiForm, isActive: e.target.checked })}
-                                            />
+                                                disabled={savingPoi} />
                                             <span className="switch__track" />
                                         </span>
                                         <span style={{ fontSize: 12.5, color: "var(--dash-text-2)" }}>
@@ -1295,14 +1960,211 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             </div>
                         </div>
 
+                        <section className="poi-image-uploader">
+                            <div className="poi-image-uploader__head">
+                                <div>
+                                    <h3>Ảnh POI</h3>
+                                    <p>
+                                        Thêm hoặc xóa ảnh; tối đa 10 ảnh JPEG, PNG hoặc WebP, mỗi ảnh không quá 8 MB.
+                                        {" "}Đang có {(poiForm.images || []).filter((image) => !removedPoiImageIds.includes(image.id)).length + poiImages.length}/10 ảnh.
+                                    </p>
+                                </div>
+                                <label className="btn-secondary-admin poi-image-uploader__select">
+                                    <Upload size={14} /> Chọn ảnh
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        multiple
+                                        onChange={handlePoiImageSelect}
+                                        disabled={savingPoi}
+                                    />
+                                </label>
+                            </div>
+                            {(poiForm.images || []).length > 0 || poiImages.length > 0 ? (
+                                <div className="poi-image-grid">
+                                    {(poiForm.images || []).map((image) => {
+                                        const isRemoved = removedPoiImageIds.includes(image.id);
+                                        return (
+                                            <div className={`poi-image-preview ${isRemoved ? "is-removed" : ""}`} key={`saved-${image.id}`}>
+                                                <img src={image.url} alt={image.alt || poiForm.name} />
+                                                <span title={image.alt || image.url}>{isRemoved ? "Sẽ xóa khi lưu" : "Ảnh đã lưu"}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label={isRemoved ? "Khôi phục ảnh" : "Xóa ảnh"}
+                                                    title={isRemoved ? "Khôi phục ảnh" : "Xóa ảnh"}
+                                                    onClick={() => isRemoved
+                                                        ? setRemovedPoiImageIds((ids) => ids.filter((id) => id !== image.id))
+                                                        : removeExistingPoiImage(image.id)}
+                                                    disabled={savingPoi}
+                                                >
+                                                    {isRemoved ? <RefreshCw size={13} /> : <X size={14} />}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {poiImages.map(({ file, url }, index) => (
+                                        <div className="poi-image-preview" key={`${file.name}-${file.lastModified}-${index}`}>
+                                            <img src={url} alt={file.name} />
+                                            <span title={file.name}>{file.name}</span>
+                                            <button
+                                                type="button"
+                                                aria-label={`Bỏ ảnh ${file.name}`}
+                                                onClick={() => removePoiImage(index)}
+                                                disabled={savingPoi}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="poi-image-uploader__empty">POI chưa có ảnh. Chọn ảnh để tải lên.</p>
+                            )}
+                        </section>
+
                         <div className="admin-modal__foot">
-                            <button className="btn-secondary-admin" onClick={() => { setEditingPoi(null); setPoiForm(null); }}>
+                            <button className="btn-secondary-admin"
+                                onClick={() => { setEditingPoi(null); setPoiForm(null); clearPoiImages(); }}
+                                disabled={savingPoi}>
                                 Huỷ
                             </button>
-                            <button className="btn-primary-admin" onClick={savePoi}>
-                                <Save size={16} /> Lưu POI
+                            <button className="btn-primary-admin" onClick={savePoi} disabled={savingPoi || isTranslating}>
+                                {savingPoi ? (
+                                    <><span className="btn-spinner" /> Đang xử lý...</>
+                                ) : (
+                                    <><Save size={16} /> {editingPoi === "new" ? "Dịch & lưu POI" : "Lưu POI"}</>
+                                )}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL: THÊM TÀI KHOẢN ADMIN ================= */}
+            {showAddAdminModal && (
+                <div className="admin-modal-backdrop"
+                    onClick={() => !savingAdmin && setShowAddAdminModal(false)}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-modal__head">
+                            <div>
+                                <h2 className="admin-modal__title">Thêm tài khoản Admin</h2>
+                                <p className="admin-modal__desc">Tạo tài khoản mới cho nhân sự quản trị Thảo Cầm Viên Sài Gòn</p>
+                            </div>
+                            <button className="clear-btn" onClick={() => setShowAddAdminModal(false)} disabled={savingAdmin}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateAdmin} className="admin-modal__form">
+                            <div className="form-group">
+                                <label>Họ và tên</label>
+                                <input type="text" required placeholder="VD: Nguyễn Văn A"
+                                    value={newAdminForm.name}
+                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, name: e.target.value })}
+                                    disabled={savingAdmin} />
+                            </div>
+                            <div className="form-group">
+                                <label>Email</label>
+                                <input type="email" required placeholder="VD: a.nguyen@saigonzoo.net"
+                                    value={newAdminForm.email}
+                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
+                                    disabled={savingAdmin} />
+                            </div>
+                            <div className="form-group">
+                                <label>Mật khẩu ban đầu (tối thiểu 6 ký tự)</label>
+                                <input type="password" required minLength={6} placeholder="••••••••"
+                                    value={newAdminForm.password}
+                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                                    disabled={savingAdmin} />
+                            </div>
+                            <div className="form-group">
+                                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                                    <span className="switch">
+                                        <input type="checkbox" checked={newAdminForm.mfa}
+                                            onChange={(e) => setNewAdminForm({ ...newAdminForm, mfa: e.target.checked })}
+                                            disabled={savingAdmin} />
+                                        <span className="switch__track" />
+                                    </span>
+                                    <span style={{ fontSize: 13, color: "var(--dash-text-2)" }}>
+                                        Bật xác thực đa yếu tố (MFA) cho tài khoản này
+                                    </span>
+                                </label>
+                            </div>
+                            <div className="admin-modal__foot">
+                                <button type="button" className="btn-secondary-admin"
+                                    onClick={() => setShowAddAdminModal(false)} disabled={savingAdmin}>
+                                    Huỷ
+                                </button>
+                                <button type="submit" className="btn-primary-admin" disabled={savingAdmin}>
+                                    {savingAdmin ? <><span className="btn-spinner" /> Đang lưu...</> : <><Check size={16} /> Lưu tài khoản</>}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= MODAL: SỬA TÀI KHOẢN ADMIN ================= */}
+            {showEditAdminModal && editAdminForm && (
+                <div className="admin-modal-backdrop"
+                    onClick={() => !savingEditAdmin && setShowEditAdminModal(false)}>
+                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-modal__head">
+                            <div>
+                                <h2 className="admin-modal__title">Chỉnh sửa tài khoản Admin</h2>
+                                <p className="admin-modal__desc">Cập nhật thông tin tài khoản {editAdminForm.id}</p>
+                            </div>
+                            <button className="clear-btn" onClick={() => setShowEditAdminModal(false)} disabled={savingEditAdmin}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveEditAdmin} className="admin-modal__form">
+                            <div className="form-group">
+                                <label>Họ và tên</label>
+                                <input type="text" required value={editAdminForm.name}
+                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, name: e.target.value })}
+                                    disabled={savingEditAdmin} />
+                            </div>
+                            <div className="form-group">
+                                <label>Email</label>
+                                <input type="email" required value={editAdminForm.email}
+                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, email: e.target.value })}
+                                    disabled={savingEditAdmin} />
+                            </div>
+                            <div className="form-group">
+                                <label>Trạng thái</label>
+                                <select value={editAdminForm.status}
+                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, status: e.target.value })}
+                                    disabled={savingEditAdmin}>
+                                    <option value="active">Đang hoạt động</option>
+                                    <option value="deactivated">Đã vô hiệu hoá</option>
+                                    <option value="locked">Đang bị khoá</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                                    <span className="switch">
+                                        <input type="checkbox" checked={editAdminForm.mfa}
+                                            onChange={(e) => setEditAdminForm({ ...editAdminForm, mfa: e.target.checked })}
+                                            disabled={savingEditAdmin} />
+                                        <span className="switch__track" />
+                                    </span>
+                                    <span style={{ fontSize: 13, color: "var(--dash-text-2)" }}>
+                                        Bật xác thực đa yếu tố (MFA)
+                                    </span>
+                                </label>
+                            </div>
+                            <div className="admin-modal__foot">
+                                <button type="button" className="btn-secondary-admin"
+                                    onClick={() => setShowEditAdminModal(false)} disabled={savingEditAdmin}>
+                                    Huỷ
+                                </button>
+                                <button type="submit" className="btn-primary-admin" disabled={savingEditAdmin}>
+                                    {savingEditAdmin ? <><span className="btn-spinner" /> Đang lưu...</> : <><Check size={16} /> Lưu thay đổi</>}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

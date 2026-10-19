@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React, { useMemo, useState } from "react";
+=======
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+>>>>>>> main
 import AppLayout from "../layout/AppLayout";
 import MapCanvas from "./MapCanvas";
 import MapControls from "./MapControls";
@@ -9,7 +14,10 @@ import {
   MARKERS,
   HIGHLIGHT_GROUPS,
   FILTER_CATEGORIES,
+  TYPE_META,
 } from "./mapData";
+import { api } from "../../api/client";
+import { buildGraph, shortestPath } from "./mapGraph";
 import zooMapImage from "../../assets/map/zoo_map.png";
 import { Sparkles, ChevronRight, X } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
@@ -33,8 +41,10 @@ export default function ZooMap({
   mapImageSrc = zooMapImage,
   onNavigateAdmin,
 }) {
-  const { t } = useSettings();
+  const { t, language } = useSettings();
 
+  const [markers, setMarkers] = useState(MARKERS);
+  const [poiLoadError, setPoiLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("gate_main");
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -42,11 +52,98 @@ export default function ZooMap({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+<<<<<<< HEAD
   const [pathNodes, setPathNodes] = useState([]);
+=======
+  const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
+  const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
+  const [isRouteMode, setIsRouteMode] = useState(false);
+  const [routeStartId, setRouteStartId] = useState(null);
+  const [routeEndId, setRouteEndId] = useState(null);
+  const [isFindingRoute, setIsFindingRoute] = useState(false);
+  const [routeErrorKey, setRouteErrorKey] = useState(null);
+  const [routeDistance, setRouteDistance] = useState(null);
+  const routeRequestId = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPois() {
+      try {
+        const data = await api.getPublicPois(language);
+        if (!Array.isArray(data)) {
+          throw new Error("API POI trả về dữ liệu không hợp lệ.");
+        }
+
+        const databaseMarkers = data.flatMap((poi) => {
+          if (!poi || typeof poi.id !== "string") return [];
+
+          const fallback = MARKERS.find((marker) => marker.id === poi.id);
+          const x = poi.x ?? fallback?.x;
+          const y = poi.y ?? fallback?.y;
+          if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) {
+            return [];
+          }
+
+          return [{
+            ...fallback,
+            ...poi,
+            id: poi.id,
+            name: poi.name || fallback?.name || poi.id,
+            zone: poi.zone || fallback?.zone || "",
+            desc: poi.desc || fallback?.desc || "",
+            emoji: poi.emoji || fallback?.emoji || "📍",
+            type: poi.type || fallback?.type || "animal",
+            x: Number(x),
+            y: Number(y),
+            fromDatabase: true,
+          }];
+        });
+
+        if (!cancelled) {
+          setMarkers(databaseMarkers);
+          setPoiLoadError(
+            data.length === 0
+              ? "Database chưa có POI hoạt động; chạy npm run seed:pois để nạp các điểm mặc định."
+              : ""
+          );
+          setSelectedId((selected) =>
+            databaseMarkers.some((marker) => marker.id === selected)
+              ? selected
+              : databaseMarkers[0]?.id ?? null
+          );
+        }
+      } catch (error) {
+        console.error("Không thể tải POI từ database:", error);
+        if (!cancelled) {
+          setMarkers(MARKERS);
+          setSelectedId((selected) =>
+            MARKERS.some((marker) => marker.id === selected)
+              ? selected
+              : MARKERS[0]?.id ?? null
+          );
+          setPoiLoadError("Không thể tải POI từ máy chủ; đang hiển thị dữ liệu bản đồ mặc định.");
+        }
+      }
+    }
+
+    loadPois();
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  // Cập nhật lại đồ thị nối POI vào waypoint mỗi khi danh sách markers thay đổi
+  useEffect(() => {
+    if (markers && markers.length > 0) {
+      buildGraph(markers);
+    }
+  }, [markers]);
+>>>>>>> main
 
   const selectedMarker = useMemo(
-    () => MARKERS.find((marker) => marker.id === selectedId),
-    [selectedId]
+    () => markers.find((marker) => marker.id === selectedId),
+    [markers, selectedId]
   );
 
   const activeGroup = useMemo(
@@ -59,7 +156,7 @@ export default function ZooMap({
 
     const searchText = query.trim().toLowerCase();
 
-    return MARKERS.filter(
+    return markers.filter(
       (marker) =>
         marker.name.toLowerCase().includes(searchText) ||
         (marker.zone &&
@@ -67,20 +164,119 @@ export default function ZooMap({
         (marker.desc &&
           marker.desc.toLowerCase().includes(searchText))
     ).slice(0, 6);
-  }, [query]);
+  }, [markers, query]);
+
+  const filterCategories = useMemo(() => {
+    const existingKeys = new Set(FILTER_CATEGORIES.map(({ key }) => key));
+    return [
+      ...FILTER_CATEGORIES,
+      ...Object.entries(TYPE_META)
+        .filter(([key]) => !existingKeys.has(key) && markers.some((marker) => marker.type === key))
+        .map(([key, meta]) => ({ key, label: meta.label })),
+    ];
+  }, [markers]);
 
   function selectMarker(id) {
     setSelectedId(id);
     setSelectedGroupId(null);
     setQuery("");
 
-    const marker = MARKERS.find((item) => item.id === id);
+    const marker = markers.find((item) => item.id === id);
 
     if (marker && zoom > 1.2) {
       const offsetX = (50 - marker.x) * 4;
       const offsetY = (50 - marker.y) * 4;
 
       setPan({ x: offsetX, y: offsetY });
+    }
+  }
+
+  function handleStartPickTwo() {
+    routeRequestId.current += 1;
+    setIsRouteMode(true);
+    setSelectedId(null);
+    setSelectedGroupId(null);
+    setRouteStartId(null);
+    setRouteEndId(null);
+    setIsFindingRoute(false);
+    setRouteErrorKey(null);
+    setRouteDistance(null);
+    setPathNodes([]);
+  }
+
+  function cancelRouteMode() {
+    routeRequestId.current += 1;
+    setIsRouteMode(false);
+    setRouteStartId(null);
+    setRouteEndId(null);
+    setIsFindingRoute(false);
+    setRouteErrorKey(null);
+    setRouteDistance(null);
+    setPathNodes([]);
+  }
+
+  async function selectRouteMarker(id) {
+    if (isFindingRoute) return;
+
+    // Chưa chọn điểm xuất phát → POI vừa bấm là điểm xuất phát
+    if (!routeStartId) {
+      setRouteStartId(id);
+      setRouteEndId(null);
+      setRouteErrorKey(null);
+      setRouteDistance(null);
+      setPathNodes([]);
+      return;
+    }
+
+    // Bấm lại đúng điểm xuất phát → bỏ chọn, xoá đường
+    if (id === routeStartId) {
+      setRouteStartId(null);
+      setRouteEndId(null);
+      setRouteErrorKey(null);
+      setRouteDistance(null);
+      setPathNodes([]);
+      return;
+    }
+
+    // Bấm lại đúng điểm đến hiện tại → bỏ điểm đến, xoá đường (giữ điểm xuất phát)
+    if (id === routeEndId) {
+      setRouteEndId(null);
+      setRouteErrorKey(null);
+      setRouteDistance(null);
+      setPathNodes([]);
+      return;
+    }
+
+    // Chọn điểm đến (mới hoặc đổi): giữ nguyên điểm xuất phát, tính & vẽ ngay
+    setRouteEndId(id);
+    setRouteErrorKey(null);
+    setRouteDistance(null);
+    setPathNodes([]);
+    setIsFindingRoute(true);
+    const requestId = ++routeRequestId.current;
+
+    try {
+      // Tính đường ngắn nhất phía client bằng đồ thị waypoint tĩnh (mapGraph.js)
+      const result = shortestPath(routeStartId, id);
+      if (requestId !== routeRequestId.current) return;
+      if (!result || !Array.isArray(result.path) || result.path.length < 2) {
+        // Không có đường nối → báo lỗi đã dịch, cho chọn lại điểm đến (không thoát chế độ)
+        setRouteEndId(null);
+        setRouteErrorKey("route.errorNoRoute");
+        return;
+      }
+      setPathNodes(result.path);
+      setRouteDistance(
+        Number.isFinite(result.totalDistance) ? result.totalDistance : null
+      );
+    } catch (error) {
+      if (requestId !== routeRequestId.current) return;
+      setRouteEndId(null);
+      setRouteErrorKey("route.errorGeneric");
+    } finally {
+      if (requestId === routeRequestId.current) {
+        setIsFindingRoute(false);
+      }
     }
   }
 
@@ -151,11 +347,12 @@ export default function ZooMap({
       <main className="zoo-main">
         <div className="filter-bar">
           <div className="filter-bar__list glass custom-scrollbar">
-            {FILTER_CATEGORIES.map((category) => {
+            {filterCategories.map((category) => {
               const active = typeFilter === category.key;
 
               const labelKey =
                 FILTER_LABEL_KEYS[category.key] || category.key;
+              const CategoryIcon = TYPE_META[category.key]?.icon;
 
               return (
                 <button
@@ -169,16 +366,25 @@ export default function ZooMap({
                   }`}
                 >
                   <span className="filter-chip__icon">
-                    {category.icon}
+                    {CategoryIcon ? <CategoryIcon size={14} /> : category.icon}
                   </span>
 
                   <span>
-                    {t(`filters.${labelKey}`)}
+                    {t(
+                      `filters.${labelKey}`,
+                      category.label || TYPE_META[category.key]?.label || category.key
+                    )}
                   </span>
                 </button>
               );
             })}
           </div>
+
+          {/* {poiLoadError && (
+            <div className="poi-load-warning" role="status">
+              {poiLoadError}
+            </div>
+          )} */}
 
           {!isPanelOpen && (
             <button
@@ -200,10 +406,48 @@ export default function ZooMap({
           pan={pan}
           setPan={setPan}
           selectedId={selectedId}
-          onSelectMarker={selectMarker}
+          onSelectMarker={isRouteMode ? selectRouteMarker : selectMarker}
           isDimmed={isDimmed}
+          markers={markers}
           pathNodes={pathNodes}
+          routeStartId={isRouteMode ? routeStartId : null}
+          routeEndId={isRouteMode ? routeEndId : null}
         />
+
+        {isRouteMode && (
+          <>
+            {(isFindingRoute || !routeStartId || !routeEndId || routeErrorKey || pathNodes.length > 0) && (
+              <div className="map-route-status" role="status" aria-live="polite">
+                {routeErrorKey ? (
+                  <span className="map-route-status__error" role="alert">
+                    {t(routeErrorKey)}
+                  </span>
+                ) : isFindingRoute ? (
+                  <span>{t("route.finding")}</span>
+                ) : !routeStartId ? (
+                  <span>{t("route.pickTwoPoints")}</span>
+                ) : !routeEndId ? (
+                  <span>{t("route.selectDestination")}</span>
+                ) : pathNodes.length > 0 ? (
+                  <span>
+                    {t("route.complete")}
+                    {routeDistance != null && (
+                      <> · {t("route.distance")}: {routeDistance.toFixed(1)}</>
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            )}
+            <button
+              type="button"
+              className="map-route-cancel"
+              onClick={cancelRouteMode}
+            >
+              <X size={15} />
+              <span>{t("route.cancelBtn")}</span>
+            </button>
+          </>
+        )}
 
         <MapControls
           zoom={zoom}
@@ -220,9 +464,11 @@ export default function ZooMap({
           onReset={handleReset}
         />
 
-        <MapInfoCard
+        {!isRouteMode && <MapInfoCard
           marker={selectedMarker}
+          markers={markers}
           onClose={() => setSelectedId(null)}
+          onStartRouteMode={handleStartPickTwo}
           onPathReady={(path) => {
             setPathNodes(path);
 
@@ -237,9 +483,9 @@ export default function ZooMap({
               }
             }
           }}
-        />
+        />}
 
-        {pathNodes.length > 0 && (
+        {!isRouteMode && pathNodes.length > 0 && (
           <div
             style={{
               position: "absolute",

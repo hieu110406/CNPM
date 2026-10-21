@@ -1,6 +1,4 @@
 
-// translations/zh.js
-
 const ZH = {
   // APP / BRAND
   app: {
@@ -57,6 +55,7 @@ const ZH = {
   settings: {
     title: "系统设置",
     description: "自定义语言、字体大小和游览界面",
+    languageHint: "选择整个应用程序的显示语言",
 
     tabs: {
       language: "语言",
@@ -102,6 +101,14 @@ const ZH = {
 
   // MAP
   map: {
+    canvas: {
+      hint: "拖动以移动地图 • 滚动鼠标滚轮以放大 / 缩小",
+      start: "起点",
+      destination: "终点",
+      imageAlt: "西贡动植物园地图",
+      clearRoute: "清除导航路线",
+    },
+
     legend: {
       title: "地点类别",
       reset: "清除筛选",
@@ -120,7 +127,7 @@ const ZH = {
       pause: "暂停",
       play: "播放语音讲解",
       navigate: "前往此地",
-      navigateAlert: "开始导航至：",
+      navigateAlert: "开始导航至：{{name}}",
       favorite: "收藏此地点",
       favoriteTitle: "添加到收藏",
       share: "分享地点",

@@ -23,7 +23,35 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+You can start developing by editing the files inside **src/app**. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## Project structure
+
+```text
+mobile/
+├── BE/                # Backend area, organized like app/BE
+│   ├── controllers/
+│   ├── db/
+│   ├── I18N/
+│   ├── middleware/
+│   └── routes/
+└── FE/                # Expo application
+    ├── assets/        # Images and native app icons referenced by app.json
+    ├── scripts/
+    └── src/
+        ├── app/       # Expo Router screens and layouts
+        ├── api/       # API clients and endpoint access
+        ├── components/
+        ├── constants/
+        ├── context/
+        ├── hooks/
+        └── utils/
+```
+
+The Expo project files (`package.json`, `app.json`, and `tsconfig.json`) live
+in `mobile/FE`. Keep route files in `FE/src/app` for Expo Router. `mobile/BE`
+contains the backend folder structure; the existing backend implementation
+remains in `app/BE`.
 
 ## Get a fresh project
 

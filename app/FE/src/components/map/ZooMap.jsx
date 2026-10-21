@@ -1,5 +1,4 @@
-
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import MapCanvas from "./MapCanvas";
 import MapControls from "./MapControls";
@@ -48,7 +47,6 @@ export default function ZooMap({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-  const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
   const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
   const [isRouteMode, setIsRouteMode] = useState(false);
   const [routeStartId, setRouteStartId] = useState(null);
@@ -263,6 +261,7 @@ export default function ZooMap({
       );
     } catch (error) {
       if (requestId !== routeRequestId.current) return;
+      console.error("Không thể tính tuyến đường:", error);
       setRouteEndId(null);
       setRouteErrorKey("route.errorGeneric");
     } finally {
@@ -372,11 +371,11 @@ export default function ZooMap({
             })}
           </div>
 
-          {/* {poiLoadError && (
+          {poiLoadError && (
             <div className="poi-load-warning" role="status">
               {poiLoadError}
             </div>
-          )} */}
+          )}
 
           {!isPanelOpen && (
             <button
@@ -391,6 +390,7 @@ export default function ZooMap({
         </div>
 
         <MapCanvas
+          t={t}
           mapImageSrc={mapImageSrc}
           zoom={zoom}
           setZoom={setZoom}
@@ -462,9 +462,16 @@ export default function ZooMap({
           onStartRouteMode={handleStartPickTwo}
           onPathReady={(path) => {
             setPathNodes(path);
+
             if (path.length) {
-              const startId = path[0].code || path[0].node_id || path[0].id;
-              if (startId) selectMarker(startId);
+              const startId =
+                path[0].code ||
+                path[0].node_id ||
+                path[0].id;
+
+              if (startId) {
+                selectMarker(startId);
+              }
             }
           }}
         />}
@@ -492,7 +499,8 @@ export default function ZooMap({
                 fontSize: "0.82rem",
                 fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.12)",
+                boxShadow:
+                  "0 4px 12px rgba(0, 0, 0, 0.12)",
                 transition: "all 0.15s ease",
               }}
               onMouseEnter={(e) => {
@@ -503,7 +511,7 @@ export default function ZooMap({
               }}
             >
               <X size={14} />
-              <span>Xoá lộ trình dẫn đường</span>
+              <span>{t("map.canvas.clearRoute")}</span>
             </button>
           </div>
         )}

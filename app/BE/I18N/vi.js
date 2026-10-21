@@ -52,7 +52,8 @@ const VI = {
   settings: {
     title: "Cài Đặt Hệ Thống",
     description: "Tùy chỉnh ngôn ngữ, kích cỡ chữ và giao diện tham quan",
-
+    languageHint: "Chọn ngôn ngữ hiển thị trên toàn bộ ứng dụng",
+    
     tabs: {
       language: "Ngôn ngữ",
       font: "Cỡ chữ",
@@ -136,6 +137,14 @@ const VI = {
   },
 
   map: {
+    canvas: {
+      hint: "Kéo để di chuyển • Lăn chuột để phóng to / thu nhỏ",
+      start: "Xuất phát",
+      destination: "Điểm đến",
+      imageAlt: "Bản đồ Thảo Cầm Viên Sài Gòn",
+      clearRoute: "Xóa lộ trình dẫn đường",
+    },
+
     legend: {
       title: "Danh mục địa điểm",
       reset: "Xóa bộ lọc",
@@ -154,7 +163,7 @@ const VI = {
       pause: "Tạm dừng",
       play: "Phát thuyết minh",
       navigate: "Chỉ đường tới đây",
-      navigateAlert: "Bắt đầu dẫn đường đến:",
+      navigateAlert: "Bắt đầu dẫn đường đến: {{name}}",
       favorite: "Lưu vào danh sách yêu thích",
       favoriteTitle: "Lưu vào danh sách yêu thích",
       share: "Chia sẻ địa điểm",

@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import MapMarkerPin from "./MapMarkerPin";
 import { MARKERS, TYPE_META } from "./mapData";
 
@@ -35,14 +35,10 @@ export default function MapCanvas({
   selectedId,
   onSelectMarker,
   isDimmed,
-<<<<<<< HEAD
-  pathNodes = [],
-=======
   markers = MARKERS,
-  pathNodes = [], // [{code, name, x, y}] kết quả Dijkstra — vẽ SVG lên bản đồ
+  pathNodes = [],
   routeStartId,
   routeEndId,
->>>>>>> main
 }) {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -142,38 +138,18 @@ export default function MapCanvas({
             draggable={false}
           />
 
-<<<<<<< HEAD
-          {/* Vẽ đường đi ngắn nhất Dijkstra */}
-          {pathNodes &&
-            pathNodes.length >= 2 &&
-            (() => {
-              const pointsStr = pathNodes
-                .map(
-                  (n) =>
-                    `${(Number(n.x) * 13.71).toFixed(1)},${(
-                      Number(n.y) * 8.75
-                    ).toFixed(1)}`
-                )
-                .join(" ");
-=======
-          {/* SVG overlay: vẽ đường đi ngắn nhất Dijkstra (bo cong mềm mại) */}
+          {/* SVG overlay: vẽ đường đi ngắn nhất Dijkstra */}
           {pathNodes && pathNodes.length >= 2 && (() => {
-            const px = (n) => Number(n.x) * 13.71;
-            const py = (n) => Number(n.y) * 8.75;
-            const smoothD = buildSmoothPath(
-              pathNodes.map((n) => ({ x: px(n), y: py(n) }))
-            );
->>>>>>> main
+              const points = pathNodes.map((n) => ({
+                x: Number(n.x) * 13.71,
+                y: Number(n.y) * 8.75,
+              }));
+              const smoothD = buildSmoothPath(points);
+              const startX = points[0].x.toFixed(1);
+              const startY = points[0].y.toFixed(1);
+              const endX = points[points.length - 1].x.toFixed(1);
+              const endY = points[points.length - 1].y.toFixed(1);
 
-              const startNode = pathNodes[0];
-              const endNode = pathNodes[pathNodes.length - 1];
-
-              const startX = (Number(startNode.x) * 13.71).toFixed(1);
-              const startY = (Number(startNode.y) * 8.75).toFixed(1);
-              const endX = (Number(endNode.x) * 13.71).toFixed(1);
-              const endY = (Number(endNode.y) * 8.75).toFixed(1);
-
-<<<<<<< HEAD
               return (
                 <svg
                   viewBox="0 0 1371 875"
@@ -204,9 +180,8 @@ export default function MapCanvas({
                     </marker>
                   </defs>
 
-                  {/* Viền bóng của đường đi */}
-                  <polyline
-                    points={pointsStr}
+                  <path
+                    d={smoothD}
                     fill="none"
                     stroke="rgba(0, 0, 0, 0.2)"
                     strokeWidth="11"
@@ -214,9 +189,8 @@ export default function MapCanvas({
                     strokeLinejoin="round"
                   />
 
-                  {/* Viền trắng */}
-                  <polyline
-                    points={pointsStr}
+                  <path
+                    d={smoothD}
                     fill="none"
                     stroke="#ffffff"
                     strokeWidth="7"
@@ -224,9 +198,8 @@ export default function MapCanvas({
                     strokeLinejoin="round"
                   />
 
-                  {/* Đường đi màu xanh */}
-                  <polyline
-                    points={pointsStr}
+                  <path
+                    d={smoothD}
                     fill="none"
                     stroke="#047857"
                     strokeWidth="4"
@@ -254,40 +227,6 @@ export default function MapCanvas({
                         />
                       );
                     }
-=======
-                {/* 1. Đổ bóng viền ngoài — đường cong mềm */}
-                <path
-                  d={smoothD}
-                  fill="none"
-                  stroke="rgba(0, 0, 0, 0.2)"
-                  strokeWidth="11"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* 2. Đường viền trắng dày làm nổi bật trên nền bản đồ — đường cong mềm */}
-                <path
-                  d={smoothD}
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* 3. Đường chính nét đứt xanh lá đậm chạy animation — đường cong mềm */}
-                <path
-                  d={smoothD}
-                  fill="none"
-                  stroke="#047857"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeDasharray="10 6"
-                  markerEnd="url(#rp-arrow)"
-                  className="path-line-animated"
-                />
->>>>>>> main
 
                     return (
                       <circle
@@ -302,7 +241,6 @@ export default function MapCanvas({
                     );
                   })}
 
-<<<<<<< HEAD
                   {/* Điểm xuất phát */}
                   <circle
                     cx={startX}
@@ -389,62 +327,7 @@ export default function MapCanvas({
             })()}
 
           {/* Các marker trên bản đồ */}
-          {MARKERS.map((m) => (
-=======
-                {/* 5. Điểm bắt đầu (Xanh lá) */}
-                <circle
-                  cx={startX}
-                  cy={startY}
-                  r="14"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  opacity="0.8"
-                />
-                <circle
-                  cx={startX}
-                  cy={startY}
-                  r="8"
-                  fill="#10b981"
-                  stroke="#ffffff"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx={startX}
-                  cy={startY}
-                  r="3"
-                  fill="#ffffff"
-                />
-                {/* 6. Điểm đích đến (Đỏ) */}
-                <circle
-                  cx={endX}
-                  cy={endY}
-                  r="14"
-                  fill="none"
-                  stroke="#ef4444"
-                  strokeWidth="2.5"
-                  opacity="0.8"
-                />
-                <circle
-                  cx={endX}
-                  cy={endY}
-                  r="8"
-                  fill="#ef4444"
-                  stroke="#ffffff"
-                  strokeWidth="3"
-                />
-                <circle
-                  cx={endX}
-                  cy={endY}
-                  r="3"
-                  fill="#ffffff"
-                />
-              </svg>
-            );
-          })()}
-
           {markers.map((m) => (
->>>>>>> main
             <div
               key={m.id}
               className="map-canvas__marker"

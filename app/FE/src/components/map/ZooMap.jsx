@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-import React, { useMemo, useState } from "react";
-=======
-
-import React, { useEffect, useMemo, useRef, useState } from "react";
->>>>>>> main
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppLayout from "../layout/AppLayout";
 import MapCanvas from "./MapCanvas";
 import MapControls from "./MapControls";
@@ -52,10 +47,6 @@ export default function ZooMap({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanelOpen, setIsPanelOpen] = useState(true);
-<<<<<<< HEAD
-  const [pathNodes, setPathNodes] = useState([]);
-=======
-  const [rightPanelTab, setRightPanelTab] = useState("zones"); // 'zones' | 'legend'
   const [pathNodes, setPathNodes] = useState([]); // [{code,name,x,y}] kết quả Dijkstra
   const [isRouteMode, setIsRouteMode] = useState(false);
   const [routeStartId, setRouteStartId] = useState(null);
@@ -139,7 +130,6 @@ export default function ZooMap({
       buildGraph(markers);
     }
   }, [markers]);
->>>>>>> main
 
   const selectedMarker = useMemo(
     () => markers.find((marker) => marker.id === selectedId),
@@ -271,6 +261,7 @@ export default function ZooMap({
       );
     } catch (error) {
       if (requestId !== routeRequestId.current) return;
+      console.error("Không thể tính tuyến đường:", error);
       setRouteEndId(null);
       setRouteErrorKey("route.errorGeneric");
     } finally {
@@ -380,11 +371,11 @@ export default function ZooMap({
             })}
           </div>
 
-          {/* {poiLoadError && (
+          {poiLoadError && (
             <div className="poi-load-warning" role="status">
               {poiLoadError}
             </div>
-          )} */}
+          )}
 
           {!isPanelOpen && (
             <button

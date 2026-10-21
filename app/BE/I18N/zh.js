@@ -357,8 +357,4 @@ const ZH = {
   },
 };
 
-<<<<<<< HEAD
 export default ZH;
-=======
-export default ZH;
->>>>>>> main

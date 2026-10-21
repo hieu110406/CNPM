@@ -7,7 +7,6 @@ import i18n from "i18next";
 
 import VI from "@i18n/vi.js";
 import EN from "@i18n/en.js";
-import FR from "@i18n/fr.js";
 import ZH from "@i18n/zh.js";
 
 const SettingsContext = createContext(null);
@@ -88,7 +87,6 @@ function prepareResource(nestedObj) {
 export const LANGUAGES = [
   { code: "vi", label: "Tiếng Việt", native: "Tiếng Việt", flag: "🇻🇳", desc: "Mặc định hệ thống" },
   { code: "en", label: "English", native: "English (US)", flag: "🇬🇧", desc: "International standard" },
-  { code: "fr", label: "Français", native: "Français", flag: "🇫🇷", desc: "Langue française" },
   { code: "zh", label: "中文", native: "简体中文", flag: "🇨🇳", desc: "中文简体指南" },
 ];
 
@@ -132,7 +130,8 @@ export const FONT_SIZES = [
 ];
 
 // Khởi tạo engine đa ngôn ngữ i18n
-const savedLang = typeof window !== "undefined" ? localStorage.getItem("zoo_lang") || "vi" : "vi";
+const storedLang = typeof window !== "undefined" ? localStorage.getItem("zoo_lang") : null;
+const savedLang = LANGUAGES.some(({ code }) => code === storedLang) ? storedLang : "vi";
 
 if (!i18n.isInitialized) {
   i18n.init({
@@ -141,19 +140,22 @@ if (!i18n.isInitialized) {
     resources: {
       vi: { translation: prepareResource(VI) },
       en: { translation: prepareResource(EN) },
-      fr: { translation: prepareResource(FR) },
       zh: { translation: prepareResource(ZH) },
     },
     interpolation: {
       escapeValue: false,
     },
   });
+} else if (!LANGUAGES.some(({ code }) => code === i18n.language)) {
+  i18n.changeLanguage(savedLang);
 }
 
 export function SettingsProvider({ children }) {
   // 1. Trạng thái Ngôn ngữ đồng bộ với i18n
   const [language, setLanguageState] = useState(() => {
-    return i18n.language || savedLang;
+    return LANGUAGES.some(({ code }) => code === i18n.language)
+      ? i18n.language
+      : savedLang;
   });
 
   // Lắng nghe sự thay đổi ngôn ngữ từ engine i18n

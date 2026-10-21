@@ -207,6 +207,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [range, setRange] = useState("7d");
     const [exporting, setExporting] = useState(false);
+    const [onlineData, setOnlineData] = useState({ total: 0, sessions: [], byLanguage: [], byDevice: [] });
 
     /* ---- UC7: Admin accounts ---- */
     const [adminList, setAdminList] = useState([]);
@@ -340,6 +341,20 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         })();
         return () => { cancelled = true; };
     }, [audioPoiId]);
+
+    /* ---- Polling: user đang online mỗi 30s ---- */
+    useEffect(() => {
+        let cancelled = false;
+        const fetchOnline = async () => {
+            try {
+                const data = await api.getActiveSessions();
+                if (!cancelled) setOnlineData(data);
+            } catch {}
+        };
+        fetchOnline();
+        const interval = setInterval(fetchOnline, 30_000);
+        return () => { cancelled = true; clearInterval(interval); };
+    }, []);
 
     /* =========================================================
        UC7 — ADMIN
@@ -964,14 +979,135 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
                                 <div className="stat-card">
                                     <div className="stat-card__head">
-                                        <div className="stat-card__icon stat-card__icon--green"><Download size={20} /></div>
-                                        <span className="stat-card__badge-sub">{OFFLINE_PACKAGE.version}</span>
+                                        <div className="stat-card__icon stat-card__icon--green"><Users size={20} /></div>
+                                        <span className="stat-card__trend stat-card__trend--up" style={{ gap: 4 }}>
+                                            <span style={{
+                                                width: 7, height: 7, borderRadius: '50%',
+                                                background: onlineData.total > 0 ? '#16a34a' : '#f59e0b',
+                                                animation: onlineData.total > 0 ? 'pulse 1.5s ease infinite' : 'none',
+                                            }} />
+                                            Live
+                                        </span>
                                     </div>
                                     <div className="stat-card__value">
-                                        {(OFFLINE_PACKAGE.downloads.android + OFFLINE_PACKAGE.downloads.ios + OFFLINE_PACKAGE.downloads.web).toLocaleString()}
+                                        {onlineData.total}
                                     </div>
-                                    <div className="stat-card__label">Lượt tải gói offline</div>
-                                    <div className="stat-card__foot">Android • iOS • Web</div>
+                                    <div className="stat-card__label">Người dùng đang online</div>
+                                    <div className="stat-card__foot">
+                                        Cập nhật mỗi 30s • Heartbeat
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ---- Card: Người dùng đang online ---- */}
+                            <div className="dash-card" style={{ marginBottom: 16 }}>
+                                <div className="dash-card__head">
+                                    <div>
+                                        <h3 className="dash-card__title">
+                                            <Users size={17} className="text-emerald" />{" "}
+                                            Người dùng đang có mặt
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                marginLeft: 10, padding: '2px 10px',
+                                                background: onlineData.total > 0 ? '#dcfce7' : '#fef3c7',
+                                                color: onlineData.total > 0 ? '#16a34a' : '#92400e',
+                                                borderRadius: 20, fontSize: 12, fontWeight: 700,
+                                            }}>
+                                                <span style={{
+                                                    width: 8, height: 8, borderRadius: '50%',
+                                                    background: onlineData.total > 0 ? '#16a34a' : '#f59e0b',
+                                                    animation: onlineData.total > 0 ? 'pulse 1.5s ease infinite' : 'none',
+                                                }} />
+                                                {onlineData.total} online
+                                            </span>
+                                        </h3>
+                                        <p className="dash-card__desc">Cập nhật tự động mỗi 30 giây • Dựa trên heartbeat ping từ trình duyệt</p>
+                                    </div>
+                                </div>
+                                <div className="dash-card__body">
+                                    {onlineData.total === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: 20, color: 'var(--dash-text-3)' }}>
+                                            Hiện không có người dùng nào đang truy cập
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Breakdown theo ngôn ngữ & thiết bị */}
+                                            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 14 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Theo ngôn ngữ</div>
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                        {onlineData.byLanguage.map((item) => (
+                                                            <span key={item.lang} style={{
+                                                                padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                                background: item.lang === 'vi' ? '#dbeafe' : item.lang === 'en' ? '#fef3c7' : '#fce7f3',
+                                                                color: item.lang === 'vi' ? '#1d4ed8' : item.lang === 'en' ? '#92400e' : '#be185d',
+                                                            }}>
+                                                                {item.lang === 'vi' ? '🇻🇳' : item.lang === 'en' ? '🇬🇧' : '🇨🇳'} {item.lang.toUpperCase()}: {item.c}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Theo thiết bị</div>
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                        {onlineData.byDevice.map((item) => (
+                                                            <span key={item.device} style={{
+                                                                padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                                background: '#f1f5f9', color: '#334155',
+                                                            }}>
+                                                                {item.device === 'web' ? '🌐' : '📱'} {item.device}: {item.c}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Bảng chi tiết */}
+                                            <div className="table-responsive">
+                                                <table className="admin-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Session</th>
+                                                            <th>Ngôn ngữ</th>
+                                                            <th>Thiết bị</th>
+                                                            <th>Trạng thái</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {onlineData.sessions.map((s, i) => (
+                                                            <tr key={i}>
+                                                                <td><code style={{ fontSize: 11 }}>{s.sessionId}</code></td>
+                                                                <td>
+                                                                    <span style={{
+                                                                        padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                                                                        background: s.language === 'vi' ? '#dbeafe' : s.language === 'en' ? '#fef3c7' : '#fce7f3',
+                                                                        color: s.language === 'vi' ? '#1d4ed8' : s.language === 'en' ? '#92400e' : '#be185d',
+                                                                    }}>
+                                                                        {s.language.toUpperCase()}
+                                                                    </span>
+                                                                </td>
+                                                                <td style={{ fontSize: 12 }}>{s.device === 'web' ? '🌐 Web' : s.device}</td>
+                                                                <td>
+                                                                    <span style={{
+                                                                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                        padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
+                                                                        background: s.idleSec < 35 ? '#dcfce7' : '#fef9c3',
+                                                                        color: s.idleSec < 35 ? '#16a34a' : '#a16207',
+                                                                    }}>
+                                                                        <span style={{
+                                                                            width: 6, height: 6, borderRadius: '50%',
+                                                                            background: s.idleSec < 35 ? '#16a34a' : '#f59e0b',
+                                                                        }} />
+                                                                        {s.idleSec < 5 ? 'Đang hoạt động' : `${s.idleSec}s trước`}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 

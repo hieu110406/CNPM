@@ -1,7 +1,8 @@
 // App.jsx
 // Điều hướng giao diện không dùng react-router (Dùng hash / state switcher)
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { api } from "./api/client";
 import ZooMap from "./components/map";
 import AdminLogin, { AdminDashboard } from "./components/admin";
 import { SettingsProvider } from "./context/SettingsContext";
@@ -16,6 +17,39 @@ function AppContent() {
       return null;
     }
   });
+
+  // Session ID duy nhất cho tab này (in-memory, không cần DB mới)
+  const sessionId = useRef(
+    localStorage.getItem("tcv_session_id") || (() => {
+      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("tcv_session_id", id);
+      return id;
+    })()
+  ).current;
+
+  // Heartbeat ping mỗi 30s — báo hiệu đang online
+  const currentViewRef = useRef("map");
+  const pingIntervalRef = useRef(null);
+
+  const sendPing = (view) => {
+    const lang = localStorage.getItem("tcv_lang") || "vi";
+    api.pingSession(sessionId, lang, null, "web").catch(() => {});
+  };
+
+  useEffect(() => {
+    // Ping ngay khi load
+    sendPing();
+    // Ping định kỳ mỗi 30s
+    pingIntervalRef.current = setInterval(() => sendPing(), 30_000);
+    // Xóa session khi đóng tab
+    const onUnload = () => api.removeSession(sessionId).catch(() => {});
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      clearInterval(pingIntervalRef.current);
+      window.removeEventListener("beforeunload", onUnload);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Trạng thái màn hình hiện tại: "map" | "admin" | "dashboard"
   const [currentView, setCurrentView] = useState(() => {

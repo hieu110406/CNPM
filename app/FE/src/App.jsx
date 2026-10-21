@@ -1,12 +1,25 @@
 // App.jsx
 // Điều hướng giao diện không dùng react-router (Dùng hash / state switcher)
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "./api/client";
 import ZooMap from "./components/map";
 import AdminLogin, { AdminDashboard } from "./components/admin";
 import { SettingsProvider } from "./context/SettingsContext";
 import OfflineNotice from "./components/ui/OfflineNotice";
+
+function createSessionId() {
+  try {
+    let id = sessionStorage.getItem("tcv_session_id");
+    if (!id) {
+      id = "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+      sessionStorage.setItem("tcv_session_id", id);
+    }
+    return id;
+  } catch {
+    return "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+  }
+}
 
 function AppContent() {
   const [adminUser, setAdminUser] = useState(() => {
@@ -19,38 +32,32 @@ function AppContent() {
   });
 
   // Session ID duy nhất cho tab này (dùng sessionStorage để mỗi tab/cửa sổ là 1 session độc lập)
-  const sessionId = useRef(
-    (() => {
-      try {
-        let id = sessionStorage.getItem("tcv_session_id");
-        if (!id) {
-          id = "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
-          sessionStorage.setItem("tcv_session_id", id);
-        }
-        return id;
-      } catch {
-        return "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
-      }
-    })()
-  ).current;
+  const sessionId = useRef(null);
+
+  const getSessionId = () => {
+    if (sessionId.current) return sessionId.current;
+    sessionId.current = createSessionId();
+    return sessionId.current;
+  };
 
   // Heartbeat ping mỗi 30s — báo hiệu đang online
-  const currentViewRef = useRef("map");
+  const currentViewRef = useRef(null);
   const pingIntervalRef = useRef(null);
 
   const sendPing = () => {
+    if (currentViewRef.current !== "map") return;
     const lang = localStorage.getItem("tcv_lang") || "vi";
     const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    api.pingSession(sessionId, lang, null, isMobile ? "mobile" : "web").catch(() => {});
+    api.pingSession(getSessionId(), lang, null, isMobile ? "mobile" : "web").catch(() => {});
   };
 
   useEffect(() => {
-    // Ping ngay khi load
-    sendPing();
     // Ping định kỳ mỗi 30s
     pingIntervalRef.current = setInterval(() => sendPing(), 30_000);
     // Xóa session khi đóng tab
-    const onUnload = () => api.removeSession(sessionId).catch(() => {});
+    const onUnload = () => {
+      if (sessionId.current) api.removeSession(sessionId.current).catch(() => {});
+    };
     window.addEventListener("beforeunload", onUnload);
     return () => {
       clearInterval(pingIntervalRef.current);
@@ -76,6 +83,16 @@ function AppContent() {
     }
     return "map";
   });
+
+  useEffect(() => {
+    currentViewRef.current = currentView;
+    if (currentView === "map") {
+      sendPing();
+    } else {
+      if (sessionId.current) api.removeSession(sessionId.current).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView]);
 
   // Lắng nghe sự thay đổi hash trên thanh địa chỉ trình duyệt
   useEffect(() => {

@@ -295,6 +295,15 @@
   color: #475569;
 }
 
+.animal-modal-desc--short {
+  font-weight: 600;
+  color: #334155;
+}
+
+.animal-modal-desc--detail {
+  padding-top: 2px;
+}
+
 /* AUDIO BAR TRONG MODAL */
 .animal-modal-audio {
   display: flex;

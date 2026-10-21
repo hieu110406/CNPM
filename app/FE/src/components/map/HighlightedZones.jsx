@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ChevronRight, TrendingUp } from "lucide-react";
 import { useSettings } from "../../context/SettingsContext";
 import { api } from "../../api/client";
 
 export default function HighlightedZones({ onSelectPoi, onSelectGroup }) {
-    const { language } = useSettings();
+    const { language, t } = useSettings();
 
     const [topPois, setTopPois] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -43,9 +43,9 @@ export default function HighlightedZones({ onSelectPoi, onSelectGroup }) {
                 <div className="zones__head">
                     <p className="panel-title" style={{ color: '#e11d48' }}>
                         <TrendingUp size={16} style={{ marginRight: 6 }} />
-                        Khách đang nghe nhiều nhất
+                        {t("guide.mostListened", "Khách đang nghe nhiều nhất")}
                     </p>
-                    <span className="zones__count">Top {topPois.length}</span>
+                    <span className="zones__count">{t("guide.top", "Top")} {topPois.length}</span>
                 </div>
                 <div className="zones__list">
                     {topPois.map((poi) => (
@@ -57,7 +57,7 @@ export default function HighlightedZones({ onSelectPoi, onSelectGroup }) {
                             }}
                             className="zone-card"
                             style={{ borderLeft: '4px solid #e11d48' }}
-                            title="Bấm để xem vị trí trên bản đồ"
+                            title={t("guide.viewOnMap", "Bấm để xem vị trí trên bản đồ")}
                         >
                             <div className="zone-card__avatar" style={{ background: '#ffe4e6', color: '#e11d48' }}>
                                 <span style={{ fontSize: 24 }}>{poi.emoji || '📍'}</span>
@@ -66,7 +66,7 @@ export default function HighlightedZones({ onSelectPoi, onSelectGroup }) {
                                 <div className="zone-card__row">
                                     <p className="zone-card__title">{poi.name}</p>
                                     <span className="zone-card__badge" style={{ background: '#ffe4e6', color: '#e11d48' }}>
-                                        {poi.plays} lượt nghe
+                                        {poi.plays} {t("guide.plays", "lượt nghe")}
                                     </span>
                                 </div>
                                 <p className="zone-card__subtitle">{poi.zone || "Chưa rõ khu vực"}</p>

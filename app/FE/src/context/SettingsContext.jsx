@@ -85,9 +85,9 @@ function prepareResource(nestedObj) {
 
 // Danh mục ngôn ngữ hỗ trợ
 export const LANGUAGES = [
-  { code: "vi", label: "Tiếng Việt", native: "Tiếng Việt", flag: "🇻🇳", desc: "Mặc định hệ thống" },
-  { code: "en", label: "English", native: "English (US)", flag: "🇬🇧", desc: "International standard" },
-  { code: "zh", label: "中文", native: "简体中文", flag: "🇨🇳", desc: "中文简体指南" },
+  { code: "vi", label: "Tiếng Việt", native: "Tiếng Việt", flag: "VN", desc: "Mặc định hệ thống" },
+  { code: "en", label: "English", native: "English (US)", flag: "EN", desc: "International standard" },
+  { code: "zh", label: "中文", native: "简体中文", flag: "CN", desc: "中文简体指南" },
 ];
 
 // Danh mục font chữ hỗ trợ

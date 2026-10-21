@@ -40,7 +40,9 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStar
   const markerZone = marker.zone
     ? marker.fromDatabase ? marker.zone : t(`markers.${marker.id}.zone`, marker.zone)
     : "";
-  const markerDesc = marker.fromDatabase ? marker.desc : t(`markers.${marker.id}.desc`, marker.desc);
+  const markerShortDesc = marker.fromDatabase
+    ? marker.shortDesc || marker.desc
+    : t(`markers.${marker.id}.desc`, marker.shortDesc || marker.desc);
   return (
     <>
       <div className="info-card">
@@ -71,7 +73,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStar
             {markerZone && <p className="info-card__zone">{markerZone}</p>}
           </div>
 
-          <p className="info-card__desc">{markerDesc}</p>
+          <p className="info-card__desc">{markerShortDesc}</p>
 
           {/* Nút mở Pop-up xem chi tiết đầy đủ & hình ảnh */}
           <button
@@ -124,7 +126,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStar
             <button
               onClick={() => {
                 if (navigator.share) {
-                  navigator.share({ title: markerName, text: markerDesc });
+                  navigator.share({ title: markerName, text: markerShortDesc });
                 } else {
                   navigator.clipboard?.writeText(window.location.href);
                   alert(t("map.infoCard.copied", "Đã sao chép liên kết chia sẻ địa điểm!"));

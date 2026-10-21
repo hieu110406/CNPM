@@ -20,7 +20,6 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [mfaCode, setMfaCode] = useState("");
-    const [demoMfaCode, setDemoMfaCode] = useState("");
     const [pendingAdminId, setPendingAdminId] = useState(null);
     const [pendingEmail, setPendingEmail] = useState("");
     const [rememberMe, setRememberMe] = useState(true);
@@ -54,12 +53,7 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
 
             setPendingAdminId(res.adminId);
             setPendingEmail(res.email);
-            setDemoMfaCode(import.meta.env.DEV ? String(res.mfaCode || "") : "");
-            setSuccess(
-                import.meta.env.DEV
-                    ? "Đăng nhập mật khẩu thành công. Nhập mã MFA demo hiển thị bên dưới."
-                    : "Đăng nhập mật khẩu thành công. Vui lòng kiểm tra email quản trị."
-            );
+            setSuccess("Mã MFA đã được gửi. Vui lòng kiểm tra email quản trị.");
             setStep("mfa");
         } catch (err) {
             setError(err.message);
@@ -97,7 +91,6 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
     const handleBackToCredentials = () => {
         setStep("credentials");
         setMfaCode("");
-        setDemoMfaCode("");
         setPendingAdminId(null);
         setPendingEmail("");
         setError("");
@@ -261,9 +254,7 @@ export default function AdminLogin({ onBack, onLoginSuccess }) {
                             <div className="admin-login__alert admin-login__alert--success">
                                 <Mail size={18} className="flex-shrink-0" />
                                 <span>
-                                    {demoMfaCode
-                                        ? <>Chưa cấu hình gửi email. Mã MFA demo cho <strong>{pendingEmail}</strong>: <strong>{demoMfaCode}</strong></>
-                                        : <>Mã xác thực sẽ được gửi tới <strong>{pendingEmail}</strong> nếu hệ thống email đã được cấu hình.</>}
+                                    Mã xác thực đã được gửi tới <strong>{pendingEmail}</strong>. Vui lòng kiểm tra hộp thư.
                                 </span>
                             </div>
 

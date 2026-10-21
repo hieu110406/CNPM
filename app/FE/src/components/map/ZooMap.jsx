@@ -90,6 +90,8 @@ export default function ZooMap({
             ...fallback,
             ...poi,
             id: poi.id,
+            poiId: poi.poiId || poi.dbId,
+            dbId: poi.dbId || poi.poiId,
             name: poi.name || fallback?.name || poi.id,
             zone: poi.zone || fallback?.zone || "",
              shortDesc: poi.shortDesc || poi.desc || fallback?.shortDesc || fallback?.desc || "",

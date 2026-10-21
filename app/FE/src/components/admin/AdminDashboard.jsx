@@ -342,19 +342,25 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; };
     }, [audioPoiId]);
 
-    /* ---- Polling: user đang online mỗi 30s ---- */
+    /* ---- Polling realtime: user online & thống kê lượt nghe audio mỗi 5s ---- */
     useEffect(() => {
         let cancelled = false;
-        const fetchOnline = async () => {
+        const refreshLiveData = async () => {
             try {
-                const data = await api.getActiveSessions();
-                if (!cancelled) setOnlineData(data);
+                const [online, analyticsData] = await Promise.all([
+                    api.getActiveSessions().catch(() => null),
+                    api.getAnalytics().catch(() => null),
+                ]);
+                if (!cancelled) {
+                    if (online) setOnlineData(online);
+                    if (analyticsData) setAnalytics(analyticsData);
+                }
             } catch {}
         };
-        fetchOnline();
-        const interval = setInterval(fetchOnline, 30_000);
+        refreshLiveData();
+        const interval = setInterval(refreshLiveData, 5_000);
         return () => { cancelled = true; clearInterval(interval); };
-    }, []);
+    }, [currentTab]);
 
     const handleResetUsage = async () => {
         if (!window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ lượt nghe audio về 0?")) return;

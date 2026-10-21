@@ -6,10 +6,16 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Sparkles,
   Navigation,
   Share2,
   Heart,
+  Globe,
+  Utensils,
   ShieldCheck,
+  Scale,
+  Calendar,
 } from "lucide-react";
 import { getMarkerDetails } from "./animalMediaData";
 import { TYPE_META } from "./mapData";
@@ -200,6 +206,93 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onSta
 
           {/* Audio thuyết minh */}
           <PoiAudioControl marker={marker} language={language} />
+
+          {/* Lưới thông số sinh học & điều kiện sống */}
+          <div className="animal-modal-grid">
+            {details.origin && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  <Globe size={13} /> {t("map.infoCard.origin", "Nguồn gốc")}
+                </span>
+                <span className="animal-modal-spec__value">{details.origin}</span>
+              </div>
+            )}
+
+            {details.habitat && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  🌿 {t("map.infoCard.habitat", "Môi trường sống")}
+                </span>
+                <span className="animal-modal-spec__value">{details.habitat}</span>
+              </div>
+            )}
+
+            {details.diet && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  <Utensils size={13} /> {t("map.infoCard.diet", "Thức ăn")}
+                </span>
+                <span className="animal-modal-spec__value">{details.diet}</span>
+              </div>
+            )}
+
+            {details.weight && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  <Scale size={13} /> {t("map.infoCard.weight", "Khối lượng")}
+                </span>
+                <span className="animal-modal-spec__value">{details.weight}</span>
+              </div>
+            )}
+
+            {details.lifespan && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  <Calendar size={13} /> {t("map.infoCard.lifespan", "Tuổi thọ")}
+                </span>
+                <span className="animal-modal-spec__value">{details.lifespan}</span>
+              </div>
+            )}
+
+            {(marker.feedingTime || marker.openingHours) && (
+              <div className="animal-modal-spec">
+                <span className="animal-modal-spec__label">
+                  <Clock size={13} /> {marker.feedingTime ? t("map.infoCard.feedingTime", "Giờ cho ăn") : t("map.infoCard.openingHours", "Mở cửa")}
+                </span>
+                <span className="animal-modal-spec__value" style={{ color: "#b45309" }}>
+                  {marker.feedingTime || marker.openingHours}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Danh sách đặc điểm nổi bật */}
+          {details.characteristics && details.characteristics.length > 0 && (
+            <div>
+              <h4 className="animal-modal-section-title">
+                {t("map.infoCard.characteristics", "Đặc điểm sinh học & tập tính")}
+              </h4>
+              <ul className="animal-modal-bullets">
+                {details.characteristics.map((item, idx) => (
+                  <li key={idx} className="animal-modal-bullet-item">
+                    <span className="animal-modal-bullet-dot" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Hộp sự thật thú vị "Bạn có biết?" */}
+          {((details.funFacts && details.funFacts.length > 0) || marker.funFact) && (
+            <div className="animal-modal-fact">
+              <Sparkles size={20} className="animal-modal-fact__icon" />
+              <div className="animal-modal-fact__text">
+                <strong>{t("map.infoCard.didYouKnow", "Bạn có biết?")} </strong>
+                {marker.funFact || details.funFacts.join(" ")}
+              </div>
+            </div>
+          )}
 
         </div>
 

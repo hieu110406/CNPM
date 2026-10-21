@@ -43,20 +43,22 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
   useEffect(() => {
     setUsageId(null);
     setCompletedLogged(false);
-  }, [marker?.id, track?.id]);
+  }, [marker?.id, track?.fileUrl]);
 
   if (!isAvailable) return null;
 
   const handlePlay = () => {
     if (!usageId) {
       api.logAudioUsage({
-        poiId: marker?.id,
+        poiId: marker?.poiId || marker?.dbId || marker?.id,
         languageCode: track?.language || audioLanguage,
         triggerType: "manual",
         completed: false,
       }).then((res) => {
         if (res?.usageId) setUsageId(res.usageId);
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error("Lỗi logAudioUsage:", err);
+      });
     }
   };
 

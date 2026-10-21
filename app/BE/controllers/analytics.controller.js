@@ -120,11 +120,26 @@ export async function logAudioUsage(req, res) {
             return res.json({ ok: true, usageId, completed: updateRes.rows[0]?.completed ?? Boolean(completed) });
         }
 
+        let numericPoiId = null;
+        if (poiId != null && poiId !== "") {
+            const raw = String(poiId).trim();
+            if (/^\d+$/.test(raw)) {
+                numericPoiId = parseInt(raw, 10);
+            } else {
+                try {
+                    const poiRes = await query(`SELECT poi_id FROM poi WHERE code = $1 LIMIT 1`, [raw]);
+                    if (poiRes.rows.length > 0) {
+                        numericPoiId = poiRes.rows[0].poi_id;
+                    }
+                } catch {}
+            }
+        }
+
         const insertRes = await query(
             `INSERT INTO usage_log (poi_id, language_code, trigger_type, completed, played_at)
              VALUES ($1, $2, $3, $4, NOW())
              RETURNING usage_id`,
-            [poiId ? parseInt(poiId, 10) : null, languageCode, triggerType, Boolean(completed)]
+            [numericPoiId, languageCode, triggerType, Boolean(completed)]
         );
 
         return res.json({ ok: true, usageId: insertRes.rows[0]?.usage_id });

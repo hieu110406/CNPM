@@ -1,7 +1,8 @@
-const defaultBase = typeof window !== "undefined" && window.location.hostname !== "localhost"
-    ? `http://${window.location.hostname}:5000/api`
-    : "http://localhost:5000/api";
-const BASE = import.meta.env.VITE_API_BASE_URL || defaultBase;
+const isRemoteHost = typeof window !== "undefined" && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+const envBase = import.meta.env.VITE_API_BASE_URL;
+const BASE = (isRemoteHost && (!envBase || envBase.includes("localhost") || envBase.includes("127.0.0.1")))
+    ? `${window.location.protocol}//${window.location.hostname}:5000/api`
+    : (envBase || "http://localhost:5000/api");
 const TRANSLATION_API_URL = (
     import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com"
 ).replace(/\/+$/, "");

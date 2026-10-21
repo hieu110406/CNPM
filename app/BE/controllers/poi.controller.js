@@ -205,6 +205,8 @@ export async function listPublicPois(req, res) {
     const lang = typeof req.query.lang === "string" ? req.query.lang : "vi";
     const { rows } = await pool.query(
       `SELECT
+         p.poi_id AS "dbId",
+         p.poi_id AS "poiId",
          p.code AS id,
          c.name AS type,
          p.emoji,

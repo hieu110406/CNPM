@@ -12,16 +12,7 @@ import auditRoutes from "./routes/audit.routes.js";
 import pathfindingRoutes from "./routes/pathfinding.routes.js";
 
 const app = express();
-const allowedOrigins = (process.env.FRONTEND_ORIGINS || "http://localhost:5173")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-app.use(cors({
-    origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error("Frontend origin is not allowed by CORS."));
-    },
-}));
+app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));

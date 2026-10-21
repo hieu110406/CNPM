@@ -93,6 +93,7 @@ function readPoiInput(body) {
       name: body.name.trim(),
       category: category.trim(),
       zone: body.zone.trim(),
+      emoji: typeof body.emoji === "string" && body.emoji.trim() ? body.emoji.trim() : null,
       latitude,
       longitude,
       mapX: x,
@@ -248,6 +249,7 @@ export async function listPois(req, res) {
         p.poi_id AS "dbId",
         p.code AS id,
         p.name,
+        p.emoji,
         c.name AS category,
         p.zone,
         p.latitude,
@@ -322,12 +324,12 @@ export async function createPoi(req, res) {
 
     const { rows } = await client.query(
       `INSERT INTO poi
-         (code, category_id, name, zone, latitude, longitude, x, y,
+         (code, category_id, name, zone, emoji, latitude, longitude, x, y,
           geofence_radius, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING poi_id AS "dbId"`,
       [
-        poi.code, categoryId, poi.name, poi.zone, poi.latitude, poi.longitude,
+        poi.code, categoryId, poi.name, poi.zone, poi.emoji, poi.latitude, poi.longitude,
         poi.mapX, poi.mapY, poi.geofenceRadius, poi.isActive,
       ]
     );
@@ -445,20 +447,22 @@ export async function updatePoi(req, res) {
           category_id = $2,
           name = $3,
           zone = $4,
-          latitude = $5,
-          longitude = $6,
-          x = $7,
-          y = $8,
-          geofence_radius = $9,
-          is_active = $10,
+          emoji = $5,
+          latitude = $6,
+          longitude = $7,
+          x = $8,
+          y = $9,
+          geofence_radius = $10,
+          is_active = $11,
           updated_at = NOW()
-        WHERE poi_id = $11
+        WHERE poi_id = $12
       `,
       [
         poi.code,
         categoryId,
         poi.name,
         poi.zone,
+        poi.emoji,
         poi.latitude,
         poi.longitude,
         poi.mapX,

@@ -76,6 +76,16 @@ export default function ZooMap({
             return [];
           }
 
+          const defaultEmoji = poi.type === "plant" ? "🌿"
+            : poi.type === "building" || poi.type === "facility" ? "🏛️"
+            : poi.type === "restaurant" ? "🍔"
+            : poi.type === "restroom" ? "🚻"
+            : poi.type === "service" ? "ℹ️"
+            : poi.type === "medical" ? "🩺"
+            : poi.type === "photo" ? "📸"
+            : poi.type === "entertainment" ? "🎡"
+            : "🦁";
+
           return [{
             ...fallback,
             ...poi,
@@ -83,7 +93,7 @@ export default function ZooMap({
             name: poi.name || fallback?.name || poi.id,
             zone: poi.zone || fallback?.zone || "",
             desc: poi.desc || fallback?.desc || "",
-            emoji: poi.emoji || fallback?.emoji || "📍",
+            emoji: poi.emoji || fallback?.emoji || defaultEmoji,
             type: poi.type || fallback?.type || "animal",
             x: Number(x),
             y: Number(y),
@@ -352,9 +362,8 @@ export default function ZooMap({
                     setTypeFilter(category.key);
                     setSelectedGroupId(null);
                   }}
-                  className={`filter-chip ${
-                    active ? "is-active" : ""
-                  }`}
+                  className={`filter-chip ${active ? "is-active" : ""
+                    }`}
                 >
                   <span className="filter-chip__icon">
                     {CategoryIcon ? <CategoryIcon size={14} /> : category.icon}
@@ -518,9 +527,8 @@ export default function ZooMap({
       </main>
 
       <aside
-        className={`right-panel ${
-          isPanelOpen ? "is-open" : ""
-        }`}
+        className={`right-panel ${isPanelOpen ? "is-open" : ""
+          }`}
       >
         <div className="right-panel__head">
           <div className="right-panel__title-row">
@@ -544,6 +552,7 @@ export default function ZooMap({
           <HighlightedZones
             selectedGroupId={selectedGroupId}
             onSelectGroup={selectGroup}
+            onSelectPoi={selectMarker}
           />
 
           <div className="tour-banner">

@@ -135,4 +135,14 @@ export const api = {
         request(`/analytics/top-popular?lang=${encodeURIComponent(language)}`),
     getCategories: () =>
         request("/analytics/categories"),
+
+    // Sessions — theo dõi user đang online (qua analytics routes)
+    pingSession: (sessionId, language, currentPoi, device) =>
+        request("/analytics/sessions/ping", {
+            method: "POST",
+            body: JSON.stringify({ sessionId, language, currentPoi, device }),
+        }),
+    removeSession: (sessionId) =>
+        request(`/analytics/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
+    getActiveSessions: () => request("/analytics/sessions/active"),
 };

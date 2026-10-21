@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getOverview } from "../controllers/analytics.controller.js";
+import { getOverview, pingSession, removeSession, getActiveSessions } from "../controllers/analytics.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { query } from "../db/database.js"; // Thêm import query
 
@@ -42,5 +42,10 @@ router.get("/categories", async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ---- Session: theo dõi user online (in-memory, không cần bảng mới) ----
+router.post("/sessions/ping", pingSession);
+router.delete("/sessions/:sessionId", removeSession);
+router.get("/sessions/active", requireAuth, getActiveSessions);
 
 export default router;

@@ -32,10 +32,50 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
 
   if (!isAvailable) return null;
 
-  const currentResult = requestResult?.key === requestKey ? requestResult : null;
-  const loading = !currentResult;
-  const track = currentResult?.track;
-  const error = currentResult?.error;
+  const [usageId, setUsageId] = useState(null);
+  const [completedLogged, setCompletedLogged] = useState(false);
+
+  useEffect(() => {
+    setUsageId(null);
+    setCompletedLogged(false);
+  }, [marker?.id, track?.id]);
+
+  const handlePlay = () => {
+    if (!usageId) {
+      api.logAudioUsage({
+        poiId: marker?.id,
+        languageCode: track?.language || audioLanguage,
+        triggerType: "manual",
+        completed: false,
+      }).then((res) => {
+        if (res?.usageId) setUsageId(res.usageId);
+      }).catch(() => {});
+    }
+  };
+
+  const handleTimeUpdate = (e) => {
+    const audio = e.currentTarget;
+    if (usageId && !completedLogged && audio.duration > 0) {
+      const percent = (audio.currentTime / audio.duration) * 100;
+      if (percent >= 80) {
+        setCompletedLogged(true);
+        api.logAudioUsage({
+          usageId,
+          completed: true,
+        }).catch(() => {});
+      }
+    }
+  };
+
+  const handleEnded = () => {
+    if (usageId && !completedLogged) {
+      setCompletedLogged(true);
+      api.logAudioUsage({
+        usageId,
+        completed: true,
+      }).catch(() => {});
+    }
+  };
 
   return (
     <div className="poi-audio-control">
@@ -46,7 +86,15 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
           <span className="poi-audio-control__label">
             🎧 Thuyết minh — {track.language === "zh" ? "中文" : track.language === "en" ? "English" : "Tiếng Việt"}
           </span>
-          <audio controls preload="none" src={track.fileUrl} aria-label={`Nghe thuyết minh ${track.language}`} />
+          <audio
+            controls
+            preload="none"
+            src={track.fileUrl}
+            aria-label={`Nghe thuyết minh ${track.language}`}
+            onPlay={handlePlay}
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={handleEnded}
+          />
         </>
       )}
       {!loading && !error && !track && (

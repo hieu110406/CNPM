@@ -18,12 +18,19 @@ function AppContent() {
     }
   });
 
-  // Session ID duy nhất cho tab này (in-memory, không cần DB mới)
+  // Session ID duy nhất cho tab này (dùng sessionStorage để mỗi tab/cửa sổ là 1 session độc lập)
   const sessionId = useRef(
-    localStorage.getItem("tcv_session_id") || (() => {
-      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem("tcv_session_id", id);
-      return id;
+    (() => {
+      try {
+        let id = sessionStorage.getItem("tcv_session_id");
+        if (!id) {
+          id = "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+          sessionStorage.setItem("tcv_session_id", id);
+        }
+        return id;
+      } catch {
+        return "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+      }
     })()
   ).current;
 
@@ -31,9 +38,10 @@ function AppContent() {
   const currentViewRef = useRef("map");
   const pingIntervalRef = useRef(null);
 
-  const sendPing = (view) => {
+  const sendPing = () => {
     const lang = localStorage.getItem("tcv_lang") || "vi";
-    api.pingSession(sessionId, lang, null, "web").catch(() => {});
+    const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    api.pingSession(sessionId, lang, null, isMobile ? "mobile" : "web").catch(() => {});
   };
 
   useEffect(() => {

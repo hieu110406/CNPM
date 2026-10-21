@@ -1,4 +1,7 @@
-const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const defaultBase = typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? `http://${window.location.hostname}:5000/api`
+    : "http://localhost:5000/api";
+const BASE = import.meta.env.VITE_API_BASE_URL || defaultBase;
 const TRANSLATION_API_URL = (
     import.meta.env.VITE_TRANSLATION_API_URL || "https://cnpm-y6l5.onrender.com"
 ).replace(/\/+$/, "");
@@ -145,4 +148,15 @@ export const api = {
     removeSession: (sessionId) =>
         request(`/analytics/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
     getActiveSessions: () => request("/analytics/sessions/active"),
+
+    // Lượt nghe audio — ghi nhận và reset
+    logAudioUsage: (data) =>
+        request("/analytics/usage", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+    resetAudioUsage: () =>
+        request("/analytics/usage/reset", {
+            method: "POST",
+        }),
 };

@@ -356,6 +356,18 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         return () => { cancelled = true; clearInterval(interval); };
     }, []);
 
+    const handleResetUsage = async () => {
+        if (!window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ lượt nghe audio về 0?")) return;
+        try {
+            await api.resetAudioUsage();
+            const data = await api.getAnalytics();
+            setAnalytics(data);
+            showToast("Đã đặt lại lượt nghe audio về 0", "success");
+        } catch (err) {
+            showToast(err.message, "error");
+        }
+    };
+
     /* =========================================================
        UC7 — ADMIN
        ========================================================= */
@@ -941,11 +953,25 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         </span>
                                     </div>
                                     <div className="stat-card__value">
-                                        {analytics ? analytics.totalPlays.toLocaleString() : "—"}
+                                        {analytics ? analytics.totalPlays.toLocaleString() : "0"}
                                     </div>
                                     <div className="stat-card__label">Lượt nghe audio (tổng)</div>
-                                    <div className="stat-card__foot">
-                                        Tỉ lệ hoàn thành ≥80%: {analytics ? `${analytics.completedRate}%` : "—"}
+                                    <div className="stat-card__foot" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Tỉ lệ hoàn thành ≥80%: {analytics ? `${analytics.completedRate}%` : "0%"}</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetUsage}
+                                            title="Đặt lại thống kê lượt nghe về 0"
+                                            style={{
+                                                background: 'none', border: 'none', color: '#94a3b8',
+                                                cursor: 'pointer', fontSize: 11, display: 'inline-flex',
+                                                alignItems: 'center', gap: 3, padding: '2px 4px',
+                                            }}
+                                            onMouseOver={(e) => (e.currentTarget.style.color = '#ef4444')}
+                                            onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                                        >
+                                            <RefreshCw size={11} /> Reset
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1601,6 +1627,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     </button>
                                     <button className="btn-export" onClick={() => handleExport("Excel")} disabled={exporting}>
                                         <Download size={14} /> Excel
+                                    </button>
+                                    <button className="btn-export" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetUsage} title="Đặt lại toàn bộ lượt nghe audio về 0">
+                                        <RefreshCw size={14} /> Reset về 0
                                     </button>
                                 </div>
                             </div>

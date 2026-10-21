@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { getOverview, pingSession, removeSession, getActiveSessions } from "../controllers/analytics.controller.js";
+import { getOverview, pingSession, removeSession, getActiveSessions, logAudioUsage, resetAudioUsage } from "../controllers/analytics.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { query } from "../db/database.js"; // Thêm import query
+import { query } from "../db/database.js";
 
 const router = Router();
 
@@ -47,5 +47,9 @@ router.get("/categories", async (req, res) => {
 router.post("/sessions/ping", pingSession);
 router.delete("/sessions/:sessionId", removeSession);
 router.get("/sessions/active", requireAuth, getActiveSessions);
+
+// ---- Lượt nghe audio (Usage log) ----
+router.post("/usage", logAudioUsage);
+router.post("/usage/reset", requireAuth, resetAudioUsage);
 
 export default router;

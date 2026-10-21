@@ -60,12 +60,7 @@ async function seed() {
     VALUES (1, 'Nguyễn Trung Hiếu', 'success', 'Đăng nhập thành công', 'MFA hợp lệ')
   `);
 
-    for (let i = 0; i < 100; i++) {
-        await pool.query(`
-      INSERT INTO usage_log (poi_id, language_code, trigger_type, completed)
-      VALUES ($1, $2, $3, $4)
-    `, [(i % 5) + 1, ["vi", "en", "zh"][i % 3], i % 2 === 0 ? "auto" : "manual", i % 4 !== 0]);
-    }
+    // Không seed giả lập usage_log để thống kê chính xác theo lượt nghe thực tế
 
     console.log("✅ Seed xong. Login: ly.huynh@saigonzoo.net / khanhly");
     await pool.end();

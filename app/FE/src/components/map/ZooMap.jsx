@@ -92,16 +92,18 @@ export default function ZooMap({
         });
 
         if (!cancelled) {
-          setMarkers(databaseMarkers);
+          setMarkers(databaseMarkers.length > 0 ? databaseMarkers : MARKERS);
           setPoiLoadError(
             data.length === 0
-              ? "Database chưa có POI hoạt động; chạy npm run seed:pois để nạp các điểm mặc định."
+              ? "Database chưa có POI hoạt động; đang hiển thị bản đồ mặc định."
+              : databaseMarkers.length === 0
+                ? "POI trong database chưa có tọa độ bản đồ; đang hiển thị bản đồ mặc định."
               : ""
           );
           setSelectedId((selected) =>
-            databaseMarkers.some((marker) => marker.id === selected)
+            (databaseMarkers.length > 0 ? databaseMarkers : MARKERS).some((marker) => marker.id === selected)
               ? selected
-              : databaseMarkers[0]?.id ?? null
+              : (databaseMarkers.length > 0 ? databaseMarkers : MARKERS)[0]?.id ?? null
           );
         }
       } catch (error) {

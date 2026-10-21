@@ -215,7 +215,8 @@ export async function listPublicPois(req, res) {
          p.audio_available AS "audioAvailable",
          COALESCE(t.name, v.name, p.name) AS name,
          COALESCE(t.zone, v.zone, p.zone) AS zone,
-         COALESCE(t.description, v.description) AS "desc",
+         COALESCE(t.short_description, v.short_description, t.description, v.description) AS "shortDesc",
+         COALESCE(t.description, v.description) AS "detailDesc",
          COALESCE(t.fun_fact, v.fun_fact) AS "funFact",
          COALESCE((
            SELECT jsonb_agg(

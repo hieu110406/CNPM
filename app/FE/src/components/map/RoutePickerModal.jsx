@@ -20,23 +20,23 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
   const fromName    = markers.find((m) => m.id === fromId)?.name ?? "";
 
   const handleFind = useCallback(() => {
-    if (!fromId) { setError("Vui lòng chọn điểm xuất phát."); return; }
+    if (!fromId) { setError(t("route.selectStartRequired", "Vui lòng chọn điểm xuất phát.")); return; }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const data = shortestPath(fromId, destination.id);
       if (!data) {
-        setError("Không tìm thấy đường đi giữa 2 địa điểm này.");
+        setError(t("route.noRoute", "Không tìm thấy đường đi giữa 2 địa điểm này."));
       } else {
         setResult(data);
       }
     } catch (e) {
-      setError(e.message || "Lỗi tìm đường");
+        setError(e.message || t("route.errorGeneric", "Lỗi tìm đường"));
     } finally {
       setLoading(false);
     }
-  }, [fromId, destination]);
+  }, [fromId, destination, t]);
 
   const handleShowOnMap = () => {
     if (result?.path) onPathReady(result.path);
@@ -53,10 +53,10 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
             <Navigation size={17} />
           </div>
           <div className="rp-header__text">
-            <p className="rp-header__title">Chỉ đường tới đây</p>
+            <p className="rp-header__title">{t("map.infoCard.navigate", "Chỉ đường tới đây")}</p>
             <p className="rp-header__dest">{destination?.name}</p>
           </div>
-          <button className="rp-header__close" onClick={onClose} aria-label="Đóng">
+          <button className="rp-header__close" onClick={onClose} aria-label={t("map.infoCard.close", "Đóng")}>
             <X size={16} />
           </button>
         </div>
@@ -67,19 +67,19 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
           {/* Dải From → To */}
           <div className="rp-route-strip">
             <span className="rp-dot rp-dot--from" />
-            <span className="rp-route-strip__label">Từ</span>
+            <span className="rp-route-strip__label">{t("route.from", "Từ")}</span>
             <span className="rp-route-strip__name">
-              {fromName || <span style={{ color: "#bdbdbd", fontWeight: 400 }}>Chưa chọn</span>}
+              {fromName || <span style={{ color: "#bdbdbd", fontWeight: 400 }}>{t("route.notSelected", "Chưa chọn")}</span>}
             </span>
             <span className="rp-route-strip__line" />
             <span className="rp-dot rp-dot--to" />
-            <span className="rp-route-strip__label">Đến</span>
+            <span className="rp-route-strip__label">{t("route.to", "Đến")}</span>
             <span className="rp-route-strip__name">{destination?.name}</span>
           </div>
 
           {/* Chọn điểm */}
           <div>
-            <span className="rp-select-label">Điểm xuất phát</span>
+            <span className="rp-select-label">{t("route.startPoint", "Điểm xuất phát")}</span>
             <select
               className="rp-select"
               value={fromId}
@@ -89,7 +89,7 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
                 setError(null);
               }}
             >
-              <option value="">Chọn vị trí của bạn</option>
+              <option value="">{t("route.chooseLocation", "Chọn vị trí của bạn")}</option>
               {nodeOptions.map((m) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -103,8 +103,8 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
             disabled={loading || !fromId}
           >
             {loading
-              ? <><Loader2 size={14} className="spin" /> Đang tính…</>
-              : <><Navigation size={14} /> Tìm đường ngắn nhất</>
+              ? <><Loader2 size={14} className="spin" /> {t("route.calculating", "Đang tính…")}</>
+              : <><Navigation size={14} /> {t("route.findShortest", "Tìm đường ngắn nhất")}</>
             }
           </button>
 
@@ -134,12 +134,12 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
               <div className="rp-result">
                 <div className="rp-result__summary">
                   <span className="rp-badge rp-badge--steps">
-                    {result.path ? result.path.length - 1 : (result.stepsCount || 0)} chặng
+                     {result.path ? result.path.length - 1 : (result.stepsCount || 0)} {t("route.steps", "chặng")}
                   </span>
                   <span className="rp-badge rp-badge--dist">
                     {result.distanceMeters ? `~${result.distanceMeters}m (${result.estimatedMinutes} ph)` : `${(result.totalWeight || result.totalDistance || 0).toFixed(1)} đv`}
                   </span>
-                  <span className="rp-result__hint">Bấm "Xem trên bản đồ" để hiện đường đi</span>
+                 <span className="rp-result__hint">{t("route.viewOnMapHint", "Bấm \"Xem trên bản đồ\" để hiện đường đi")}</span>
                 </div>
 
                 <div className="rp-steps">
@@ -165,9 +165,9 @@ function RoutePickerModalInner({ destination, markers, onClose, onPathReady, onS
         {/* Footer */}
         {result && (
           <div className="rp-footer">
-            <button className="rp-footer__btn" onClick={onClose}>Đóng</button>
+             <button className="rp-footer__btn" onClick={onClose}>{t("map.infoCard.close", "Đóng")}</button>
             <button className="rp-footer__btn rp-footer__btn--primary" onClick={handleShowOnMap}>
-              Xem trên bản đồ
+              {t("route.viewMap", "Xem trên bản đồ")}
             </button>
           </div>
         )}

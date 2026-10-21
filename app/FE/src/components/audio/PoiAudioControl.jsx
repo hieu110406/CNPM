@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
+import { useSettings } from "../../context/SettingsContext";
 
 function toAudioLanguage(language) {
   if (language === "zh") return "zh";
@@ -8,10 +9,19 @@ function toAudioLanguage(language) {
 }
 
 export default function PoiAudioControl({ marker, language = "vi" }) {
+  const { t } = useSettings();
   const [requestResult, setRequestResult] = useState(null);
   const audioLanguage = toAudioLanguage(language);
   const requestKey = `${marker?.id || ""}:${audioLanguage}`;
   const isAvailable = marker?.fromDatabase && marker.audioAvailable;
+
+  const currentResult = requestResult?.key === requestKey ? requestResult : null;
+  const loading = !currentResult;
+  const track = currentResult?.track;
+  const error = currentResult?.error;
+
+  const [usageId, setUsageId] = useState(null);
+  const [completedLogged, setCompletedLogged] = useState(false);
 
   useEffect(() => {
     if (!isAvailable) return undefined;
@@ -30,15 +40,12 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
     };
   }, [isAvailable, marker?.id, audioLanguage, requestKey]);
 
-  if (!isAvailable) return null;
-
-  const [usageId, setUsageId] = useState(null);
-  const [completedLogged, setCompletedLogged] = useState(false);
-
   useEffect(() => {
     setUsageId(null);
     setCompletedLogged(false);
   }, [marker?.id, track?.id]);
+
+  if (!isAvailable) return null;
 
   const handlePlay = () => {
     if (!usageId) {
@@ -79,18 +86,18 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
 
   return (
     <div className="poi-audio-control">
-      {loading && <span role="status">Đang tải audio...</span>}
+      {loading && <span role="status">{t("map.infoCard.audioLoading", "Đang tải audio...")}</span>}
       {!loading && error && <span className="poi-audio-control__error" role="alert">{error}</span>}
       {!loading && !error && track && (
         <>
           <span className="poi-audio-control__label">
-            🎧 Thuyết minh — {track.language === "zh" ? "中文" : track.language === "en" ? "English" : "Tiếng Việt"}
+            🎧 {t("map.infoCard.audioTitle", "Thuyết minh")} — {track.language === "zh" ? "中文" : track.language === "en" ? "English" : "Tiếng Việt"}
           </span>
           <audio
             controls
             preload="none"
             src={track.fileUrl}
-            aria-label={`Nghe thuyết minh ${track.language}`}
+            aria-label={`${t("map.infoCard.listenAudio", "Nghe thuyết minh")} ${track.language}`}
             onPlay={handlePlay}
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
@@ -98,7 +105,7 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
         </>
       )}
       {!loading && !error && !track && (
-        <span>POI này chưa có audio thuyết minh.</span>
+        <span>{t("map.infoCard.noAudio", "POI này chưa có audio thuyết minh.")}</span>
       )}
     </div>
   );

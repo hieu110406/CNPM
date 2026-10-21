@@ -51,7 +51,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStar
           }}
         >
           <span className="info-card__watermark" aria-hidden="true">
-            {marker.emoji}
+            {marker.emoji || (marker.type === "plant" ? "🌿" : "🦁")}
           </span>
           <span className="info-card__type">{typeLabel}</span>
           <button
@@ -64,7 +64,7 @@ export default function MapInfoCard({ marker, markers = MARKERS, onClose, onStar
         </div>
 
         <div className="info-card__body">
-          <div className="info-card__avatar">{marker.emoji}</div>
+          <div className="info-card__avatar">{marker.emoji || (marker.type === "plant" ? "🌿" : "🦁")}</div>
 
           <div>
             <h3 className="info-card__name">{markerName}</h3>

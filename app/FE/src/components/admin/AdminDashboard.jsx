@@ -171,6 +171,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [editingPoi, setEditingPoi] = useState(null);
     const [poiLangTab, setPoiLangTab] = useState("vi");
     const [poiForm, setPoiForm] = useState(null);
+    const [showIconPicker, setShowIconPicker] = useState(false);
+    const [iconPickerTab, setIconPickerTab] = useState("animal");
     const [isTranslating, setIsTranslating] = useState(false);
     const [translatedPoiSource, setTranslatedPoiSource] = useState("");
     const [poiImages, setPoiImages] = useState([]);
@@ -419,6 +421,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
         setPoiForm({
             id: nextId, name: "", category: "animal", zone: "",
+            emoji: "🦁",
             latitude: "10.787500", longitude: "106.705000",
             mapX: 50, mapY: 50,
             geofenceRadius: 20, isActive: true,
@@ -431,6 +434,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setEditingPoi("new");
         clearPoiImages();
         setPoiLangTab("vi");
+        setShowIconPicker(false);
         setTranslatedPoiSource("");
     };
 
@@ -438,6 +442,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setPoiForm({
             ...JSON.parse(JSON.stringify(poi)),
             dbId: poi.dbId,
+            emoji: poi.emoji || "",
             mapX: poi.mapX ?? 50,
             mapY: poi.mapY ?? 50,
             translations: { vi: "", en: "", zh: "", ...poi.translations },
@@ -445,6 +450,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         setEditingPoi(poi.id);
         clearPoiImages();
         setPoiLangTab("vi");
+        setShowIconPicker(false);
         setTranslatedPoiSource(getPoiTranslationSource(poi));
     };
 
@@ -1135,7 +1141,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         <td><span className="code-badge">{p.id}</span></td>
                                                         <td>
                                                             <div className="table-item-title">
-                                                                <span>{p.category === "plant" ? "🌳" : p.category === "facility" ? "🏛️" : "🐾"}</span>
+                                                                <span style={{ fontSize: 18 }}>{p.emoji || (p.category === "plant" ? "🌿" : p.category === "facility" || p.category === "building" ? "🏛️" : "🦁")}</span>
                                                                 <div>
                                                                     <div className="font-semibold text-slate-100">{p.name}</div>
                                                                     <div className="text-xs text-slate-400">{p.zone}</div>
@@ -1777,6 +1783,129 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             {CATEGORY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.labels.vi}</option>)}
                                         </select>
                                     </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 14, position: 'relative' }}>
+                                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Icon / Emoji đại diện</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        {/* Preview + Trigger Button */}
+                                        <button
+                                            type="button"
+                                            disabled={savingPoi}
+                                            onClick={() => { setShowIconPicker((v) => !v); setIconPickerTab('animal'); }}
+                                            title="Bấm để chọn icon"
+                                            style={{
+                                                width: 52, height: 52, borderRadius: 14,
+                                                background: showIconPicker ? '#dcfce7' : '#f8fafc',
+                                                border: showIconPicker ? '2px solid #16a34a' : '2px solid #cbd5e1',
+                                                fontSize: 28, cursor: 'pointer',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: showIconPicker ? '0 0 0 3px #bbf7d0' : '0 2px 4px rgba(0,0,0,0.06)',
+                                                transition: 'all .15s',
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            {poiForm.emoji || '📍'}
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 12, color: '#64748b', marginBottom: 3 }}>Icon hiện tại — bấm ô để mở bảng chọn</div>
+                                            <input
+                                                type="text"
+                                                value={poiForm.emoji || ''}
+                                                placeholder="Hoặc dán emoji bất kỳ vào đây…"
+                                                maxLength={8}
+                                                onChange={(e) => setPoiForm({ ...poiForm, emoji: e.target.value })}
+                                                disabled={savingPoi}
+                                                style={{ width: '100%' }}
+                                            />
+                                        </div>
+                                        {poiForm.emoji && (
+                                            <button
+                                                type="button" className="btn-outline-admin"
+                                                style={{ padding: '6px 10px', fontSize: 11, flexShrink: 0 }}
+                                                onClick={() => { setPoiForm({ ...poiForm, emoji: '' }); setShowIconPicker(false); }}
+                                            >Xoá</button>
+                                        )}
+                                    </div>
+
+                                    {/* Popup Picker */}
+                                    {showIconPicker && (
+                                        <div
+                                            style={{
+                                                position: 'absolute', top: '100%', left: 0, zIndex: 9999,
+                                                width: 380, marginTop: 6,
+                                                background: '#fff',
+                                                border: '1.5px solid #e2e8f0',
+                                                borderRadius: 14,
+                                                boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+                                                overflow: 'hidden',
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {/* Close bar */}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 0', borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>🎨 Chọn icon cho POI</span>
+                                                <button type="button" onClick={() => setShowIconPicker(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#94a3b8', lineHeight: 1 }}>×</button>
+                                            </div>
+                                            {/* Tabs */}
+                                            <div style={{ display: 'flex', gap: 2, padding: '6px 8px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                                {[
+                                                    { key: 'animal', label: '🐾 Động vật' },
+                                                    { key: 'plant', label: '🌿 Thực vật' },
+                                                    { key: 'facility', label: '🏛️ Tiện ích' },
+                                                    { key: 'nature', label: '🌈 Khác' },
+                                                ].map((tab) => (
+                                                    <button
+                                                        key={tab.key} type="button"
+                                                        onClick={() => setIconPickerTab(tab.key)}
+                                                        style={{
+                                                            flex: 1, padding: '5px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                                                            cursor: 'pointer', border: 'none',
+                                                            background: iconPickerTab === tab.key ? '#16a34a' : 'transparent',
+                                                            color: iconPickerTab === tab.key ? '#fff' : '#475569',
+                                                            transition: 'all .12s',
+                                                        }}
+                                                    >{tab.label}</button>
+                                                ))}
+                                            </div>
+                                            {/* Grid */}
+                                            <div style={{ padding: '10px 10px', display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 220, overflowY: 'auto' }}>
+                                                {({
+                                                    animal: ["🐘","🦁","🐯","🦒","🦛","🐻","🐒","🦍","🦧","🐺","🦊","🐗","🐴","🦓","🦌","🦬","🐮","🐷","🐏","🐑","🐐","🦙","🦘","🦥","🦦","🦨","🦡","🦔","🐼","🐨","🐸","🦎","🐊","🐢","🐍","🦕","🦖","🐉","🦩","🦚","🦜","🦅","🦆","🐦","🕊️","🦤","🦢","🐧","🦉","🦇","🐠","🐟","🐬","🐳","🦭","🦑","🦞","🦀","🐙","🦋","🐝","🪲","🐛","🦗","🕷️"],
+                                                    plant: ["🌿","🌳","🌲","🌴","🌵","🎋","🎍","🌾","🍀","🍃","🍂","🍁","🌱","🪴","🎄","🌸","🌺","🌻","🌹","🌷","💐","🌼","🏵️","🌙","🍄","🪨","🪵","🌊","🪸","🌏","🌿","🧅","🧄","🥬","🥦","🍃"],
+                                                    facility: ["🏛️","🏯","🏰","⛩️","🗺️","🎡","🎢","🎠","🎭","🎪","🎨","🖼️","🍔","🍕","🌮","🍜","☕","🧃","🍦","🍰","🚻","🚺","🚹","🛒","🏪","🏥","🩺","💊","🚑","🚂","🚃","🚗","🛵","🚲","🛺","⛽","📸","📷","🎥","ℹ️","🪧","🔭","🎟️","🎫","🔑","🗝️","🚪","🏠","🛖","⛺","🌐","📍","📌","🧭"],
+                                                    nature: ["⭐","🌟","✨","💫","🔥","🌈","☀️","🌤️","⛅","🌦️","🌧️","🌩️","❄️","🌬️","🌀","🌊","🏔️","⛰️","🌋","🗻","🏕️","🏖️","🏜️","🏝️","🏞️","🪐","🌌","🎇","🎆","❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💯","🎯","🏆","🥇","🎖️","🏅"]
+                                                })[iconPickerTab]?.map((icon) => (
+                                                    <button
+                                                        key={icon} type="button"
+                                                        onClick={() => { setPoiForm({ ...poiForm, emoji: icon }); setShowIconPicker(false); }}
+                                                        title={icon}
+                                                        style={{
+                                                            width: 36, height: 36, fontSize: 20, cursor: 'pointer',
+                                                            borderRadius: 8,
+                                                            background: poiForm.emoji === icon ? '#dcfce7' : '#f8fafc',
+                                                            border: poiForm.emoji === icon ? '2px solid #16a34a' : '1.5px solid #e2e8f0',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            transition: 'transform .1s',
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                                    >{icon}</button>
+                                                ))}
+                                            </div>
+                                            <div style={{ padding: '6px 12px 10px', borderTop: '1px solid #f1f5f9', fontSize: 11, color: '#94a3b8' }}>
+                                                Bấm icon để chọn — bấm ngoài để đóng
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Overlay to close picker on outside click */}
+                                    {showIconPicker && (
+                                        <div
+                                            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                                            onClick={() => setShowIconPicker(false)}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="form-row-2" style={{ marginBottom: 12 }}>

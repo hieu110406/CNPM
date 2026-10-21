@@ -41,8 +41,13 @@
   backdrop-filter: blur(12px);
 }
 
-.ic-emerald { color: #059669; }
-.ic-amber { color: #f59e0b; }
+.ic-emerald {
+  color: #059669;
+}
+
+.ic-amber {
+  color: #f59e0b;
+}
 
 .panel-title {
   display: flex;
@@ -256,8 +261,13 @@
   box-shadow: var(--sh-xs);
 }
 
-.tab.is-active .tab__icon--zones { color: #f59e0b; }
-.tab.is-active .tab__icon--legend { color: #059669; }
+.tab.is-active .tab__icon--zones {
+  color: #f59e0b;
+}
+
+.tab.is-active .tab__icon--legend {
+  color: #059669;
+}
 
 /* Banner tour xe điện */
 .tour-banner {
@@ -591,14 +601,22 @@
 .info-card::-webkit-scrollbar {
   width: 4px;
 }
+
 .info-card::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 9999px;
 }
 
 @keyframes slideInSpring {
-  from { opacity: 0; transform: translateY(16px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .info-card__banner {
@@ -646,7 +664,9 @@
   transition: background 0.2s;
 }
 
-.info-card__close:hover { background: rgba(255, 255, 255, 0.5); }
+.info-card__close:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
 
 .info-card__body {
   display: flex;
@@ -669,6 +689,7 @@
   border-radius: 20px;
   box-shadow: var(--sh-lg);
 }
+
 .info-card__name {
   font-size: 16px;
   font-weight: 800;
@@ -699,9 +720,17 @@
   color: #047857;
 }
 
-.info-card__more:hover { color: #065f46; }
-.info-card__more svg { transition: transform 0.2s; }
-.info-card__more:hover svg { transform: translateX(3px); }
+.info-card__more:hover {
+  color: #065f46;
+}
+
+.info-card__more svg {
+  transition: transform 0.2s;
+}
+
+.info-card__more:hover svg {
+  transform: translateX(3px);
+}
 
 
 
@@ -716,8 +745,14 @@
   border-radius: 10px;
 }
 
-.info-card__time p { margin: 0; }
-.info-card__time-icon { flex-shrink: 0; color: #b45309; }
+.info-card__time p {
+  margin: 0;
+}
+
+.info-card__time-icon {
+  flex-shrink: 0;
+  color: #b45309;
+}
 
 .info-card__fact {
   display: flex;
@@ -731,7 +766,11 @@
   border-radius: 10px;
 }
 
-.info-card__fact-icon { flex-shrink: 0; margin-top: 2px; color: #059669; }
+.info-card__fact-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #059669;
+}
 
 /* Audio */
 .audio {
@@ -756,9 +795,14 @@
   transition: transform 0.15s;
 }
 
-.audio__play:active { transform: scale(0.92); }
+.audio__play:active {
+  transform: scale(0.92);
+}
 
-.audio__main { flex: 1; min-width: 0; }
+.audio__main {
+  flex: 1;
+  min-width: 0;
+}
 
 .audio__title {
   font-size: 11px;
@@ -836,8 +880,13 @@
   transition: transform 0.15s, background 0.2s;
 }
 
-.info-card__nav:hover { background: #111c19; }
-.info-card__nav:active { transform: scale(0.98); }
+.info-card__nav:hover {
+  background: #111c19;
+}
+
+.info-card__nav:active {
+  transform: scale(0.98);
+}
 
 .info-card__icon-btn {
   display: flex;
@@ -852,8 +901,13 @@
   transition: transform 0.15s, background 0.2s;
 }
 
-.info-card__icon-btn:hover { background: #e2e8f0; }
-.info-card__icon-btn:active { transform: scale(0.92); }
+.info-card__icon-btn:hover {
+  background: #e2e8f0;
+}
+
+.info-card__icon-btn:active {
+  transform: scale(0.92);
+}
 
 .info-card__icon-btn.is-liked {
   color: #e11d48;
@@ -996,6 +1050,7 @@
     opacity: 0;
     transform: translate(-50%, 6px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0) scale(1);
@@ -1048,6 +1103,7 @@
 }
 
 @keyframes pinPing {
+
   75%,
   100% {
     transform: scale(2);
@@ -1212,6 +1268,7 @@
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1364,10 +1421,21 @@
   transform: scale(1.05);
 }
 
-.zone-card__avatar--big { background: linear-gradient(135deg, #f59e0b, #ea580c); }
-.zone-card__avatar--birds { background: linear-gradient(135deg, #fb7185, #e11d48); }
-.zone-card__avatar--primates { background: linear-gradient(135deg, #10b981, #0f766e); }
-.zone-card__avatar--entertainment { background: linear-gradient(135deg, #a855f7, #4f46e5); }
+.zone-card__avatar--big {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+}
+
+.zone-card__avatar--birds {
+  background: linear-gradient(135deg, #fb7185, #e11d48);
+}
+
+.zone-card__avatar--primates {
+  background: linear-gradient(135deg, #10b981, #0f766e);
+}
+
+.zone-card__avatar--entertainment {
+  background: linear-gradient(135deg, #a855f7, #4f46e5);
+}
 
 .zone-card__info {
   min-width: 0;
@@ -1505,6 +1573,9 @@
 .path-line-animated {
   animation: dashMove 1.2s linear infinite;
 }
+
 @keyframes dashMove {
-  to { stroke-dashoffset: -26; }
+  to {
+    stroke-dashoffset: -26;
+  }
 }

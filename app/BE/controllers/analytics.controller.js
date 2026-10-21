@@ -1,17 +1,12 @@
 import { query } from "../db/database.js";
 
-/* ============================================================
-   IN-MEMORY SESSION STORE — không cần bảng DB mới
-   User FE ping mỗi 30s; session tự expire sau 120s không ping
-   ============================================================ */
 const SESSION_TIMEOUT_MS = 120_000;
-const sessions = new Map(); // Map<sessionId, { language, currentPoi, device, ip, lastSeen }>
 
-function cleanupSessions() {
-    const cutoff = Date.now() - SESSION_TIMEOUT_MS;
-    for (const [id, s] of sessions) {
-        if (s.lastSeen < cutoff) sessions.delete(id);
-    }
+async function cleanupSessions() {
+    await query(`
+        DELETE FROM online_session
+        WHERE last_seen < NOW() - ($1 * INTERVAL '1 millisecond')
+    `, [SESSION_TIMEOUT_MS]);
 }
 
 /* ---- Analytics: Tổng quan ---- */
@@ -34,8 +29,8 @@ export async function getOverview(req, res) {
             byLang.rows.forEach((r) => (languageDist[r.language_code] = Math.round((r.c / totalLang) * 100)));
         }
 
-        // Đính kèm luôn số user online từ in-memory store
-        cleanupSessions();
+        await cleanupSessions();
+        const onlineResult = await query(`SELECT COUNT(*)::int AS count FROM online_session`);
 
         return res.json({
             totalPlays,
@@ -45,7 +40,7 @@ export async function getOverview(req, res) {
             totalAudioPublished: audioCount.rows[0].c,
             totalPois: poiCount.rows[0].c,
             totalAdmins: adminCount.rows[0].c,
-            onlineUsers: sessions.size,
+            onlineUsers: onlineResult.rows[0].count,
         });
     } catch (e) {
         console.error("Lỗi getOverview:", e);
@@ -54,56 +49,70 @@ export async function getOverview(req, res) {
 }
 
 /* ---- Session: Ping (public) ---- */
-export function pingSession(req, res) {
+export async function pingSession(req, res) {
     let { sessionId, language = "vi", currentPoi = null, device = "web" } = req.body || {};
     if (!sessionId || typeof sessionId !== "string" || sessionId.length > 64) {
         const ip = (req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "client").slice(0, 40);
         sessionId = `sess_${Buffer.from(ip).toString("hex").slice(0, 10)}_${Date.now().toString(36)}`;
     }
-    cleanupSessions();
     const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || null;
-    sessions.set(sessionId, { language, currentPoi, device, ip, lastSeen: Date.now() });
-    return res.json({ ok: true, online: sessions.size, sessionId });
+    await query(`
+        INSERT INTO online_session
+          (session_id, language_code, current_poi, device, ip_address, last_seen)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (session_id) DO UPDATE SET
+          language_code = EXCLUDED.language_code,
+          current_poi = EXCLUDED.current_poi,
+          device = EXCLUDED.device,
+          ip_address = EXCLUDED.ip_address,
+          last_seen = NOW()
+    `, [sessionId, language, currentPoi, device, ip]);
+
+    await cleanupSessions();
+    const { rows } = await query(`SELECT COUNT(*)::int AS count FROM online_session`);
+    return res.json({ ok: true, online: rows[0].count, sessionId });
 }
 
 /* ---- Session: Remove (public — beforeunload) ---- */
-export function removeSession(req, res) {
+export async function removeSession(req, res) {
     const { sessionId } = req.params;
     if (sessionId) {
-        sessions.delete(sessionId);
+        await query(`DELETE FROM online_session WHERE session_id = $1`, [sessionId]);
     }
-    cleanupSessions();
-    return res.json({ ok: true, online: sessions.size });
+    await cleanupSessions();
+    const { rows } = await query(`SELECT COUNT(*)::int AS count FROM online_session`);
+    return res.json({ ok: true, online: rows[0].count });
 }
 
 /* ---- Session: Danh sách user online (admin only) ---- */
-export function getActiveSessions(req, res) {
-    cleanupSessions();
+export async function getActiveSessions(req, res) {
+    await cleanupSessions();
+    const { rows } = await query(`
+        SELECT
+          LEFT(session_id, 8) || '…' AS "sessionId",
+          language_code AS language,
+          current_poi AS "currentPoi",
+          device,
+          GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - last_seen))))::int AS "idleSec"
+        FROM online_session
+        ORDER BY last_seen DESC
+    `);
 
     const byLanguage = {};
-    const byDevice   = {};
-    const byPoi      = {};
-    const list       = [];
-
-    for (const [id, s] of sessions) {
-        byLanguage[s.language] = (byLanguage[s.language] || 0) + 1;
-        byDevice[s.device]     = (byDevice[s.device]     || 0) + 1;
-        if (s.currentPoi) byPoi[s.currentPoi] = (byPoi[s.currentPoi] || 0) + 1;
-        list.push({
-            sessionId:  id.slice(0, 8) + "…",
-            language:   s.language,
-            currentPoi: s.currentPoi,
-            device:     s.device,
-            idleSec:    Math.round((Date.now() - s.lastSeen) / 1000),
-        });
+    const byDevice = {};
+    const byPoi = {};
+    for (const session of rows) {
+        byLanguage[session.language] = (byLanguage[session.language] || 0) + 1;
+        byDevice[session.device] = (byDevice[session.device] || 0) + 1;
+        if (session.currentPoi) byPoi[session.currentPoi] = (byPoi[session.currentPoi] || 0) + 1;
     }
 
     return res.json({
-        total:      sessions.size,
-        sessions:   list.sort((a, b) => a.idleSec - b.idleSec),
+        total: rows.length,
+        sessions: rows,
         byLanguage: Object.entries(byLanguage).map(([lang, c]) => ({ lang, c })).sort((a, b) => b.c - a.c),
-        byDevice:   Object.entries(byDevice).map(([device, c]) => ({ device, c })).sort((a, b) => b.c - a.c),
-        byPoi:      Object.entries(byPoi).map(([poi, c]) => ({ poi, c })).sort((a, b) => b.c - a.c).slice(0, 10),
+        byDevice: Object.entries(byDevice).map(([device, c]) => ({ device, c })).sort((a, b) => b.c - a.c),
+        byPoi: Object.entries(byPoi).map(([poi, c]) => ({ poi, c })).sort((a, b) => b.c - a.c).slice(0, 10),
     });
 }
 

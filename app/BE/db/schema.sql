@@ -92,6 +92,17 @@ CREATE INDEX IF NOT EXISTS idx_usage_lang  ON usage_log(language_code);
 CREATE INDEX IF NOT EXISTS idx_audit_admin ON audit_log(admin_id);
 CREATE INDEX IF NOT EXISTS idx_audio_poi   ON audio_track(poi_id);
 
+CREATE TABLE IF NOT EXISTS online_session (
+  session_id  VARCHAR(64) PRIMARY KEY,
+  language_code VARCHAR(5) NOT NULL DEFAULT 'vi',
+  current_poi VARCHAR(100),
+  device      VARCHAR(20) NOT NULL DEFAULT 'web',
+  ip_address  VARCHAR(200),
+  last_seen   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_online_session_last_seen ON online_session(last_seen);
+
 CREATE TABLE IF NOT EXISTS map_node (
   node_id  VARCHAR(50) PRIMARY KEY,
   name     VARCHAR(120) NOT NULL,

@@ -1,0 +1,13 @@
+{
+  "name": "cnpm-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix FE run start --",
+    "android": "npm --prefix FE run android --",
+    "ios": "npm --prefix FE run ios --",
+    "web": "npm --prefix FE run web --",
+    "lint": "npm --prefix FE run lint",
+    "typecheck": "node FE/node_modules/typescript/bin/tsc --noEmit -p FE/tsconfig.json"
+  }
+}

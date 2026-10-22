@@ -1,84 +1,62 @@
-# Welcome to your Expo app 👋
+﻿# Mobile frontend — Thảo Cầm Viên
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Ứng dụng React Native / Expo. Hiện dùng dữ liệu mẫu, chưa kết nối backend.
 
-## Get started
+## Chạy dự án
 
-1. Install dependencies
+```powershell
+cd mobile
+npm.cmd --prefix FE ci
+npm.cmd start
+```
 
-   ```bash
-   npm install
-   ```
+Chọn Android/iOS trong Expo hoặc chạy `npm.cmd run web` để xem trên trình duyệt.
 
-2. Start the app
+`mobile/package.json` chuyển các lệnh chạy sang dự án trong `FE/`. Khi đứng ở `mobile`, dùng `npm start` thay cho `npx expo start`.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside **src/app**. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Project structure
+## Cấu trúc
 
 ```text
-mobile/
-├── BE/                # Backend area, organized like app/BE
-│   ├── controllers/
-│   ├── db/
-│   ├── I18N/
-│   ├── middleware/
-│   └── routes/
-└── FE/                # Expo application
-    ├── assets/        # Images and native app icons referenced by app.json
-    ├── scripts/
-    └── src/
-        ├── app/       # Expo Router screens and layouts
-        ├── api/       # API clients and endpoint access
-        ├── components/
-        ├── constants/
-        ├── context/
-        ├── hooks/
-        └── utils/
+src/
+  app/                  # Expo Router: chỉ khai báo route và layout điều hướng
+    _layout.tsx
+    index.tsx           # / → pages/HomePage
+    explore.tsx         # /explore → pages/ExplorePage
+    map.tsx             # /map → pages/MapPage
+  pages/                # Chỉ gọi component màn hình tương ứng
+    HomePage.tsx
+    ExplorePage.tsx
+    MapPage.tsx
+  components/
+    home/
+      HomeScreen.tsx    # Giao diện và trạng thái trang chủ
+    explore/
+      ExploreScreen.tsx # Giao diện tìm kiếm, lọc và chi tiết địa điểm
+    map/
+      ZooMap.tsx        # Giao diện bản đồ và chọn điểm đến
+    layout/
+      AppTabs.tsx       # Thanh điều hướng dưới dùng chung Android, iOS, web
+    ui/
+      MobileUI.tsx      # Screen, Heading và style UI dùng chung
+  data/
+    destinations.ts     # Dữ liệu mẫu các điểm tham quan
+  constants/
+    theme.ts            # Màu sắc, font, khoảng cách
+  global.css            # Biến font cho web
+assets/images/          # Ảnh và bản đồ
 ```
 
-The Expo project files (`package.json`, `app.json`, and `tsconfig.json`) live
-in `mobile/FE`. Keep route files in `FE/src/app` for Expo Router. `mobile/BE`
-contains the backend folder structure; the existing backend implementation
-remains in `app/BE`.
+- Code giao diện chính, style và trạng thái tương tác trong `components/<tính năng>/`.
+- Thêm màn hình: tạo component trong `components/`, để `pages/` gọi component đó, sau đó thêm file route mỏng trong `app/`.
+- Component dùng chung ở `components/ui/`; thanh điều hướng và khung ứng dụng ở `components/layout/`.
+- Không đặt component, dữ liệu hoặc hàm tiện ích vào `app/` vì Expo Router xem file ở đó là route.
+- Chỉ tạo `api/`, `context/`, `hooks/` khi bắt đầu có phần sử dụng; chưa kết nối API ở bước giao diện này.
 
-## Get a fresh project
+## Kiểm tra
 
-When you're ready, run:
-
-```bash
-npm run reset-project
+```powershell
+npm.cmd run lint
+npx.cmd tsc --noEmit
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Tìm kiếm, lọc khu vực và hộp chi tiết ở Khám phá chạy bằng dữ liệu mẫu. Bản đồ hiện là ảnh tham khảo; chưa có GPS, tìm đường hay phát audio.

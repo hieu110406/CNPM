@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { getOverview, pingSession, removeSession, getActiveSessions, logAudioUsage, resetAudioUsage } from "../controllers/analytics.controller.js";
+import { getOverview, exportOverview, pingSession, removeSession, getActiveSessions, logAudioUsage, resetAudioUsage } from "../controllers/analytics.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { query } from "../db/database.js";
 
 const router = Router();
 
 router.get("/overview", requireAuth, getOverview);
+router.get("/overview/export", requireAuth, exportOverview);
 
 // Lấy Top POI phổ biến (API cho User)
 router.get("/top-popular", async (req, res) => {

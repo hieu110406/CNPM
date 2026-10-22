@@ -83,8 +83,6 @@ export const api = {
     // UC4 - Auth
     login: (email, password) =>
         request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-    verifyMfa: (adminId, code) =>
-        request("/auth/verify-mfa", { method: "POST", body: JSON.stringify({ adminId, code }) }),
     logout: () => request("/auth/logout", { method: "POST" }),
 
     // UC5 - POI
@@ -131,7 +129,22 @@ export const api = {
     createAdmin: (data) => request("/admin-accounts", { method: "POST", body: JSON.stringify(data) }),
     deactivateAdmin: (id) => request(`/admin-accounts/${id}/deactivate`, { method: "PUT" }),
     updateAdmin: (id, data) => request(`/admin-accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    getAnalytics: () => request("/analytics/overview"),
+    getAnalytics: ({ from, to } = {}) => {
+        const params = new URLSearchParams();
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        return request(`/analytics/overview${params.toString() ? `?${params}` : ""}`);
+    },
+    exportAnalytics: async ({ from, to } = {}) => {
+        const params = new URLSearchParams();
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        const res = await fetch(`${BASE}/analytics/overview/export?${params}`, {
+            headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        if (!res.ok) throw new Error("Không thể xuất báo cáo");
+        return res.blob();
+    },
     getAuditLogs: () => request("/audit-logs"),
 
     // API Bổ trợ cho Khu Nổi Bật (Tự động)

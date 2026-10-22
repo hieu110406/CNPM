@@ -4,7 +4,7 @@ import { query } from "../db/database.js";
 export async function listAdmins(req, res) {
     try {
         const { rows } = await query(
-            `SELECT admin_id, name, email, status, mfa_enabled, last_login
+            `SELECT admin_id, name, email, status, last_login
        FROM admin_account ORDER BY admin_id`
         );
         return res.json(rows.map((a) => ({
@@ -13,7 +13,6 @@ export async function listAdmins(req, res) {
             name: a.name,
             email: a.email,
             role: "admin",
-            mfa: a.mfa_enabled,
             status: a.status,
             lastLogin: a.last_login
                 ? new Date(a.last_login).toLocaleString("vi-VN")
@@ -27,7 +26,7 @@ export async function listAdmins(req, res) {
 
 export async function createAdmin(req, res) {
     try {
-        const { name, email, password, mfa } = req.body;
+        const { name, email, password } = req.body;
 
         if (!name?.trim() || !email?.trim() || !password) {
             return res.status(400).json({ error: "Thiếu thông tin bắt buộc" });
@@ -48,10 +47,10 @@ export async function createAdmin(req, res) {
         const passwordHash = bcrypt.hashSync(password, 10);
 
         const { rows } = await query(`
-      INSERT INTO admin_account (name, email, password_hash, role_id, mfa_enabled, status)
-      VALUES ($1, $2, $3, 1, $4, 'active')
-      RETURNING admin_id, name, email, status, mfa_enabled, last_login
-    `, [name.trim(), emailNorm, passwordHash, !!mfa]);
+       INSERT INTO admin_account (name, email, password_hash, role_id, status)
+       VALUES ($1, $2, $3, 1, 'active')
+       RETURNING admin_id, name, email, status, last_login
+    `, [name.trim(), emailNorm, passwordHash]);
 
         await query(`
       INSERT INTO audit_log (admin_id, admin_name, type, event, detail)
@@ -65,7 +64,6 @@ export async function createAdmin(req, res) {
             name: a.name,
             email: a.email,
             role: "admin",
-            mfa: a.mfa_enabled,
             status: a.status,
             lastLogin: "—",
         });
@@ -96,7 +94,7 @@ export async function deactivateAdmin(req, res) {
 export async function updateAdmin(req, res) {
     try {
         const { id } = req.params;
-        const { name, email, mfa, status } = req.body;
+        const { name, email, status } = req.body;
 
         if (!name?.trim() || !email?.trim()) {
             return res.status(400).json({ error: "Thiếu tên hoặc email" });
@@ -113,10 +111,10 @@ export async function updateAdmin(req, res) {
 
         const { rows } = await query(`
       UPDATE admin_account
-      SET name = $1, email = $2, mfa_enabled = $3, status = $4
-      WHERE admin_id = $5
-      RETURNING admin_id, name, email, status, mfa_enabled, last_login
-    `, [name.trim(), email.trim().toLowerCase(), !!mfa, status || "active", id]);
+       SET name = $1, email = $2, status = $3
+       WHERE admin_id = $4
+       RETURNING admin_id, name, email, status, last_login
+    `, [name.trim(), email.trim().toLowerCase(), status || "active", id]);
 
         if (rows.length === 0) {
             return res.status(404).json({ error: "Không tìm thấy tài khoản" });
@@ -135,7 +133,6 @@ export async function updateAdmin(req, res) {
             name: a.name,
             email: a.email,
             role: "admin",
-            mfa: a.mfa_enabled,
             status: a.status,
             lastLogin: a.last_login
                 ? new Date(a.last_login).toLocaleString("vi-VN")

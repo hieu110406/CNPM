@@ -44,34 +44,7 @@ export async function login(req, res) {
             return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
         }
 
-        const mfaCode = String(Math.floor(100000 + Math.random() * 900000));
         await query(`UPDATE admin_account SET failed_attempts = 0 WHERE admin_id = $1`, [admin.admin_id]);
-
-        return res.json({
-            step: "mfa_required",
-            adminId: admin.admin_id,
-            email: admin.email,
-            mfaCode,
-            message: "Mã MFA đã được gửi tới email quản trị",
-        });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ error: "Lỗi server" });
-    }
-}
-
-export async function verifyMfa(req, res) {
-    try {
-        const { adminId, code } = req.body;
-        const { rows } = await query(`SELECT * FROM admin_account WHERE admin_id = $1`, [adminId]);
-        const admin = rows[0];
-        if (!admin) return res.status(404).json({ error: "Không tìm thấy tài khoản" });
-
-        if (!/^\d{6}$/.test(code)) {
-            await logAudit(admin.admin_id, admin.name, "failed", "Sai mã MFA", code);
-            return res.status(401).json({ error: "Mã MFA không đúng" });
-        }
-
         const accessToken = jwt.sign(
             { adminId: admin.admin_id, email: admin.email, name: admin.name, role: "admin" },
             process.env.JWT_SECRET,
@@ -84,7 +57,7 @@ export async function verifyMfa(req, res) {
         );
 
         await query(`UPDATE admin_account SET last_login = NOW() WHERE admin_id = $1`, [admin.admin_id]);
-        await logAudit(admin.admin_id, admin.name, "success", "Đăng nhập thành công", `MFA OK • ${admin.email}`);
+        await logAudit(admin.admin_id, admin.name, "success", "Đăng nhập thành công", admin.email);
 
         return res.json({
             accessToken,

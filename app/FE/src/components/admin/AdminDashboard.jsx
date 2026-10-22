@@ -4,10 +4,11 @@ import {
     Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
     CheckCircle2, Clock, Download, Upload, Sparkles,
     Languages, FileAudio, History, Activity, TrendingUp, ArrowUpRight,
-    Edit3, Globe, ExternalLink, KeyRound, UserCog, Info, Server, Zap,
-    FileText, Mic, RefreshCw, Save, Lock, Unlock,
+    Edit3, Globe, ExternalLink, UserCog, Info, Server,
+    FileText, Mic, RefreshCw, Save, Lock,
 } from "lucide-react";
 import { api } from "../../api/client";
+import logo from "../../assets/marker/logo.png";
 import PoiMapPicker from "./PoiMapPicker";
 import "./dashboard.css";
 
@@ -206,6 +207,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [analytics, setAnalytics] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [range, setRange] = useState("7d");
+    const [customFrom, setCustomFrom] = useState("");
+    const [customTo, setCustomTo] = useState("");
     const [exporting, setExporting] = useState(false);
     const [onlineData, setOnlineData] = useState({ total: 0, sessions: [], byLanguage: [], byDevice: [] });
 
@@ -213,11 +216,21 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [adminList, setAdminList] = useState([]);
     const [adminLoading, setAdminLoading] = useState(false);
     const [showAddAdminModal, setShowAddAdminModal] = useState(false);
-    const [newAdminForm, setNewAdminForm] = useState({ name: "", email: "", password: "", mfa: true });
+    const [newAdminForm, setNewAdminForm] = useState({ name: "", email: "", password: "" });
     const [savingAdmin, setSavingAdmin] = useState(false);
     const [showEditAdminModal, setShowEditAdminModal] = useState(false);
     const [editAdminForm, setEditAdminForm] = useState(null);
     const [savingEditAdmin, setSavingEditAdmin] = useState(false);
+
+    const getAnalyticsRange = () => {
+        if (range === "custom") return { from: customFrom, to: customTo };
+        const end = new Date();
+        const days = range === "1d" ? 1 : range === "30d" ? 30 : 7;
+        const start = new Date(end);
+        start.setDate(end.getDate() - days + 1);
+        const formatDate = (date) => date.toISOString().slice(0, 10);
+        return { from: formatDate(start), to: formatDate(end) };
+    };
 
     /* ---- UC4: Audit log ---- */
     const [auditLogs, setAuditLogs] = useState([]);
@@ -295,7 +308,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         (async () => {
             setAnalyticsLoading(true);
             try {
-                const data = await api.getAnalytics();
+                const data = await api.getAnalytics(getAnalyticsRange());
                 if (!cancelled) setAnalytics(data);
             } catch (err) {
                 if (!cancelled) console.error("Analytics:", err.message);
@@ -304,7 +317,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             }
         })();
         return () => { cancelled = true; };
-    }, []);
+    }, [range, customFrom, customTo]);
 
     useEffect(() => {
         let cancelled = false;
@@ -324,7 +337,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
     useEffect(() => {
         if (!audioPoiId) {
-            setAudioList([]);
             return;
         }
         let cancelled = false;
@@ -349,24 +361,26 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             try {
                 const [online, analyticsData] = await Promise.all([
                     api.getActiveSessions().catch(() => null),
-                    api.getAnalytics().catch(() => null),
+                    api.getAnalytics(getAnalyticsRange()).catch(() => null),
                 ]);
                 if (!cancelled) {
                     if (online) setOnlineData(online);
                     if (analyticsData) setAnalytics(analyticsData);
                 }
-            } catch {}
+            } catch (err) {
+                console.debug("Live analytics refresh failed", err);
+            }
         };
         refreshLiveData();
         const interval = setInterval(refreshLiveData, 5_000);
         return () => { cancelled = true; clearInterval(interval); };
-    }, [currentTab]);
+    }, [currentTab, range, customFrom, customTo]);
 
     const handleResetUsage = async () => {
         if (!window.confirm("Bạn có chắc chắn muốn đặt lại toàn bộ lượt nghe audio về 0?")) return;
         try {
             await api.resetAudioUsage();
-            const data = await api.getAnalytics();
+            const data = await api.getAnalytics(getAnalyticsRange());
             setAnalytics(data);
             showToast("Đã đặt lại lượt nghe audio về 0", "success");
         } catch (err) {
@@ -388,7 +402,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             const created = await api.createAdmin(newAdminForm);
             setAdminList((prev) => [...prev, created]);
             setShowAddAdminModal(false);
-            setNewAdminForm({ name: "", email: "", password: "", mfa: true });
+            setNewAdminForm({ name: "", email: "", password: "" });
             showToast("Đã tạo tài khoản mới");
         } catch (err) {
             showToast(err.message, "error");
@@ -400,7 +414,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const handleOpenEditAdmin = (a) => {
         setEditAdminForm({
             dbId: a.dbId, id: a.id, name: a.name,
-            email: a.email, mfa: a.mfa, status: a.status,
+            email: a.email, status: a.status,
         });
         setShowEditAdminModal(true);
     };
@@ -415,7 +429,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             const updated = await api.updateAdmin(editAdminForm.dbId, {
                 name: editAdminForm.name,
                 email: editAdminForm.email,
-                mfa: editAdminForm.mfa,
                 status: editAdminForm.status,
             });
             setAdminList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -800,12 +813,22 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     /* =========================================================
        UC7 — EXPORT
        ========================================================= */
-    const handleExport = (fmt) => {
+    const handleExport = async (fmt) => {
         setExporting(true);
-        setTimeout(() => {
+        try {
+            const blob = await api.exportAnalytics(getAnalyticsRange());
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `analytics-${fmt.toLowerCase()}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showToast(`Đã tải báo cáo ${fmt}`);
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
             setExporting(false);
-            showToast(`Đã xuất báo cáo ${fmt} (UC7)`);
-        }, 700);
+        }
     };
 
     /* =========================================================
@@ -842,7 +865,9 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             {/* ============ HEADER ============ */}
             <header className="admin-dash__header">
                 <div className="admin-dash__brand">
-                    <div className="admin-dash__logo"><span>🐅</span></div>
+                    <div className="admin-dash__logo">
+                        <img src={logo} alt="Thảo Cầm Viên Sài Gòn" />
+                    </div>
                     <div>
                         <div className="admin-dash__brand-title">
                             Thảo Cầm Viên Sài Gòn
@@ -1078,6 +1103,12 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                             </span>
                                                         ))}
                                                     </div>
+                                    {range === "custom" && (
+                                        <div className="analytics-date-range">
+                                            <label>Từ <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} /></label>
+                                            <label>Đến <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} /></label>
+                                        </div>
+                                    )}
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Theo thiết bị</div>
@@ -1646,14 +1677,20 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             )}
 
+                            {!analyticsLoading && !analytics?.hasData && (
+                                <div className="admin-banner admin-banner--warning" style={{ marginBottom: 16 }}>
+                                    <Info size={16} /> Không có dữ liệu trong khoảng thời gian đã chọn.
+                                </div>
+                            )}
+
                             <div className="stats-grid">
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--blue"><TrendingUp size={20} /></div>
                                     <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {analytics?.totalPlays?.toLocaleString() ?? "—"}
+                                        {analytics?.totalVisits?.toLocaleString() ?? "—"}
                                     </div>
-                                    <div className="stat-card__label">Tổng lượt nghe audio</div>
-                                    <div className="stat-card__foot">Từ toàn bộ USAGE_LOG</div>
+                                    <div className="stat-card__label">Tổng lượt truy cập</div>
+                                    <div className="stat-card__foot">Theo khoảng thời gian đã chọn</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--emerald"><Activity size={20} /></div>
@@ -1666,10 +1703,10 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--amber"><Download size={20} /></div>
                                     <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {(OFFLINE_PACKAGE.downloads.android + OFFLINE_PACKAGE.downloads.ios + OFFLINE_PACKAGE.downloads.web).toLocaleString()}
+                                        {(analytics?.offlineDownloads?.total ?? 0).toLocaleString()}
                                     </div>
                                     <div className="stat-card__label">Lượt tải offline package</div>
-                                    <div className="stat-card__foot">Android • iOS • Web</div>
+                                    <div className="stat-card__foot">Theo dữ liệu usage_log offline</div>
                                 </div>
                                 <div className="stat-card">
                                     <div className="stat-card__icon stat-card__icon--purple"><Server size={20} /></div>
@@ -1681,6 +1718,17 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         Trên tổng {analytics?.totalPois ?? "—"} POI
                                     </div>
                                 </div>
+
+                            <div className="dash-card analytics-live-card">
+                                <div className="dash-card__head">
+                                    <h3 className="dash-card__title"><Users size={17} className="text-emerald" /> Người dùng đang hoạt động</h3>
+                                    <strong>{analytics?.onlineUsers ?? onlineData.total}</strong>
+                                </div>
+                                <div className="dash-card__body analytics-live-card__body">
+                                    <span>Đang online</span>
+                                    <span>{onlineData.byLanguage?.map((item) => `${item.lang.toUpperCase()}: ${item.c}`).join(" • ") || "Chưa có dữ liệu"}</span>
+                                </div>
+                            </div>
                             </div>
 
                             <div className="dash-grid-2">
@@ -1789,13 +1837,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 </div>
                             </div>
 
-                            <div className="admin-banner admin-banner--warn" style={{ marginBottom: 16 }}>
-                                <ShieldCheck size={16} />
-                                <div>
-                                    Theo PRD, sau <strong>5 lần sai mật khẩu</strong> hoặc <strong>3 lần sai MFA</strong> — tài khoản sẽ bị khoá 15 phút. Access token 30 phút, refresh token 7 ngày.
-                                </div>
-                            </div>
-
                             <div className="dash-card">
                                 <div className="table-responsive">
                                     <table className="admin-table">
@@ -1804,7 +1845,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                 <th>Mã</th>
                                                 <th>Nhân sự</th>
                                                 <th>Quyền</th>
-                                                <th>MFA</th>
                                                 <th>Trạng thái</th>
                                                 <th>Đăng nhập gần nhất</th>
                                                 <th style={{ textAlign: "right" }}>Thao tác</th>
@@ -1813,7 +1853,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                         <tbody>
                                             {adminLoading && (
                                                 <tr>
-                                                    <td colSpan={7} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
+                                                     <td colSpan={6} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
                                                         Đang tải danh sách tài khoản...
                                                     </td>
                                                 </tr>
@@ -1841,11 +1881,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                         </td>
                                                         <td><span className={`role-badge ${role?.cls || ""}`}>{role?.label}</span></td>
                                                         <td>
-                                                            {a.mfa
-                                                                ? <span className="mfa-chip"><KeyRound size={11} /> Đang bật</span>
-                                                                : <span className="mfa-chip is-off"><Unlock size={11} /> Tắt</span>}
-                                                        </td>
-                                                        <td>
                                                             <span className={`account-status account-status--${a.status}`}>
                                                                 {a.status === "active" && "Đang hoạt động"}
                                                                 {a.status === "locked" && "Đang bị khoá"}
@@ -1858,7 +1893,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                                                 <button className="btn-action-edit" title="Sửa" onClick={() => handleOpenEditAdmin(a)}>
                                                                     <UserCog size={15} />
                                                                 </button>
-                                                                <button className="btn-action-delete" title="Vô hiệu hoá"
+                                                                 <button className="btn-action-delete" title={a.status === "deactivated" ? "Tài khoản đã vô hiệu" : "Vô hiệu hoá"}
+                                                                     disabled={a.status === "deactivated"}
                                                                     onClick={() => handleDeactivateAdmin(a)}>
                                                                     <Lock size={15} />
                                                                 </button>
@@ -2344,19 +2380,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
                                     disabled={savingAdmin} />
                             </div>
-                            <div className="form-group">
-                                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                                    <span className="switch">
-                                        <input type="checkbox" checked={newAdminForm.mfa}
-                                            onChange={(e) => setNewAdminForm({ ...newAdminForm, mfa: e.target.checked })}
-                                            disabled={savingAdmin} />
-                                        <span className="switch__track" />
-                                    </span>
-                                    <span style={{ fontSize: 13, color: "var(--dash-text-2)" }}>
-                                        Bật xác thực đa yếu tố (MFA) cho tài khoản này
-                                    </span>
-                                </label>
-                            </div>
                             <div className="admin-modal__foot">
                                 <button type="button" className="btn-secondary-admin"
                                     onClick={() => setShowAddAdminModal(false)} disabled={savingAdmin}>
@@ -2408,19 +2431,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                     <option value="deactivated">Đã vô hiệu hoá</option>
                                     <option value="locked">Đang bị khoá</option>
                                 </select>
-                            </div>
-                            <div className="form-group">
-                                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                                    <span className="switch">
-                                        <input type="checkbox" checked={editAdminForm.mfa}
-                                            onChange={(e) => setEditAdminForm({ ...editAdminForm, mfa: e.target.checked })}
-                                            disabled={savingEditAdmin} />
-                                        <span className="switch__track" />
-                                    </span>
-                                    <span style={{ fontSize: 13, color: "var(--dash-text-2)" }}>
-                                        Bật xác thực đa yếu tố (MFA)
-                                    </span>
-                                </label>
                             </div>
                             <div className="admin-modal__foot">
                                 <button type="button" className="btn-secondary-admin"

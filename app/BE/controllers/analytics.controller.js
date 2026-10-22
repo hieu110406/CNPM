@@ -12,11 +12,25 @@ async function cleanupSessions() {
 /* ---- Analytics: Tổng quan ---- */
 export async function getOverview(req, res) {
     try {
-        const [total, completed, byLang, topPois, audioCount, poiCount, adminCount] = await Promise.all([
-            query(`SELECT COUNT(*)::int AS c FROM usage_log`),
-            query(`SELECT COUNT(*)::int AS c FROM usage_log WHERE completed = TRUE`),
-            query(`SELECT language_code, COUNT(*)::int AS c FROM usage_log GROUP BY language_code`),
-            query(`SELECT p.name, COUNT(*)::int AS plays FROM usage_log u JOIN poi p ON p.poi_id = u.poi_id GROUP BY p.poi_id, p.name ORDER BY plays DESC LIMIT 5`),
+        const { from, to } = req.query;
+        const params = [];
+        const filters = [];
+        if (from) {
+            params.push(from);
+            filters.push(`played_at >= $${params.length}::date`);
+        }
+        if (to) {
+            params.push(to);
+            filters.push(`played_at < ($${params.length}::date + INTERVAL '1 day')`);
+        }
+        const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+        const completedWhere = filters.length ? `${where} AND completed = TRUE` : "WHERE completed = TRUE";
+        const [total, completed, byLang, topPois, offlineDownloads, audioCount, poiCount, adminCount] = await Promise.all([
+            query(`SELECT COUNT(*)::int AS c FROM usage_log ${where}`, params),
+            query(`SELECT COUNT(*)::int AS c FROM usage_log ${completedWhere}`, params),
+            query(`SELECT language_code, COUNT(*)::int AS c FROM usage_log ${where} GROUP BY language_code`, params),
+            query(`SELECT p.name, COUNT(*)::int AS plays FROM usage_log u JOIN poi p ON p.poi_id = u.poi_id ${where ? `${where} AND` : "WHERE"} u.poi_id IS NOT NULL GROUP BY p.poi_id, p.name ORDER BY plays DESC LIMIT 5`, params),
+            query(`SELECT COALESCE(SUM(CASE WHEN trigger_type = 'offline' THEN 1 ELSE 0 END), 0)::int AS total FROM usage_log ${where}`, params),
             query(`SELECT COUNT(*)::int AS c FROM audio_track WHERE status='published'`),
             query(`SELECT COUNT(*)::int AS c FROM poi`),
             query(`SELECT COUNT(*)::int AS c FROM admin_account`),
@@ -34,6 +48,7 @@ export async function getOverview(req, res) {
 
         return res.json({
             totalPlays,
+            totalVisits: totalPlays,
             completedRate: totalPlays > 0 ? Math.round((completed.rows[0].c / totalPlays) * 100) : 0,
             languageDist,
             topPois: topPois.rows,
@@ -41,11 +56,46 @@ export async function getOverview(req, res) {
             totalPois: poiCount.rows[0].c,
             totalAdmins: adminCount.rows[0].c,
             onlineUsers: onlineResult.rows[0].count,
+            offlineDownloads: { total: offlineDownloads.rows[0].total, android: 0, ios: 0, web: 0 },
+            hasData: totalPlays > 0,
         });
     } catch (e) {
         console.error("Lỗi getOverview:", e);
         return res.status(500).json({ error: "Lỗi server" });
     }
+}
+
+export async function exportOverview(req, res) {
+    try {
+        const { from, to } = req.query;
+        const params = [];
+        const filters = [];
+        if (from) { params.push(from); filters.push(`played_at >= $${params.length}::date`); }
+        if (to) { params.push(to); filters.push(`played_at < ($${params.length}::date + INTERVAL '1 day')`); }
+        const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+        const { rows } = await query(`
+            SELECT COALESCE(p.name, 'Không xác định') AS poi,
+                   language_code AS language,
+                   COUNT(*)::int AS visits,
+                   COUNT(*) FILTER (WHERE completed = TRUE)::int AS completed
+            FROM usage_log u
+            LEFT JOIN poi p ON p.poi_id = u.poi_id
+            ${where}
+            GROUP BY p.name, language_code
+            ORDER BY visits DESC
+        `, params);
+        const csv = [
+            "POI,Language,Visits,Completed",
+            ...rows.map((row) => [row.poi, row.language || "", row.visits, row.completed]
+                .map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")),
+        ].join("\n");
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="analytics-${from || "all"}-${to || "all"}.csv"`);
+        return res.send(`\uFEFF${csv}`);
+    } catch (e) {
+        console.error("Lỗi exportOverview:", e);
+        return res.status(500).json({ error: "Không thể xuất báo cáo" });
+}
 }
 
 /* ---- Session: Ping (public) ---- */

@@ -8,9 +8,9 @@ async function seed() {
     await pool.query(`
     INSERT INTO admin_account (name, email, password_hash, role_id, mfa_enabled)
     VALUES
-      ('Nguyễn Trung Hiếu', 'hieu.nguyen@saigonzoo.net', $1, 1, TRUE),
-      ('Huỳnh Lê Khánh Ly', 'ly.huynh@saigonzoo.net',    $1, 1, TRUE),
-      ('Nguyễn Hoàng Khởi', 'khoi.nguyen@saigonzoo.net', $1, 1, TRUE)
+      ('Nguyễn Trung Hiếu', 'hieu.nguyen@saigonzoo.net', $1, 1, FALSE),
+      ('Huỳnh Lê Khánh Ly', 'ly.huynh@saigonzoo.net',    $1, 1, FALSE),
+      ('Nguyễn Hoàng Khởi', 'khoi.nguyen@saigonzoo.net', $1, 1, FALSE)
     ON CONFLICT (email) DO NOTHING
   `, [hash]);
 
@@ -57,7 +57,7 @@ async function seed() {
 
     await pool.query(`
     INSERT INTO audit_log (admin_id, admin_name, type, event, detail)
-    VALUES (1, 'Nguyễn Trung Hiếu', 'success', 'Đăng nhập thành công', 'MFA hợp lệ')
+    VALUES (1, 'Nguyễn Trung Hiếu', 'success', 'Đăng nhập thành công', 'Email và mật khẩu hợp lệ')
   `);
 
     // Không seed giả lập usage_log để thống kê chính xác theo lượt nghe thực tế

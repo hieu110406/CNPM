@@ -2347,25 +2347,6 @@
     color: #2563eb;
 }
 
-.mfa-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    font-size: 10.5px;
-    font-weight: 700;
-    color: #065f46;
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
-    border-radius: 6px;
-}
-
-    .mfa-chip.is-off {
-        color: #94a3b8;
-        background: #f1f5f9;
-        border-color: #e2e8f0;
-    }
-
 .audit-list {
     display: flex;
     flex-direction: column;
@@ -2944,12 +2925,6 @@
 .role-badge {
     font-size: 13px !important;
     padding: 5px 12px !important;
-    font-weight: 700 !important;
-}
-
-.mfa-chip {
-    font-size: 12.5px !important;
-    padding: 4px 10px !important;
     font-weight: 700 !important;
 }
 

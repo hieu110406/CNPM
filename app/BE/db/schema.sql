@@ -7,11 +7,14 @@ CREATE TABLE IF NOT EXISTS admin_account (
   is_locked       BOOLEAN DEFAULT FALSE,
   failed_attempts INTEGER DEFAULT 0,
   locked_until    TIMESTAMPTZ,
-  mfa_enabled     BOOLEAN DEFAULT TRUE,
+  mfa_enabled     BOOLEAN DEFAULT FALSE,
   status          VARCHAR(20) DEFAULT 'active',
   last_login      TIMESTAMPTZ,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Keep the legacy column compatible with existing databases; login uses email/password.
+ALTER TABLE admin_account ALTER COLUMN mfa_enabled SET DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS category (
   category_id SERIAL PRIMARY KEY,

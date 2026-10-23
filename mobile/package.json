@@ -10,8 +10,5 @@
     "web": "npm --prefix FE run web --",
     "lint": "npm --prefix FE run lint",
     "typecheck": "node FE/node_modules/typescript/bin/tsc --noEmit -p FE/tsconfig.json"
-  },
-  "dependencies": {
-    "expo": "^58.0.0"
   }
 }

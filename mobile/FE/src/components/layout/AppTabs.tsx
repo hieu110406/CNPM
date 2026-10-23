@@ -1,4 +1,5 @@
 import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps } from 'expo-router/ui';
+import type { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Pressable from '@/components/ui/AnimatedPressable';
 import PageTransition from './PageTransition';
@@ -18,7 +19,7 @@ export default function AppTabs() {
     </TabList>
   </Tabs>;
 }
-function Button({ icon, label, isFocused, ...props }: TabTriggerSlotProps & { icon: 'home' | 'explore' | 'map'; label: string }) {
+function Button({ icon, label, isFocused, ...props }: Omit<TabTriggerSlotProps, 'ref'> & Pick<ComponentProps<typeof Pressable>, 'ref'> & { icon: 'home' | 'explore' | 'map'; label: string }) {
   return <Pressable {...props} accessibilityRole="tab" accessibilityState={{ selected: isFocused }}
     style={({ pressed }) => [styles.button, pressed && { opacity: 0.6 }]}>
     <View style={[styles.icon, isFocused && styles.active]}><AppIcon name={icon} color={isFocused ? '#285A46' : '#7B837C'} /></View>

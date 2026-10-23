@@ -2,6 +2,18 @@
 
 Ứng dụng React Native / Expo. Bản đồ lấy địa điểm từ database qua backend và dùng waypoint, cạnh nối, Dijkstra trong `app/FE/src/components/map/mapGraph.js` của web để tìm đường ngay trên thiết bị. Trang chủ và trang khám phá hiện vẫn dùng dữ liệu mẫu.
 
+## Android và iOS
+
+Dự án dùng Expo SDK 58 để khớp với Expo Go 58 trên điện thoại. Các gói Expo và React Native được đồng bộ bằng `npx.cmd expo install --fix`; không chỉ nâng riêng gói `expo`. Thư mục `mobile` chỉ chứa lệnh chuyển tiếp, không cài thêm Expo tại đó.
+
+Sau khi cập nhật dependencies, dừng Metro cũ rồi chạy từ `mobile`:
+
+```powershell
+npm.cmd start -- --clear
+```
+
+Dùng Expo Go hỗ trợ SDK 58 hoặc development build tương ứng trên Android/iOS. Không sửa `node_modules` hay thêm alias cho asset registry để che lỗi lệch SDK.
+
 ## Kết nối bản đồ với Neon
 
 Backend trong `app/BE` đọc `DATABASE_URL` từ `.env` (đã cấu hình Neon). Mobile không chứa thông tin đăng nhập database.

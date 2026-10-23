@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ComponentRef } from 'react';
 import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import type { MapGraphNode } from '../../../../../app/FE/src/components/map/mapGraph';
 import Motion from 'react-native-reanimated';
@@ -45,7 +45,7 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
   { pathNodes, routeStartId, routeEndId, markers, selectedId, onSelectMarker },
   ref,
 ) {
-  const view = useRef<View>(null);
+  const view = useRef<ComponentRef<typeof View>>(null);
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const [scale] = useState(() => new Animated.Value(FIT_ZOOM));
   const [zoomLevel, setZoomLevel] = useState(FIT_ZOOM);

@@ -1,26 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapCanvas, { type MapCanvasHandle, type MapMarker } from './MapCanvas';
 import { destinations, routePoints } from '@/data/destinations';
 import { buildGraph, shortestPath, type MapGraphPath } from '../../../../../app/FE/src/components/map/mapGraph';
+import { useI18n, type TranslationKey } from '@/context/I18nContext';
 
 type RoutePointId = (typeof routePoints)[number]['id'];
 
-const mapMarkers: MapMarker[] = [
-  { id: 'gate_main', title: 'Cổng chính', emoji: '🏛️', x: 41.5, y: 91.5, color: '#E11D48' },
-  ...destinations.map(item => ({
-    id: item.id,
-    title: item.title,
-    emoji: item.emoji,
-    x: item.x,
-    y: item.y,
-    color: '#059669',
-  })),
+const destinationTitleKeys: Record<string, TranslationKey> = {
+  giraffe: 'giraffeTitle',
+  birds_lake: 'birds_lakeTitle',
+  monkey_primate: 'monkey_primateTitle',
+  tiger: 'tigerTitle',
+};
+const destinationTextKeys: Record<string, { subtitle: TranslationKey; description: TranslationKey }> = {
+  giraffe: { subtitle: 'giraffeSubtitle', description: 'giraffeDescription' },
+  birds_lake: { subtitle: 'birds_lakeSubtitle', description: 'birds_lakeDescription' },
+  monkey_primate: { subtitle: 'monkey_primateSubtitle', description: 'monkey_primateDescription' },
+  tiger: { subtitle: 'tigerSubtitle', description: 'tigerDescription' },
+};
+
+const mapZoneFilters: { value: string; key: TranslationKey }[] = [
+  { value: 'Tất cả', key: 'all' },
+  { value: 'Thú lớn', key: 'largeAnimals' },
+  { value: 'Chim', key: 'birds' },
+  { value: 'Linh trưởng', key: 'primates' },
 ];
 
 export default function ZooMap() {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const map = useRef<MapCanvasHandle>(null);
   const [query, setQuery] = useState('');
@@ -32,6 +42,17 @@ export default function ZooMap() {
   const [routeEndId, setRouteEndId] = useState<RoutePointId | null>(null);
   const [routeResult, setRouteResult] = useState<MapGraphPath | null>(null);
   const [routeError, setRouteError] = useState('');
+  const mapMarkers = useMemo<MapMarker[]>(() => [
+    { id: 'gate_main', title: t('mainGate'), emoji: '🏛️', x: 41.5, y: 91.5, color: '#E11D48' },
+    ...destinations.map(item => ({
+      id: item.id,
+      title: t(destinationTitleKeys[item.id]),
+      emoji: item.emoji,
+      x: item.x,
+      y: item.y,
+      color: '#059669',
+    })),
+  ], [t]);
 
   useEffect(() => {
     buildGraph(routePoints);
@@ -42,7 +63,7 @@ export default function ZooMap() {
   }, []));
 
   const items = destinations.filter(item => (zone === 'Tất cả' || item.zone === zone) &&
-    item.title.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi')));
+    t(destinationTitleKeys[item.id]).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
 
   function startRouteMode() {
     setRouteMode(true);
@@ -74,17 +95,17 @@ export default function ZooMap() {
 
   function findRoute() {
     if (!routeStartId || !routeEndId) {
-      setRouteError('Hãy chọn điểm xuất phát và điểm đến.');
+      setRouteError(t('routeSelectPoints'));
       return;
     }
     if (routeStartId === routeEndId) {
-      setRouteError('Điểm xuất phát và điểm đến phải khác nhau.');
+      setRouteError(t('routeDifferentPoints'));
       return;
     }
     const result = shortestPath(routeStartId, routeEndId);
     if (!result || result.path.length < 2) {
       setRouteResult(null);
-      setRouteError('Không tìm thấy đường đi giữa hai địa điểm này.');
+      setRouteError(t('routeNotFound'));
       return;
     }
     setRouteResult(result);
@@ -119,14 +140,14 @@ export default function ZooMap() {
       <View style={styles.search}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput style={styles.input} value={query} onChangeText={value => { setQuery(value); setSelected(null); setExpanded(true); }}
-          placeholder="Tìm trong Thảo Cầm Viên" placeholderTextColor="#777E78" accessibilityLabel="Tìm địa điểm trên bản đồ" />
-        {query.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Xóa tìm kiếm" onPress={() => setQuery('')} style={styles.clear}><Text>×</Text></Pressable>}
+          placeholder={t('mapSearch')} placeholderTextColor="#777E78" accessibilityLabel={t('mapSearchLabel')} />
+        {query.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel={t('clearSearch')} onPress={() => setQuery('')} style={styles.clear}><Text>×</Text></Pressable>}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled">
-        {['Tất cả', 'Thú lớn', 'Chim', 'Linh trưởng'].map(value => <Pressable key={value} accessibilityRole="button"
+        {mapZoneFilters.map(({ value, key }) => <Pressable key={value} accessibilityRole="button"
           accessibilityState={{ selected: zone === value }} onPress={() => { setZone(value); setSelected(null); setExpanded(true); }}
           style={[styles.chip, zone === value && styles.chipActive]}>
-          <Text style={[styles.chipText, zone === value && styles.chipTextActive]}>{value}</Text>
+          <Text style={[styles.chipText, zone === value && styles.chipTextActive]}>{t(key)}</Text>
         </Pressable>)}
       </ScrollView>
       <Pressable accessibilityRole="button" accessibilityState={{ selected: routeMode }}
@@ -134,62 +155,63 @@ export default function ZooMap() {
         style={[styles.routeAction, routeMode && styles.routeActionActive]}>
         <Text style={[styles.routeActionIcon, routeMode && styles.routeActionTextActive]}>{routeMode ? '×' : '↗'}</Text>
         <Text style={[styles.routeActionText, routeMode && styles.routeActionTextActive]}>
-          {routeMode ? 'Đóng tìm đường' : 'Tìm đường'}
+          {routeMode ? t('closeRoute') : t('findRoute')}
         </Text>
       </Pressable>
     </View>
 
     <View style={[styles.tools, { top: insets.top + 194 }]}>
-      <Control label="Phóng to bản đồ" symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
-      <Control label="Thu nhỏ bản đồ" symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
-      <Control label="Hiện toàn bộ bản đồ" symbol="⌖" onPress={() => map.current?.reset()} />
+      <Control label={t('zoomIn')} symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
+      <Control label={t('zoomOut')} symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
+      <Control label={t('resetMap')} symbol="⌖" onPress={() => map.current?.reset()} />
     </View>
 
     <View style={[styles.sheet, expanded && { height: '45%' }]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={expanded ? 'Thu gọn danh sách' : 'Mở rộng danh sách'} onPress={() => setExpanded(value => !value)} style={styles.sheetToggle}>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={expanded ? t('collapseList') : t('expandList')} onPress={() => setExpanded(value => !value)} style={styles.sheetToggle}>
         <View style={styles.handleArea}>
           <View style={styles.handle} />
         </View>
         <View style={styles.sheetHeader}>
-          <Text style={styles.title}>{routeMode ? 'Tìm đường' : selected ? selected.title : 'Khám phá khu vườn'}</Text>
+          <Text style={styles.title}>{routeMode ? t('findRoute') : selected ? t(destinationTitleKeys[selected.id]) : t('garden')}</Text>
           <Text style={styles.caption}>{expanded ? '⌄' : '⌃'}</Text>
         </View>
-        <Text style={styles.caption}>{routeMode ? 'Chọn điểm đi và điểm đến trên bản đồ' : 'Bản đồ tham khảo · Dữ liệu mẫu'}</Text>
+        <Text style={styles.caption}>{routeMode ? t('routeHelp') : t('sampleMap')}</Text>
       </Pressable>
       {expanded && <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {routeMode ? <>
-          <RoutePointSelector label="Điểm xuất phát" selectedId={routeStartId}
+          <RoutePointSelector label={t('startPoint')} selectedId={routeStartId} t={t}
             onSelect={id => selectRoutePoint('start', id)} disabledId={routeEndId} />
-          <RoutePointSelector label="Điểm đến" selectedId={routeEndId}
+          <RoutePointSelector label={t('endPoint')} selectedId={routeEndId} t={t}
             onSelect={id => selectRoutePoint('end', id)} disabledId={routeStartId} />
           <Pressable accessibilityRole="button" onPress={findRoute} style={styles.findRoute}>
-            <Text style={styles.findRouteText}>Tìm đường ngắn nhất</Text>
+            <Text style={styles.findRouteText}>{t('findShortestRoute')}</Text>
           </Pressable>
           {!!routeError && <Text accessibilityRole="alert" style={styles.routeError}>{routeError}</Text>}
           {routeResult && <Text accessibilityRole="summary" style={styles.routeSummary}>
-            Đã tìm thấy đường đi · {routeResult.stepsCount} chặng
+            {t('routeFound')} · {routeResult.stepsCount} {t('segments')}
           </Text>}
         </> : selected ? <>
-          <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={{ paddingVertical: 8 }}><Text style={styles.body}>‹ Quay lại danh sách</Text></Pressable>
-          <View style={styles.detail}><Text style={styles.body}>{selected.subtitle}</Text><Text style={styles.body}>{selected.description}</Text></View>
+          <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={{ paddingVertical: 8 }}><Text style={styles.body}>{t('backToList')}</Text></Pressable>
+          <View style={styles.detail}><Text style={styles.body}>{t(destinationTextKeys[selected.id].subtitle)}</Text><Text style={styles.body}>{t(destinationTextKeys[selected.id].description)}</Text></View>
         </> : <>
           {items.map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => setSelected(item)} style={styles.place}>
             <View style={styles.placeIcon}><Text style={{ fontSize: 23 }}>{item.emoji}</Text></View>
-            <View style={{ flex: 1, gap: 4 }}><Text style={styles.placeTitle}>{item.title}</Text><Text style={styles.caption}>{item.subtitle}</Text></View>
+            <View style={{ flex: 1, gap: 4 }}><Text style={styles.placeTitle}>{t(destinationTitleKeys[item.id])}</Text><Text style={styles.caption}>{t(destinationTextKeys[item.id].subtitle)}</Text></View>
             <Text style={styles.arrow}>›</Text>
           </Pressable>)}
-          {!items.length && <Text style={styles.body}>Không có địa điểm phù hợp. Thử từ khóa hoặc khu vực khác.</Text>}
+          {!items.length && <Text style={styles.body}>{t('noMatchingPlaces')}</Text>}
         </>}
       </ScrollView>}
     </View>
   </View>;
 }
 
-function RoutePointSelector({ label, selectedId, onSelect, disabledId }: {
+function RoutePointSelector({ label, selectedId, onSelect, disabledId, t }: {
   label: string;
   selectedId: RoutePointId | null;
   onSelect: (id: RoutePointId) => void;
   disabledId: RoutePointId | null;
+  t: ReturnType<typeof useI18n>['t'];
 }) {
   return <View style={styles.routeSelector}>
     <Text style={styles.routeLabel}>{label}</Text>
@@ -200,7 +222,7 @@ function RoutePointSelector({ label, selectedId, onSelect, disabledId }: {
         return <Pressable key={point.id} accessibilityRole="button" accessibilityState={{ selected, disabled }}
           disabled={disabled} onPress={() => onSelect(point.id)}
           style={[styles.routeChoice, selected && styles.routeChoiceActive, disabled && styles.routeChoiceDisabled]}>
-          <Text numberOfLines={1} style={[styles.routeChoiceText, selected && styles.routeChoiceTextActive]}>{point.title}</Text>
+          <Text numberOfLines={1} style={[styles.routeChoiceText, selected && styles.routeChoiceTextActive]}>{point.id === 'gate_main' ? t('mainGate') : t(destinationTitleKeys[point.id])}</Text>
         </Pressable>;
       })}
     </ScrollView>

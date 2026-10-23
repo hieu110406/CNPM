@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useI18n } from '@/context/I18nContext';
 
 export function Screen({ children }: PropsWithChildren) {
   return <SafeAreaView edges={['top', 'left', 'right']} style={ui.screen}>
@@ -8,7 +9,8 @@ export function Screen({ children }: PropsWithChildren) {
   </SafeAreaView>;
 }
 export function Heading({ title, subtitle }: { title: string; subtitle: string }) {
-  return <><Text style={ui.eyebrow}>THẢO CẦM VIÊN · SAIGON ZOO</Text><Text style={ui.title}>{title}</Text><Text style={ui.subtitle}>{subtitle}</Text></>;
+  const { t } = useI18n();
+  return <><Text style={ui.eyebrow}>{t('brand')}</Text><Text style={ui.title}>{title}</Text><Text style={ui.subtitle}>{subtitle}</Text></>;
 }
 export const ui = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#FFFFFF' },

@@ -40,6 +40,12 @@ src/
       MobileUI.tsx      # Screen, Heading và style UI dùng chung
   data/
     destinations.ts     # Dữ liệu mẫu các điểm tham quan
+  I18N/
+    vi.ts               # Bản dịch tiếng Việt
+    en.ts               # Bản dịch tiếng Anh
+    zh.ts               # Bản dịch tiếng Trung giản thể
+  context/
+    I18nContext.tsx     # Ngôn ngữ hiện tại và hàm dịch dùng chung
   constants/
     theme.ts            # Màu sắc, font, khoảng cách
   global.css            # Biến font cho web
@@ -49,6 +55,7 @@ assets/images/          # Ảnh và bản đồ
 - Code giao diện chính, style và trạng thái tương tác trong `components/<tính năng>/`.
 - Thêm màn hình: tạo component trong `components/`, để `pages/` gọi component đó, sau đó thêm file route mỏng trong `app/`.
 - Component dùng chung ở `components/ui/`; thanh điều hướng và khung ứng dụng ở `components/layout/`.
+- Bản dịch mobile nằm trong `src/I18N/`; thêm khóa dịch tương ứng vào cả `vi.ts`, `en.ts` và `zh.ts`, sau đó lấy nội dung qua `useI18n()` từ `src/context/I18nContext.tsx`. Ngôn ngữ được chọn áp dụng ngay trong phiên chạy, chưa lưu lại sau khi đóng ứng dụng.
 - Không đặt component, dữ liệu hoặc hàm tiện ích vào `app/` vì Expo Router xem file ở đó là route.
 - Chỉ tạo `api/`, `context/`, `hooks/` khi bắt đầu có phần sử dụng; chưa kết nối API ở bước giao diện này.
 

@@ -2,15 +2,17 @@ import { Tabs, TabList, TabTrigger, TabSlot, type TabTriggerSlotProps } from 'ex
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '@/components/ui/AppIcon';
+import { useI18n } from '@/context/I18nContext';
 
 export default function AppTabs() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   return <Tabs style={styles.root}>
     <TabSlot style={{ flex: 1 }} />
     <TabList style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      <TabTrigger name="home" href="/" asChild><Button icon="home" label="Trang chủ" /></TabTrigger>
-      <TabTrigger name="explore" href="/explore" asChild><Button icon="explore" label="Khám phá" /></TabTrigger>
-      <TabTrigger name="map" href="/map" asChild><Button icon="map" label="Bản đồ" /></TabTrigger>
+      <TabTrigger name="home" href="/" asChild><Button icon="home" label={t('home')} /></TabTrigger>
+      <TabTrigger name="explore" href="/explore" asChild><Button icon="explore" label={t('explore')} /></TabTrigger>
+      <TabTrigger name="map" href="/map" asChild><Button icon="map" label={t('map')} /></TabTrigger>
     </TabList>
   </Tabs>;
 }

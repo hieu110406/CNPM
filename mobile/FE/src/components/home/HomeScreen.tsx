@@ -7,8 +7,26 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { destinations } from '@/data/destinations';
 import AppIcon from '@/components/ui/AppIcon';
 import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
+import { useI18n, type TranslationKey } from '@/context/I18nContext';
 
 const zones = ['Tất cả', 'Thú lớn', 'Chim', 'Linh trưởng'];
+const zoneTranslationKeys: Record<string, TranslationKey> = {
+  'Tất cả': 'all',
+  'Thú lớn': 'largeAnimals',
+  Chim: 'birds',
+  'Linh trưởng': 'primates',
+};
+const destinationTranslationKeys: Record<string, { title: TranslationKey; subtitle: TranslationKey }> = {
+  giraffe: { title: 'giraffeTitle', subtitle: 'giraffeSubtitle' },
+  birds_lake: { title: 'birds_lakeTitle', subtitle: 'birds_lakeSubtitle' },
+  monkey_primate: { title: 'monkey_primateTitle', subtitle: 'monkey_primateSubtitle' },
+  tiger: { title: 'tigerTitle', subtitle: 'tigerSubtitle' },
+} as const;
+const languageOptions = [
+  { code: 'vi', flag: '🇻🇳', translationKey: 'vietnamese' },
+  { code: 'en', flag: '🇬🇧', translationKey: 'english' },
+  { code: 'zh', flag: '🇨🇳', translationKey: 'chinese' },
+] as const;
 
 const highlights = destinations;
 
@@ -18,10 +36,10 @@ const feedingTimes = [
 ];
 
 export default function HomeScreen() {
+  const { language, setLanguage, t } = useI18n();
   const [selectedZone, setSelectedZone] = useState('Tất cả');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState<'menu' | 'language' | 'audio' | 'download' | 'font'>('menu');
-  const [selectedLanguage, setSelectedLanguage] = useState('vi');
   const [autoNarration, setAutoNarration] = useState(true);
   const [volume, setVolume] = useState(70);
   const [fontSize, setFontSize] = useState(16);
@@ -52,10 +70,10 @@ export default function HomeScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.date}>THẢO CẦM VIÊN · SAIGON ZOO</Text>
-              <Text style={styles.greeting}>Chào bạn!</Text>
+              <Text style={styles.date}>{t('brand')}</Text>
+              <Text style={styles.greeting}>{t('greeting')}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Cài đặt" onPress={() => { setSettingsPage('menu'); setSettingsOpen(true); }} style={styles.avatar}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('settings')} onPress={() => { setSettingsPage('menu'); setSettingsOpen(true); }} style={styles.avatar}>
               <AppIcon name="settings" size={22} />
             </Pressable>
           </View>
@@ -63,40 +81,40 @@ export default function HomeScreen() {
           {/* Hero */}
           <View style={styles.heroCard}>
             <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>Hôm nay, khám phá gì?</Text>
+              <Text style={styles.heroTitle}>{t('heroTitle')}</Text>
               <Text style={styles.heroDescription}>
-                Gặp gỡ những cư dân của khu vườn.
+                {t('heroDescription')}
               </Text>
               <Pressable accessibilityRole="button" style={styles.heroButton} onPress={() => router.navigate('/explore')}>
-                <Text style={styles.heroButtonText}>Bắt đầu khám phá</Text>
+                <Text style={styles.heroButtonText}>{t('startExploring')}</Text>
               </Pressable>
             </View>
             
           </View>
 
-          <Text style={styles.preview}>Bản xem trước · Dữ liệu minh họa</Text>
+          <Text style={styles.preview}>{t('preview')}</Text>
           {/* Info */}
           <View style={styles.infoRow}>
             <View style={styles.infoCard}>
               <AppIcon name="sun" size={20} />
               <View>
-                <Text style={styles.infoLabel}>Thời tiết</Text>
-                <Text style={styles.infoValue}>28° · Quang mây</Text>
+                <Text style={styles.infoLabel}>{t('weather')}</Text>
+                <Text style={styles.infoValue}>{t('weatherValue')}</Text>
               </View>
             </View>
             <View style={styles.infoCard}>
               <AppIcon name="clock" size={20} />
               <View>
-                <Text style={styles.infoLabel}>Giờ mở cửa</Text>
-                <Text style={styles.infoValue}>08:00 – 18:00</Text>
+                <Text style={styles.infoLabel}>{t('openingHours')}</Text>
+                <Text style={styles.infoValue}>{t('openingHoursValue')}</Text>
               </View>
             </View>
           </View>
 
           {/* Zones */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Khám phá theo khu vực</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.navigate('/map')}><Text style={styles.seeAll}>Xem bản đồ →</Text></Pressable>
+            <Text style={styles.sectionTitle}>{t('exploreZones')}</Text>
+            <Pressable accessibilityRole="button" onPress={() => router.navigate('/map')}><Text style={styles.seeAll}>{t('seeMap')}</Text></Pressable>
           </View>
           <ScrollView
             horizontal
@@ -109,7 +127,7 @@ export default function HomeScreen() {
                   key={zone}
                   onPress={() => setSelectedZone(zone)}
                   style={[styles.chip, active && styles.chipActive]}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{zone}</Text>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(zoneTranslationKeys[zone])}</Text>
                 </Pressable>
               );
             })}
@@ -117,7 +135,7 @@ export default function HomeScreen() {
 
           {/* Highlights */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Điểm đến nổi bật</Text>
+            <Text style={styles.sectionTitle}>{t('highlights')}</Text>
           </View>
           <ScrollView
             horizontal
@@ -130,15 +148,15 @@ export default function HomeScreen() {
                 onPress={() => router.navigate('/explore')}
                 style={[styles.destinationCard, { backgroundColor: '#F4F5F3' }]}>
                 <AnimalThumbnail id={item.id} emoji={item.emoji} width={148} height={96} />
-                <Text style={styles.destinationTitle}>{item.title}</Text>
-                <Text style={styles.destinationSubtitle}>{item.subtitle}</Text>
+                <Text style={styles.destinationTitle}>{t(destinationTranslationKeys[item.id].title)}</Text>
+                <Text style={styles.destinationSubtitle}>{t(destinationTranslationKeys[item.id].subtitle)}</Text>
               </Pressable>
             ))}
           </ScrollView>
 
           {/* Feeding schedule */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Lịch cho ăn tham khảo</Text>
+            <Text style={styles.sectionTitle}>{t('feedingSchedule')}</Text>
           </View>
           <View style={styles.scheduleCard}>
             {feedingTimes.map((item, index) => (
@@ -148,11 +166,11 @@ export default function HomeScreen() {
                 <Text style={styles.scheduleEmoji}>{item.emoji}</Text>
                 <View style={styles.scheduleTime}>
                   <Text style={styles.timeText}>{item.time}</Text>
-                  <Text style={styles.upcoming}>Lịch mẫu</Text>
+                  <Text style={styles.upcoming}>{t('sampleSchedule')}</Text>
                 </View>
                 <View style={styles.scheduleDetail}>
-                  <Text style={styles.animalText}>{item.animal}</Text>
-                  <Text style={styles.placeText}>{item.place}</Text>
+                  <Text style={styles.animalText}>{t(item.time === '09:30' ? 'hippo' : 'bengalTiger')}</Text>
+                  <Text style={styles.placeText}>{t(item.time === '09:30' ? 'freshwaterPond' : 'largeAnimalZone')}</Text>
                 </View>
               </View>
             ))}
@@ -160,59 +178,55 @@ export default function HomeScreen() {
         </ScrollView>
       </SafeAreaView>
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={closeSettings}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Đóng cài đặt" onPress={closeSettings} style={styles.modalBackdrop}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={closeSettings} style={styles.modalBackdrop}>
           <Pressable onPress={() => undefined} style={styles.settingsPanel}>
             <View style={styles.settingsHeader}>
               {settingsPage !== 'menu' ? (
-                <Pressable accessibilityRole="button" accessibilityLabel="Quay lại cài đặt" onPress={() => setSettingsPage('menu')} style={styles.backButton}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('backToSettings')} onPress={() => setSettingsPage('menu')} style={styles.backButton}>
                   <Text style={styles.backButtonText}>‹</Text>
                 </Pressable>
               ) : (
                 <View style={styles.settingsTitleGroup}>
                   <View style={styles.settingsIcon}><AppIcon name="settings" size={19} /></View>
                   <View>
-                    <Text style={styles.settingsTitle}>Cài đặt</Text>
-                    <Text style={styles.settingsSubtitle}>Cá nhân hóa trải nghiệm tham quan</Text>
+                    <Text style={styles.settingsTitle}>{t('settings')}</Text>
+                    <Text style={styles.settingsSubtitle}>{t('settingsSubtitle')}</Text>
                   </View>
                 </View>
               )}
               {settingsPage !== 'menu' && (
                 <Text style={styles.settingsTitle}>
-                  {settingsPage === 'language' ? 'Ngôn ngữ' : settingsPage === 'audio' ? 'Âm thanh' : settingsPage === 'download' ? 'Tải về' : 'Cỡ chữ'}
+                  {settingsPage === 'language' ? t('language') : settingsPage === 'audio' ? t('audio') : settingsPage === 'download' ? t('downloads') : t('fontSize')}
                 </Text>
               )}
-              <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={closeSettings} style={styles.closeButton}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={closeSettings} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>×</Text>
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.settingsContent}>
               {settingsPage === 'menu' && (
                 <View style={styles.menuList}>
-                  <SettingsMenuItem icon="文" title="Ngôn ngữ" subtitle="Tiếng Việt" onPress={() => openSettingsPage('language')} />
-                  <SettingsMenuItem icon="♫" title="Âm thanh" subtitle="Thuyết minh tự động" onPress={() => openSettingsPage('audio')} />
-                  <SettingsMenuItem icon="↓" title="Tải về" subtitle="Gói dữ liệu bản đồ offline" onPress={() => openSettingsPage('download')} />
-                  <SettingsMenuItem icon="A" title="Cỡ chữ" subtitle="Điều chỉnh nội dung dễ đọc" onPress={() => openSettingsPage('font')} />
+                  <SettingsMenuItem icon="文" title={t('language')} subtitle={t('languageMenuSubtitle')} onPress={() => openSettingsPage('language')} />
+                  <SettingsMenuItem icon="♫" title={t('audio')} subtitle={t('audioMenuSubtitle')} onPress={() => openSettingsPage('audio')} />
+                  <SettingsMenuItem icon="↓" title={t('downloads')} subtitle={t('downloadsMenuSubtitle')} onPress={() => openSettingsPage('download')} />
+                  <SettingsMenuItem icon="A" title={t('fontSize')} subtitle={t('fontSizeMenuSubtitle')} onPress={() => openSettingsPage('font')} />
                 </View>
               )}
 
               {settingsPage === 'language' && (
                 <View style={styles.settingSection}>
-                  <Text style={styles.settingDescription}>Chọn ngôn ngữ hiển thị trong ứng dụng.</Text>
-                  {[
-                    { code: 'vi', flag: '🇻🇳', label: 'Tiếng Việt' },
-                    { code: 'en', flag: '🇬🇧', label: 'English' },
-                    { code: 'zh', flag: '🇨🇳', label: '中文' },
-                  ].map(language => (
-                    <Pressable key={language.code} accessibilityRole="radio" accessibilityState={{ checked: selectedLanguage === language.code }} onPress={() => setSelectedLanguage(language.code)} style={[styles.languageOption, selectedLanguage === language.code && styles.languageOptionSelected]}>
-                      <Text style={styles.languageFlag}>{language.flag}</Text>
-                      <Text style={[styles.languageOptionText, selectedLanguage === language.code && styles.languageOptionTextSelected]}>{language.label}</Text>
-                      <View style={[styles.radio, selectedLanguage === language.code && styles.radioSelected]}>
-                        {selectedLanguage === language.code && <View style={styles.radioDot} />}
+                  <Text style={styles.settingDescription}>{t('languageDescription')}</Text>
+                  {languageOptions.map(option => (
+                    <Pressable key={option.code} accessibilityRole="radio" accessibilityState={{ checked: language === option.code }} onPress={() => setLanguage(option.code)} style={[styles.languageOption, language === option.code && styles.languageOptionSelected]}>
+                      <Text style={styles.languageFlag}>{option.flag}</Text>
+                      <Text style={[styles.languageOptionText, language === option.code && styles.languageOptionTextSelected]}>{t(option.translationKey)}</Text>
+                      <View style={[styles.radio, language === option.code && styles.radioSelected]}>
+                        {language === option.code && <View style={styles.radioDot} />}
                       </View>
                     </Pressable>
                   ))}
-                  <Pressable accessibilityRole="button" onPress={() => setSettingsPage('menu')} style={styles.primaryButton}>
-                    <Text style={styles.primaryButtonText}>Xác nhận</Text>
+                  <Pressable accessibilityRole="button" onPress={closeSettings} style={styles.primaryButton}>
+                    <Text style={styles.primaryButtonText}>{t('confirm')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -221,16 +235,16 @@ export default function HomeScreen() {
                 <View style={styles.settingSection}>
                   <View style={styles.toggleCard}>
                     <View style={styles.settingCopy}>
-                      <Text style={styles.settingSectionTitle}>Tự động thuyết minh khi đến gần địa điểm</Text>
-                      <Text style={styles.settingDescription}>Phát nội dung giới thiệu khi bạn đến gần một điểm tham quan.</Text>
+                      <Text style={styles.settingSectionTitle}>{t('autoNarration')}</Text>
+                      <Text style={styles.settingDescription}>{t('autoNarrationDescription')}</Text>
                     </View>
-                    <Pressable accessibilityRole="switch" accessibilityState={{ checked: autoNarration }} accessibilityLabel="Tự động thuyết minh" onPress={() => setAutoNarration(value => !value)} style={[styles.toggle, autoNarration && styles.toggleOn]}>
+                    <Pressable accessibilityRole="switch" accessibilityState={{ checked: autoNarration }} accessibilityLabel={t('autoNarration')} onPress={() => setAutoNarration(value => !value)} style={[styles.toggle, autoNarration && styles.toggleOn]}>
                       <View style={[styles.toggleThumb, autoNarration && styles.toggleThumbOn]} />
                     </Pressable>
                   </View>
                   <View style={styles.volumeCard}>
                     <View style={styles.volumeHeader}>
-                      <Text style={styles.volumeTitle}>Âm lượng</Text>
+                      <Text style={styles.volumeTitle}>{t('volume')}</Text>
                       <Text style={styles.volumeValue}>{volume}%</Text>
                     </View>
                     <View style={styles.volumeControls}>
@@ -257,15 +271,15 @@ export default function HomeScreen() {
                   <View style={styles.downloadCard}>
                     <View style={styles.downloadIcon}><Text style={styles.downloadEmoji}>🗺️</Text></View>
                     <View style={styles.downloadCopy}>
-                      <Text style={styles.packageTitle}>Gói offline Hà Nội</Text>
-                      <Text style={styles.packageMetadata}>Bản đồ · Thuyết minh · 120 MB</Text>
+                      <Text style={styles.packageTitle}>{t('offlinePackage')}</Text>
+                      <Text style={styles.packageMetadata}>{t('packageDetails')}</Text>
                     </View>
                     {isPackageDownloaded && <Text style={styles.downloadCheck}>✓</Text>}
                   </View>
                   {downloadProgress > 0 && (
                     <View style={styles.progressSection}>
                       <View style={styles.progressLabels}>
-                        <Text style={styles.progressStatus}>{isPackageDownloaded ? 'Đã tải' : 'Đang tải…'}</Text>
+                        <Text style={styles.progressStatus}>{isPackageDownloaded ? t('downloaded') : t('downloading')}</Text>
                         <Text style={styles.progressPercent}>{downloadProgress}%</Text>
                       </View>
                       <View style={styles.progressTrack}>
@@ -275,25 +289,25 @@ export default function HomeScreen() {
                   )}
                   {!isPackageDownloaded ? (
                     <Pressable accessibilityRole="button" disabled={downloadProgress > 0} onPress={() => setDownloadProgress(1)} style={[styles.primaryButton, downloadProgress > 0 && styles.buttonDisabled]}>
-                      <Text style={styles.primaryButtonText}>{downloadProgress > 0 ? 'Đang tải gói…' : 'Tải về'}</Text>
+                      <Text style={styles.primaryButtonText}>{downloadProgress > 0 ? t('downloadingPackage') : t('download')}</Text>
                     </Pressable>
                   ) : (
                     <Pressable accessibilityRole="button" onPress={() => { setIsPackageDownloaded(false); setDownloadProgress(0); }} style={styles.deleteButton}>
-                      <Text style={styles.deleteButtonText}>Xóa gói tải về</Text>
+                      <Text style={styles.deleteButtonText}>{t('deleteDownload')}</Text>
                     </Pressable>
                   )}
-                  <Text style={styles.downloadNote}>Gói dữ liệu giúp bạn khám phá ngay cả khi ngoại tuyến.</Text>
+                  <Text style={styles.downloadNote}>{t('downloadHint')}</Text>
                 </View>
               )}
 
               {settingsPage === 'font' && (
                 <View style={styles.settingSection}>
-                  <Text style={styles.settingDescription}>Chọn cỡ chữ phù hợp với bạn.</Text>
+                  <Text style={styles.settingDescription}>{t('fontSizeDescription')}</Text>
                   <View style={styles.fontOptions}>
                     {[
-                      { label: 'Nhỏ', size: 14 },
-                      { label: 'Vừa', size: 16 },
-                      { label: 'Lớn', size: 20 },
+                      { label: t('small'), size: 14 },
+                      { label: t('medium'), size: 16 },
+                      { label: t('large'), size: 20 },
                     ].map(option => (
                       <Pressable key={option.size} accessibilityRole="radio" accessibilityState={{ checked: fontSize === option.size }} onPress={() => setFontSize(option.size)} style={[styles.fontOption, fontSize === option.size && styles.fontOptionSelected]}>
                         <Text style={[styles.fontOptionSample, { fontSize: option.size }]}>Aa</Text>
@@ -302,8 +316,8 @@ export default function HomeScreen() {
                     ))}
                   </View>
                   <View style={styles.previewCard}>
-                    <Text style={styles.previewLabel}>XEM TRƯỚC</Text>
-                    <Text style={[styles.previewText, { fontSize, lineHeight: fontSize * 1.55 }]}>Thảo Cầm Viên là điểm đến xanh giữa lòng thành phố. Chạm để nghe thuyết minh.</Text>
+                    <Text style={styles.previewLabel}>{t('previewLabel')}</Text>
+                    <Text style={[styles.previewText, { fontSize, lineHeight: fontSize * 1.55 }]}>{t('fontPreview')}</Text>
                   </View>
                 </View>
               )}

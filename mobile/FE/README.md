@@ -33,7 +33,7 @@ src/
     explore/
       ExploreScreen.tsx # Giao diện tìm kiếm, lọc và chi tiết địa điểm
     map/
-      ZooMap.tsx        # Giao diện bản đồ và chọn điểm đến
+      ZooMap.tsx        # Bản đồ, tìm tuyến giữa các điểm tham quan
     layout/
       AppTabs.tsx       # Thanh điều hướng dưới dùng chung Android, iOS, web
     ui/
@@ -59,4 +59,4 @@ npm.cmd run lint
 npx.cmd tsc --noEmit
 ```
 
-Tìm kiếm, lọc khu vực và hộp chi tiết ở Khám phá chạy bằng dữ liệu mẫu. Bản đồ hiện là ảnh tham khảo; chưa có GPS, tìm đường hay phát audio.
+Tìm kiếm, lọc khu vực và hộp chi tiết ở Khám phá chạy bằng dữ liệu mẫu. Bản đồ mobile dùng ảnh tham khảo và đồ thị waypoint `mapGraph.js` của web để tìm tuyến giữa cổng chính và các điểm tham quan mẫu; chưa dùng GPS hoặc phát audio.

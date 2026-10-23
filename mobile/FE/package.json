@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~57.0.21",
     "expo": "~57.0.26",
+    "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.20",
     "expo-device": "~57.0.2",
     "expo-font": "~57.0.4",
@@ -34,11 +35,12 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "node ../scripts/start.cjs",
+    "start:fe": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "android": "node ../scripts/start.cjs --android",
+    "ios": "node ../scripts/start.cjs --ios",
+    "web": "node ../scripts/start.cjs --web",
     "lint": "expo lint"
   },
   "private": true

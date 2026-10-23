@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 import type { MapGraphNode } from '../../../../../app/FE/src/components/map/mapGraph';
+import Motion from 'react-native-reanimated';
+import { fadeIn } from '@/components/ui/motion';
 
 export type MapCanvasHandle = { zoomBy: (delta: number) => void; reset: () => void };
 
@@ -22,9 +24,9 @@ type MapCanvasProps = {
   onSelectMarker: (id: string) => void;
 };
 
-const FIT_ZOOM = 0.6;
-const MIN_ZOOM = 0.4;
-const MAX_ZOOM = 2.5;
+const FIT_ZOOM = 1;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
 
 function getMapSize(width: number, height: number) {
   const mapHeight = Math.min(height, width * 875 / 1371);
@@ -91,7 +93,7 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
 
     setHandlers(PanResponder.create({
       onStartShouldSetPanResponder: event => event.nativeEvent.touches.length > 1,
-      onMoveShouldSetPanResponder: event => event.nativeEvent.touches.length > 0,
+      onMoveShouldSetPanResponder: (event, gesture) => event.nativeEvent.touches.length > 1 || Math.hypot(gesture.dx, gesture.dy) > 6,
       onPanResponderGrant: begin,
       onPanResponderStart: begin,
       onPanResponderMove: event => {
@@ -169,53 +171,49 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
           accessibilityLabel="Bản đồ Thảo Cầm Viên"
           style={[styles.mapImage, { width: mapSize.width, height: mapSize.height }]}
         />
-        {pathNodes.slice(1).map((node, index) => {
-          const previous = pathNodes[index];
-          const x1 = previous.x / 100 * mapSize.width;
-          const y1 = previous.y / 100 * mapSize.height;
-          const x2 = node.x / 100 * mapSize.width;
-          const y2 = node.y / 100 * mapSize.height;
-          const length = Math.hypot(x2 - x1, y2 - y1);
-          const angle = Math.atan2(y2 - y1, x2 - x1);
-          return (
-            <View
-              key={`${previous.id}-${node.id}`}
-              pointerEvents="none"
-              style={[
+        {/* Paint all outlines before strokes to keep the route continuous at joins. */}
+        {pathNodes.length > 1 && [true, false].map(outline => {
+          const thickness = (outline ? 8 : 4) / zoomLevel;
+          return <Motion.View key={outline ? 'route-outline' : 'route-stroke'} entering={fadeIn} pointerEvents="none" style={styles.routeLayer}>
+            {pathNodes.slice(1).map((node, index) => {
+              const previous = pathNodes[index];
+              const x1 = previous.x / 100 * mapSize.width;
+              const y1 = previous.y / 100 * mapSize.height;
+              const x2 = node.x / 100 * mapSize.width;
+              const y2 = node.y / 100 * mapSize.height;
+              const length = Math.hypot(x2 - x1, y2 - y1);
+              const angle = Math.atan2(y2 - y1, x2 - x1);
+              return <View key={index} style={[
                 styles.routeSegment,
                 {
-                  left: (x1 + x2 - length) / 2,
-                  top: (y1 + y2) / 2 - 5,
-                  width: length,
-                  transform: [{ rotate: `${angle * 180 / Math.PI}deg` }],
+                  left: (x1 + x2 - length) / 2 - thickness / 2,
+                  top: (y1 + y2 - thickness) / 2,
+                  width: length + thickness,
+                  height: thickness,
+                  borderRadius: thickness / 2,
+                  backgroundColor: outline ? '#FFFFFF' : '#047857',
+                  transform: [{ rotate: String(angle * 180 / Math.PI) + 'deg' }],
                 },
-              ]}
-            >
-              <View style={styles.routeSegmentInner} />
-            </View>
-          );
+              ]} />;
+            })}
+          </Motion.View>;
         })}
-        {pathNodes.map((node, index) => {
-          const isStart = node.id === routeStartId;
-          const isEnd = node.id === routeEndId;
-          return (
-            <View
-              key={`${node.id}-${index}`}
-              pointerEvents="none"
-              style={[
-                styles.routeNode,
-                node.category === 'waypoint' && styles.waypoint,
-                isStart && styles.routeStart,
-                isEnd && styles.routeEnd,
-                { left: `${node.x}%`, top: `${node.y}%` },
-              ]}
-            >
-              {(isStart || isEnd) && (
-                <Text numberOfLines={1} style={styles.routeLabel}>{isStart ? 'Đi' : 'Đến'}</Text>
-              )}
-            </View>
-          );
-        })}
+        {pathNodes.filter(node => node.id === routeStartId || node.id === routeEndId).map(node => (
+          <View key={node.id} pointerEvents="none" style={[
+            styles.routeEndpoint,
+            {
+              left: `${node.x}%`,
+              top: `${node.y}%`,
+              width: 12 / zoomLevel,
+              height: 12 / zoomLevel,
+              marginLeft: -6 / zoomLevel,
+              marginTop: -6 / zoomLevel,
+              borderRadius: 6 / zoomLevel,
+              borderWidth: 2 / zoomLevel,
+              backgroundColor: node.id === routeStartId ? '#047857' : '#DC2626',
+            },
+          ]} />
+        ))}
         {markers.map(marker => {
           const isStart = marker.id === routeStartId;
           const isEnd = marker.id === routeEndId;
@@ -249,6 +247,7 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
                 },
               ]}>{marker.title}</Text>}
               <Pressable
+                hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={marker.title}
                 accessibilityState={{ selected: active }}
@@ -289,8 +288,8 @@ const styles = StyleSheet.create({
   markerLabel: {
     position: 'absolute',
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    color: '#202823',
+    backgroundColor: '#205E48',
+    color: '#FFFFFF',
     fontWeight: '600',
     textAlign: 'center',
     elevation: 4,
@@ -306,43 +305,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textAlignVertical: 'center',
   },
-  routeSegment: {
+  routeLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  routeSegment: { position: 'absolute' },
+  routeEndpoint: {
     position: 'absolute',
-    height: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  routeSegmentInner: { width: '100%', height: 4, backgroundColor: '#047857', borderRadius: 2 },
-  routeNode: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    marginLeft: -4,
-    marginTop: -4,
-    borderRadius: 4,
-    backgroundColor: '#047857',
-    borderWidth: 1,
     borderColor: '#FFFFFF',
-  },
-  waypoint: { width: 5, height: 5, marginLeft: -2.5, marginTop: -2.5 },
-  routeStart: { width: 18, height: 18, marginLeft: -9, marginTop: -9, backgroundColor: '#16A34A' },
-  routeEnd: { width: 18, height: 18, marginLeft: -9, marginTop: -9, backgroundColor: '#DC2626' },
-  routeLabel: {
-    position: 'absolute',
-    bottom: 20,
-    left: -18,
-    minWidth: 42,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    color: '#202823',
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-    elevation: 2,
+    zIndex: 1,
   },
 });

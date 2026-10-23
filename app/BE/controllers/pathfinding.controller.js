@@ -93,13 +93,19 @@ export async function findShortestPath(req, res) {
 
   try {
     // 1. Lấy toàn bộ nodes và edges từ DB
-    const [nodesRes, edgesRes] = await Promise.all([
+    const [nodesRes, edgesRes, poisRes] = await Promise.all([
       query("SELECT node_id, name, x, y, category FROM map_node"),
       query("SELECT from_id, to_id, distance FROM map_edge"),
+      query(`SELECT p.code AS node_id, p.name, p.x, p.y, c.name AS category
+             FROM poi p LEFT JOIN category c ON c.category_id = p.category_id
+             WHERE p.is_active = TRUE AND p.x IS NOT NULL AND p.y IS NOT NULL`),
     ]);
 
     const nodesMap = new Map();
     nodesRes.rows.forEach((n) => nodesMap.set(n.node_id, n));
+    // The poi table owns POI coordinates; map_node may still contain older values.
+    poisRes.rows.forEach((n) => nodesMap.set(n.node_id, n));
+    const poiIds = new Set(poisRes.rows.map((n) => n.node_id));
 
     if (!nodesMap.has(from) || !nodesMap.has(to)) {
       if (isRouteApi) {
@@ -110,12 +116,27 @@ export async function findShortestPath(req, res) {
 
     // 2. Xây dựng đồ thị kề (adjacency list)
     const adj = new Map();
-    for (const n of nodesRes.rows) {
+    for (const n of nodesMap.values()) {
       adj.set(n.node_id, []);
     }
     for (const e of edgesRes.rows) {
-      if (adj.has(e.from_id)) {
+      if (adj.has(e.from_id) && adj.has(e.to_id) && !poiIds.has(e.from_id) && !poiIds.has(e.to_id)) {
         adj.get(e.from_id).push({ node: e.to_id, weight: Number(e.distance) });
+      }
+    }
+
+    // Connect active POIs to the nearest waypoint without modifying stored graph data.
+    const waypoints = [...nodesMap.values()].filter((node) => node.category === "waypoint");
+    for (const poi of poisRes.rows) {
+      let nearest = null;
+      let distance = Infinity;
+      for (const waypoint of waypoints) {
+        const candidate = Math.hypot(Number(poi.x) - Number(waypoint.x), Number(poi.y) - Number(waypoint.y));
+        if (candidate < distance) { nearest = waypoint; distance = candidate; }
+      }
+      if (nearest) {
+        adj.get(poi.node_id).push({ node: nearest.node_id, weight: distance });
+        adj.get(nearest.node_id).push({ node: poi.node_id, weight: distance });
       }
     }
 
@@ -124,7 +145,7 @@ export async function findShortestPath(req, res) {
     const previous = {};
     const pq = new PriorityQueue();
 
-    for (const node of nodesRes.rows) {
+    for (const node of nodesMap.values()) {
       const id = node.node_id;
       if (id === from) {
         distances[id] = 0;

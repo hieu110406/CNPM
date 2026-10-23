@@ -1,6 +1,11 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 
 const names = {
+  headphones: { ios: 'headphones', android: 'headphones', web: 'headphones' },
+  play: { ios: 'play.fill', android: 'play_arrow', web: 'play_arrow' },
+  pause: { ios: 'pause.fill', android: 'pause', web: 'pause' },
+  replay: { ios: 'arrow.counterclockwise', android: 'replay', web: 'replay' },
+  search: { ios: 'magnifyingglass', android: 'search', web: 'search' },
   home: { ios: 'house', android: 'home', web: 'home' },
   explore: { ios: 'safari', android: 'explore', web: 'explore' },
   map: { ios: 'map', android: 'map', web: 'map' },

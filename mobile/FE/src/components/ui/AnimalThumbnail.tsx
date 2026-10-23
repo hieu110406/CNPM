@@ -8,12 +8,16 @@ const photos: Record<string, string> = {
   monkeys: 'photo-1540573133985-87b6da6d54a9',
   tiger: 'photo-1561731216-c3a4d99437d5',
 };
-export default function AnimalThumbnail({ id, emoji, width = 64, height = 72 }: {
-  id: string; emoji: string; width?: number; height?: number;
+export default function AnimalThumbnail({ id, emoji, imageUrl, width = 64, height = 72, radius = 10 }: {
+  id: string; emoji: string; imageUrl?: string | null; width?: number; height?: number; radius?: number;
 }) {
-  const [failed, setFailed] = useState(false);
-  return <View style={{ width, height, borderRadius: 10, overflow: 'hidden', backgroundColor: '#F2F4F0', alignItems: 'center', justifyContent: 'center' }}>
-    {!failed && photos[id] ? <Image source={{ uri: `https://images.unsplash.com/${photos[id]}?auto=format&fit=crop&w=400&q=75` }}
-      resizeMode="cover" style={{ width: '100%', height: '100%' }} onError={() => setFailed(true)} /> : <Text style={{ fontSize: 26 }}>{emoji}</Text>}
+  // Explicit null means the database has no image; don't substitute a stock photo.
+  const uri = imageUrl === undefined
+    ? (photos[id] ? `https://images.unsplash.com/${photos[id]}?auto=format&fit=crop&w=400&q=75` : null)
+    : imageUrl;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  return <View style={{ width, height, flexShrink: 0, borderRadius: radius, overflow: 'hidden', backgroundColor: '#E3EDE1', alignItems: 'center', justifyContent: 'center' }}>
+    {uri && failedUri !== uri ? <Image source={{ uri }}
+      resizeMode="contain" style={{ width, height }} onError={() => setFailedUri(uri)} /> : <Text style={{ fontSize: 26 }}>{emoji}</Text>}
   </View>;
 }

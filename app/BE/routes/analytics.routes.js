@@ -10,20 +10,23 @@ router.get("/overview/export", requireAuth, exportOverview);
 
 // Lấy Top POI phổ biến (API cho User)
 router.get("/top-popular", async (req, res) => {
-    const lang = req.query.lang || "vi";
+    const lang = ["vi", "en", "zh"].includes(req.query.lang) ? req.query.lang : "vi";
     try {
-        // Sửa lại câu query cho khớp với cấu trúc bảng thật của bạn
         const { rows } = await query(`
             SELECT p.code AS id, COALESCE(t.zone, v.zone, p.zone) AS zone, p.emoji,
                    COALESCE(t.name, v.name, p.name) AS name,
+                   (SELECT pi.public_url FROM poi_image pi
+                    WHERE pi.poi_id = p.poi_id
+                    ORDER BY pi.sort_order, pi.poi_image_id LIMIT 1) AS "imageUrl",
                    COUNT(u.usage_id)::int AS plays
             FROM usage_log u
             JOIN poi p ON u.poi_id = p.poi_id
             LEFT JOIN poi_translation t ON p.poi_id = t.poi_id AND t.language_code = $1
             LEFT JOIN poi_translation v ON p.poi_id = v.poi_id AND v.language_code = 'vi'
+            WHERE p.is_active = TRUE
             GROUP BY p.poi_id, p.code, p.zone, t.zone, v.zone, p.emoji, t.name, v.name, p.name
             HAVING COUNT(u.usage_id) > 0
-            ORDER BY plays DESC LIMIT 5
+            ORDER BY plays DESC, p.poi_id ASC LIMIT 5
         `, [lang]);
         res.json(rows);
     } catch (err) {

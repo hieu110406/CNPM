@@ -1,34 +1,23 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Pressable from '@/components/ui/AnimatedPressable';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
+import { slideIn, fadeIn } from '@/components/ui/motion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { destinations } from '@/data/destinations';
+import { appearance as a } from '@/constants/appearance';
+import MostListenedPois from './MostListenedPois';
 import AppIcon from '@/components/ui/AppIcon';
-import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
-import { useI18n, type TranslationKey } from '@/context/I18nContext';
+import { useI18n } from '@/context/I18nContext';
 
-const zones = ['Tất cả', 'Thú lớn', 'Chim', 'Linh trưởng'];
-const zoneTranslationKeys: Record<string, TranslationKey> = {
-  'Tất cả': 'all',
-  'Thú lớn': 'largeAnimals',
-  Chim: 'birds',
-  'Linh trưởng': 'primates',
-};
-const destinationTranslationKeys: Record<string, { title: TranslationKey; subtitle: TranslationKey }> = {
-  giraffe: { title: 'giraffeTitle', subtitle: 'giraffeSubtitle' },
-  birds_lake: { title: 'birds_lakeTitle', subtitle: 'birds_lakeSubtitle' },
-  monkey_primate: { title: 'monkey_primateTitle', subtitle: 'monkey_primateSubtitle' },
-  tiger: { title: 'tigerTitle', subtitle: 'tigerSubtitle' },
-} as const;
 const languageOptions = [
   { code: 'vi', flag: '🇻🇳', translationKey: 'vietnamese' },
   { code: 'en', flag: '🇬🇧', translationKey: 'english' },
   { code: 'zh', flag: '🇨🇳', translationKey: 'chinese' },
 ] as const;
 
-const highlights = destinations;
+
 
 const feedingTimes = [
   { time: '09:30', animal: 'Hà mã', place: 'Hồ nước ngọt', emoji: '🦛' },
@@ -36,8 +25,9 @@ const feedingTimes = [
 ];
 
 export default function HomeScreen() {
+  const reducedMotion = useReducedMotion();
   const { language, setLanguage, t } = useI18n();
-  const [selectedZone, setSelectedZone] = useState('Tất cả');
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPage, setSettingsPage] = useState<'menu' | 'language' | 'audio' | 'download' | 'font'>('menu');
   const [autoNarration, setAutoNarration] = useState(true);
@@ -79,80 +69,39 @@ export default function HomeScreen() {
           </View>
 
           {/* Hero */}
-          <View style={styles.heroCard}>
+          <View style={styles.heroCard}><View pointerEvents="none" style={styles.heroCircleOne} /><View pointerEvents="none" style={styles.heroCircleTwo} />
             <View style={styles.heroCopy}>
               <Text style={styles.heroTitle}>{t('heroTitle')}</Text>
               <Text style={styles.heroDescription}>
                 {t('heroDescription')}
               </Text>
               <Pressable accessibilityRole="button" style={styles.heroButton} onPress={() => router.navigate('/explore')}>
-                <Text style={styles.heroButtonText}>{t('startExploring')}</Text>
+                <Text style={styles.heroButtonText}>{t('startExploring')}  →</Text>
               </Pressable>
             </View>
             
           </View>
 
-          <Text style={styles.preview}>{t('preview')}</Text>
           {/* Info */}
           <View style={styles.infoRow}>
             <View style={styles.infoCard}>
               <AppIcon name="sun" size={20} />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>{t('weather')}</Text>
                 <Text style={styles.infoValue}>{t('weatherValue')}</Text>
               </View>
             </View>
             <View style={styles.infoCard}>
               <AppIcon name="clock" size={20} />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>{t('openingHours')}</Text>
                 <Text style={styles.infoValue}>{t('openingHoursValue')}</Text>
               </View>
             </View>
           </View>
 
-          {/* Zones */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('exploreZones')}</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.navigate('/map')}><Text style={styles.seeAll}>{t('seeMap')}</Text></Pressable>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chips}>
-            {zones.map((zone) => {
-              const active = selectedZone === zone;
-              return (
-                <Pressable
-                  key={zone}
-                  onPress={() => setSelectedZone(zone)}
-                  style={[styles.chip, active && styles.chipActive]}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(zoneTranslationKeys[zone])}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Highlights */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('highlights')}</Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.destinationList}>
-            {highlights.filter(item => selectedZone === 'Tất cả' || item.zone === selectedZone).map((item) => (
-              <Pressable
-                key={item.title}
-                accessibilityRole="button"
-                onPress={() => router.navigate('/explore')}
-                style={[styles.destinationCard, { backgroundColor: '#F4F5F3' }]}>
-                <AnimalThumbnail id={item.id} emoji={item.emoji} width={148} height={96} />
-                <Text style={styles.destinationTitle}>{t(destinationTranslationKeys[item.id].title)}</Text>
-                <Text style={styles.destinationSubtitle}>{t(destinationTranslationKeys[item.id].subtitle)}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <Text style={styles.preview}>{t('preview')}</Text>
+          <MostListenedPois />
 
           {/* Feeding schedule */}
           <View style={styles.sectionHeader}>
@@ -164,22 +113,23 @@ export default function HomeScreen() {
                 key={item.time}
                 style={[styles.scheduleRow, index === 0 && styles.scheduleFirst]}>
                 <Text style={styles.scheduleEmoji}>{item.emoji}</Text>
-                <View style={styles.scheduleTime}>
-                  <Text style={styles.timeText}>{item.time}</Text>
-                  <Text style={styles.upcoming}>{t('sampleSchedule')}</Text>
-                </View>
                 <View style={styles.scheduleDetail}>
                   <Text style={styles.animalText}>{t(item.time === '09:30' ? 'hippo' : 'bengalTiger')}</Text>
                   <Text style={styles.placeText}>{t(item.time === '09:30' ? 'freshwaterPond' : 'largeAnimalZone')}</Text>
+                </View>
+                <View style={styles.scheduleTime}>
+                  <Text style={styles.timeText}>{item.time}</Text>
+                  <Text style={styles.upcoming}>{t('sampleSchedule')}</Text>
                 </View>
               </View>
             ))}
           </View>
         </ScrollView>
       </SafeAreaView>
-      <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={closeSettings}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={closeSettings} style={styles.modalBackdrop}>
-          <Pressable onPress={() => undefined} style={styles.settingsPanel}>
+      <Modal visible={settingsOpen} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={closeSettings}>
+        <Pressable motion={false} accessibilityRole="button" accessibilityLabel={t('close')} onPress={closeSettings} style={styles.modalBackdrop}>
+          <Animated.View entering={slideIn} style={styles.settingsPanel}>
+          <Pressable motion={false} onPress={() => undefined} style={{ flexShrink: 1 }}>
             <View style={styles.settingsHeader}>
               {settingsPage !== 'menu' ? (
                 <Pressable accessibilityRole="button" accessibilityLabel={t('backToSettings')} onPress={() => setSettingsPage('menu')} style={styles.backButton}>
@@ -203,6 +153,7 @@ export default function HomeScreen() {
                 <Text style={styles.closeButtonText}>×</Text>
               </Pressable>
             </View>
+            <Animated.View key={settingsPage} entering={fadeIn} style={{ flexShrink: 1 }}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.settingsContent}>
               {settingsPage === 'menu' && (
                 <View style={styles.menuList}>
@@ -322,7 +273,9 @@ export default function HomeScreen() {
                 </View>
               )}
             </ScrollView>
+            </Animated.View>
           </Pressable>
+          </Animated.View>
         </Pressable>
       </Modal>
     </View>
@@ -350,40 +303,17 @@ function SettingsMenuItem({ icon, title, subtitle, onPress }: {
 }
 
 const styles = StyleSheet.create({
-  preview: { color: '#8A928B', fontSize: 11, marginTop: 12 },
-  screen: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  safeArea: {
-    flex: 1,
-    maxWidth: MaxContentWidth,
-    width: '100%',
-  },
-  content: {
-    paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.four,
-  },
+  heroCircleOne: { position: 'absolute', width: 200, height: 200, borderRadius: 100, right: -80, top: -60, backgroundColor: '#FFFFFF10' },
+  heroCircleTwo: { position: 'absolute', width: 150, height: 150, borderRadius: 75, right: 28, bottom: -95, backgroundColor: '#FFFFFF0C' },
+  preview: { color: a.muted, fontSize: 10, lineHeight: 16, marginTop: 4 },
+  screen: { flex: 1, alignItems: 'center', backgroundColor: a.background },
+  safeArea: { flex: 1, maxWidth: 680, width: '100%' },
+  content: { paddingHorizontal: 20, paddingBottom: 28 },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-  date: { color: '#7A867D', fontSize: 10, fontWeight: '500', letterSpacing: 0.6 },
-  greeting: { color: '#183A35', fontSize: 20, fontWeight: '600', marginTop: 4, flexShrink: 1 },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 15,
-    backgroundColor: '#F1F5EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingTop: 20, paddingBottom: 18 },
+  date: { color: a.muted, fontSize: 10, fontWeight: '600', letterSpacing: 0.6 },
+  greeting: { color: a.ink, fontSize: 32, lineHeight: 41, fontFamily: a.serif, fontWeight: '700', marginTop: 4 },
+  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#FFF', borderWidth: 1, borderColor: a.border, alignItems: 'center', justifyContent: 'center' },
   modalBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 36, 30, 0.48)', padding: 20 },
   settingsPanel: { width: '100%', maxWidth: 420, maxHeight: '84%', backgroundColor: '#FFFFFF', borderRadius: 24, overflow: 'hidden', shadowColor: '#10241E', shadowOpacity: 0.2, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
   settingsHeader: { minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EEF1ED' },
@@ -464,52 +394,22 @@ const styles = StyleSheet.create({
   previewText: { color: '#34483B' },
   avatarText: { color: '#FFF8E9', fontSize: 17, fontWeight: '600' },
 
-  heroCard: {
-    minHeight: 0,
-    borderRadius: 10,
-    backgroundColor: '#F3F5F2',
-    padding: 18,
-    overflow: 'hidden',
-  },
+  heroCard: { borderRadius: 26, backgroundColor: a.forest, padding: 22, overflow: 'hidden' },
   heroCopy: { width: '100%' },
-  heroTitle: { color: '#202823', fontSize: 21, lineHeight: 28, fontWeight: '600' },
-  heroDescription: { color: '#6D756F', fontSize: 13, lineHeight: 19, marginTop: 9 },
-  heroButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#285A46',
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 13,
-    marginTop: 17,
-  },
-  heroButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  heroTitle: { color: '#FAF8F0', fontSize: 27, lineHeight: 32, fontFamily: a.serif, fontWeight: '700', maxWidth: 290 },
+  heroDescription: { color: '#D6E5D7', fontSize: 14, lineHeight: 22, marginTop: 12 },
+  heroButton: { alignSelf: 'flex-start', backgroundColor: a.background, paddingHorizontal: 20, paddingVertical: 14, borderRadius: 28, marginTop: 18, minHeight: 48 },
+  heroButtonText: { color: a.forest, fontSize: 14, fontWeight: '600' },
   heroAnimal: { position: 'absolute', right: 10, bottom: 8, fontSize: 104 },
 
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
-  infoCard: {
-    flex: 1,
-    minWidth: 145,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 13,
-    borderWidth: 1,
-    borderColor: '#EAEDE5',
-  },
+  infoCard: { flex: 1, minWidth: 140, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: a.border },
   infoIcon: { fontSize: 20 },
-  infoLabel: { color: '#91A39D', fontSize: 11, fontWeight: '600' },
-  infoValue: { color: '#254A43', fontSize: 12, fontWeight: '500', marginTop: 2 },
+  infoLabel: { color: a.muted, fontSize: 11, lineHeight: 16 },
+  infoValue: { color: a.ink, fontSize: 13, lineHeight: 19, fontWeight: '600', marginTop: 2 },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 22,
-    marginBottom: 11,
-  },
-  sectionTitle: { color: '#1F413A', fontSize: 16, fontWeight: '600' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 10 },
+  sectionTitle: { color: a.ink, fontSize: 23, lineHeight: 30, fontWeight: '700', fontFamily: a.serif },
   seeAll: { color: '#4B8A7D', fontSize: 12, fontWeight: '500' },
 
   chips: { gap: 8 },
@@ -529,37 +429,14 @@ const styles = StyleSheet.create({
   destinationTitle: { color: '#26463E', fontSize: 14, fontWeight: '600' },
   destinationSubtitle: { color: '#6C817A', fontSize: 11, marginTop: 4 },
 
-  scheduleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: '#EAEDE5',
-  },
-  scheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#EDF0EB',
-    gap: 11,
-  },
+  scheduleCard: { backgroundColor: '#FFF', borderRadius: 22, paddingHorizontal: 14, borderWidth: 1, borderColor: a.border, overflow: 'hidden' },
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderTopColor: a.border, gap: 12 },
   scheduleFirst: { borderTopWidth: 0 },
-  scheduleEmoji: {
-    width: 38,
-    height: 38,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    lineHeight: 38,
-    borderRadius: 12,
-    backgroundColor: '#EDF6EB',
-    fontSize: 21,
-    overflow: 'hidden',
-  },
-  scheduleTime: { width: 72 },
-  timeText: { color: '#26463E', fontSize: 14, fontWeight: '600' },
-  upcoming: { color: '#D6853E', fontSize: 11, fontWeight: '500', marginTop: 2 },
+  scheduleEmoji: { width: 44, height: 44, textAlign: 'center', lineHeight: 44, borderRadius: 14, backgroundColor: a.pale, fontSize: 21, overflow: 'hidden' },
+  scheduleTime: { alignItems: 'flex-end', minWidth: 54 },
+  timeText: { color: a.ink, fontSize: 15, fontWeight: '600' },
+  upcoming: { color: '#A45B17', fontSize: 11, marginTop: 4 },
   scheduleDetail: { flex: 1 },
-  animalText: { color: '#27463F', fontSize: 13, fontWeight: '600' },
-  placeText: { color: '#83938D', fontSize: 11, marginTop: 2 },
+  animalText: { color: a.ink, fontSize: 14, fontWeight: '600' },
+  placeText: { color: a.muted, fontSize: 12, marginTop: 4 },
 });

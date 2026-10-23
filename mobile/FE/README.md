@@ -1,18 +1,39 @@
 ﻿# Mobile frontend — Thảo Cầm Viên
 
-Ứng dụng React Native / Expo. Hiện dùng dữ liệu mẫu, chưa kết nối backend.
+Ứng dụng React Native / Expo. Bản đồ lấy địa điểm từ database qua backend và dùng waypoint, cạnh nối, Dijkstra trong `app/FE/src/components/map/mapGraph.js` của web để tìm đường ngay trên thiết bị. Trang chủ và trang khám phá hiện vẫn dùng dữ liệu mẫu.
+
+## Kết nối bản đồ với Neon
+
+Backend trong `app/BE` đọc `DATABASE_URL` từ `.env` (đã cấu hình Neon). Mobile không chứa thông tin đăng nhập database.
+
+`npm.cmd start` trong `mobile` hoặc `mobile/FE` tự chạy backend và chờ API sẵn sàng trước khi mở Expo. Các lệnh `android`, `ios`, `web` cũng chạy cùng backend. Backend đã chạy ở cổng cấu hình thì được dùng lại.
+
+Khi chạy Expo qua LAN trên cùng máy với backend, mobile tự dùng địa chỉ máy đang chạy Expo, cổng `5000`. Điện thoại và máy tính cần cùng mạng và cổng backend phải truy cập được.
+
+Để chỉ định backend khác, tạo `mobile/FE/.env.local`:
+
+```dotenv
+EXPO_PUBLIC_API_URL=http://192.168.1.10:5000/api
+```
+
+Thay IP bằng IP LAN của máy chạy backend. Android Emulator có thể dùng `http://10.0.2.2:5000/api`, trình duyệt trên máy tính dùng `http://localhost:5000/api`. Với bản build phát hành hoặc Expo tunnel, đặt URL HTTPS của backend có thể truy cập từ điện thoại. Tải lại ứng dụng sau khi sửa biến môi trường.
+
+Bản đồ gọi `GET /api/pois/public?lang=vi` để lấy các địa điểm đang hoạt động từ bảng `poi`, gồm tên, tọa độ, loại, mô tả và biểu tượng. Chỉ POI có tọa độ mới xuất hiện trên bản đồ và trong danh sách chọn điểm. Sau khi tải POI, mobile gọi `buildGraph(pois)` từ `mapGraph.js` dùng chung với web để nối từng POI vào waypoint gần nhất, rồi gọi `shortestPath(from, to)` ngay trên thiết bị. Mobile không gọi API tìm đường và không dùng bảng `map_node`/`map_edge`. Vẫn cần giữ `app/BE/db/database.js` để API đọc bảng `poi`. Mỗi lần mở lại tab bản đồ, ứng dụng tải lại danh sách địa điểm; lỗi kết nối có nút thử lại.
 
 ## Chạy dự án
 
 ```powershell
 cd mobile
 npm.cmd --prefix FE ci
+npm.cmd --prefix ../app/BE install
 npm.cmd start
 ```
 
 Chọn Android/iOS trong Expo hoặc chạy `npm.cmd run web` để xem trên trình duyệt.
 
 `mobile/package.json` chuyển các lệnh chạy sang dự án trong `FE/`. Khi đứng ở `mobile`, dùng `npm start` thay cho `npx expo start`.
+
+Nhấn `Ctrl+C` để dừng Expo và backend do lệnh này khởi động. Backend có sẵn từ trước sẽ tiếp tục chạy. Nếu chỉ muốn chạy frontend với backend riêng, dùng `npm.cmd run start:fe`. Launcher đọc cổng backend từ `PORT` trong môi trường hoặc `app/BE/.env` (mặc định `5000`); nếu đổi cổng, hãy đặt `EXPO_PUBLIC_API_URL` tương ứng trong `mobile/FE/.env.local`.
 
 ## Cấu trúc
 

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "start": "npm --prefix FE run start --",
+    "start:fe": "npm --prefix FE run start:fe --",
     "android": "npm --prefix FE run android --",
     "ios": "npm --prefix FE run ios --",
     "web": "npm --prefix FE run web --",

@@ -294,3 +294,25 @@ SET name = EXCLUDED.name,
     x = EXCLUDED.x,
     y = EXCLUDED.y,
     category = EXCLUDED.category;
+
+-- Tạo bảng gói dữ liệu ngoại tuyến
+CREATE TABLE IF NOT EXISTS public.offline_package (
+    package_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    version VARCHAR(50) NOT NULL,
+    total_size_mb NUMERIC(10, 2) NOT NULL,
+    checksum VARCHAR(255) NOT NULL,
+    published_at TIMESTAMPTZ
+);
+
+-- Tạo bảng lịch sử tải gói dữ liệu
+CREATE TABLE IF NOT EXISTS public.package_download (
+    download_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    package_id INTEGER NOT NULL,
+    platform VARCHAR(100),
+    language_code VARCHAR(10),
+    downloaded_at TIMESTAMPTZ,
+    CONSTRAINT fk_package_download_package
+        FOREIGN KEY (package_id)
+        REFERENCES public.offline_package(package_id)
+        ON DELETE CASCADE
+);

@@ -1,6 +1,6 @@
 # GPS test execution report
 
-Executed: 2026-10-24T11:25:12.618Z
+Executed: 2026-10-24T12:46:31.246Z
 
 Automated function/API checks were executed. No UI interaction or real device GPS was verified.
 
@@ -21,16 +21,25 @@ Automated function/API checks were executed. No UI interaction or real device GP
 | SIM-02 | 401 samples stay on the route polyline | PASS |  |
 | SIM-03 | Movement uses distance rather than vertex count | PASS |  |
 | SIM-04 | Empty and zero-length paths handled | PASS |  |
-| HTTP-01 | Backend health | PASS |  |
-| HTTP-02 | Mobile map HTML (not interactive UI) | PASS |  |
-| HTTP-03 | Web frontend HTML | PASS |  |
-| HTTP-04 | Public POI API | PASS | 5 POIs |
-| CAL-01 | Configured anchor fit within provisional QA tolerance of 1 image percentage point | FAIL | Anchor residuals: 2.053, 1.822, 3.904, 0.029 percentage points. This is image error, not meters; tolerance is provisional. |
+| HTTP-01 | Backend health | FAIL | fetch failed |
+| HTTP-02 | Mobile map HTML (not interactive UI) | FAIL | fetch failed |
+| HTTP-03 | Web frontend HTML | FAIL | fetch failed |
+| HTTP-04 | Public POI API | FAIL | fetch failed |
+| CAL-01 | Configured anchor fit within provisional QA tolerance of 1 image percentage point | FAIL | Missing zebra calibration POI |
 | UI-01 | Click GPS and permission flow | BLOCKED | BLOCKED: Edge not connected to automation |
 | UI-02 | Visible map, zoom, pan and marker interaction | BLOCKED | BLOCKED: no controllable browser/device |
 | UI-03 | Play, pause, reset, close simulation using UI | BLOCKED | BLOCKED: no controllable browser/device |
-| GPS-07 | Live location updates while walking | FAIL | NOT IMPLEMENTED: locateMe uses getCurrentPositionAsync once; no location watch |
+| GPS-07 | Live location updates while walking | BLOCKED | BLOCKED: watchPositionAsync implemented; real-device/UI movement test still requires a connected device |
 | GPS-08 | Device GPS accuracy on site | BLOCKED | BLOCKED: no phone/emulator or surveyed ground truth |
 
 Calibration fit is not a field accuracy measurement. Fixing the data needs surveyed, matching image/GPS landmarks.
-GPS-07 is based on code inspection, not a device execution.
+GPS-07 requires a device execution; subscription lifecycle is tested separately in position-watcher.test.mjs.
+
+## Continuous GPS update
+
+- Replaced one-shot device positioning with foreground watchPositionAsync.
+- Added cancellation on map blur, stop button and simulation startup; ignored stale callbacks and pending subscriptions resolving after cancellation.
+- Five subscription lifecycle tests passed (position-watcher.test.mjs); TypeScript and ESLint passed.
+- Initial full suite in this session ran while local servers were stopped: those HTTP failures are environment availability failures.
+- Restarted backend and Expo. Retested backend health and mobile /map: both HTTP 200.
+- Native movement/permission UI tests remain BLOCKED; no real device sensor validation was performed.

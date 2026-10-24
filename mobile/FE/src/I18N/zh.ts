@@ -1,4 +1,14 @@
 const zh = {
+  gpsSimulation: 'GPS 模拟',
+  gpsSimulationHint: '模拟 GPS → 地图坐标。可在任何地点测试。行程约 40 秒。',
+  gpsSimulationGate: '测试正门',
+  gpsSimulationOutside: '测试园外位置',
+  gpsSimulationPlay: '开始',
+  gpsSimulationPause: '暂停',
+  gpsSimulationReset: '重置',
+  gpsSimulationClose: '关闭模拟',
+  gpsSimulationDone: '已到达模拟路线终点。',
+
   poiViewDetails: '查看详情和图片',
   poiLoading: '正在加载动物景点',
   poiLoadError: '无法加载景点，请检查网络后重试。',

@@ -16,7 +16,8 @@ import AppIcon from '@/components/ui/AppIcon';
 import PoiAudioControl from '@/components/audio/PoiAudioControl';
 import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
 import AnimalDetailPopup from '@/components/explore/AnimalDetailPopup';
-import { gpsToMapCoordinates } from '@/utils/gpsMapCalibration';
+import useGpsSimulation from './useGpsSimulation';
+import { gpsToMapCoordinates, mapToGpsCoordinates } from '@/utils/gpsMapCalibration';
 
 const CURRENT_LOCATION_ID = 'current_location';
 
@@ -84,6 +85,37 @@ export default function ZooMap() {
   const [routeResult, setRouteResult] = useState<MapGraphPath | null>(null);
   const [routeError, setRouteError] = useState('');
   const [points, setPoints] = useState<MapNode[]>([]);
+  const gpsAnchors = useMemo(() => {
+    const zebraPoi = points.find(point => {
+        const id = normalizeSearch(point.id);
+        const name = normalizeSearch(point.name);
+        return id.includes(GPS_ZEBRA_ANCHOR.id) || GPS_ZEBRA_ANCHOR.match.some(match => {
+          const normalizedMatch = normalizeSearch(match);
+          return id.includes(normalizedMatch) || name.includes(normalizedMatch);
+        });
+      });
+    if (!zebraPoi) return [];
+    return [
+        ...GPS_FIXED_ANCHORS.map(anchor => ({
+          latitude: anchor.latitude,
+          longitude: anchor.longitude,
+          x: anchor.x,
+          y: anchor.y,
+        })),
+        {
+          latitude: GPS_ZEBRA_ANCHOR.latitude,
+          longitude: GPS_ZEBRA_ANCHOR.longitude,
+          x: zebraPoi.x,
+          y: zebraPoi.y,
+        },
+      ];
+  }, [points]);
+  const simulation = useGpsSimulation(gpsAnchors);
+  const simulatedCoordinates = simulation.gps
+    ? gpsToMapCoordinates(simulation.gps.latitude, simulation.gps.longitude, gpsAnchors) : null;
+  const simulatedNode: MapNode | null = simulatedCoordinates ? {
+    id: CURRENT_LOCATION_ID, name: t('gpsSimulation'), category: 'current_location', ...simulatedCoordinates,
+  } : null;
   const [location, setLocation] = useState<DeviceMapLocation | null>(null);
   const locationRef = useRef<DeviceMapLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -93,17 +125,18 @@ export default function ZooMap() {
   const pointsVersion = useRef(0);
   const items = useMemo(() => points.filter(item => (zone === 'all' || item.category === zone) &&
     normalizeSearch(item.name).includes(normalizeSearch(query))), [points, zone, query]);
-  const routePoints = useMemo(() => location ? [...points, location.node] : points, [points, location]);
-  const mapMarkers = useMemo<MapMarker[]>(() => [
+  const activeLocationNode = simulation.active ? simulatedNode : location?.node;
+  const routePoints = activeLocationNode ? [...points, activeLocationNode] : points;
+  const mapMarkers: MapMarker[] = [
     ...(routeMode ? points : items).map(point => ({
       id: point.id, title: point.name, emoji: point.emoji || markerEmoji(point.category),
       x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
     })),
-    ...(location ? [{
-      id: location.node.id, title: t('myLocation'), emoji: '●',
-      x: location.node.x, y: location.node.y, color: '#2563EB',
+    ...(activeLocationNode ? [{
+      id: activeLocationNode.id, title: simulatedNode ? t('gpsSimulation') : t('myLocation'), emoji: '●',
+      x: activeLocationNode.x, y: activeLocationNode.y, color: '#2563EB',
     }] : []),
-  ], [points, items, routeMode, location, t]);
+  ];
 
   const loadPoints = useCallback(async () => {
     const version = ++pointsVersion.current;
@@ -146,7 +179,7 @@ export default function ZooMap() {
   function startRouteMode(destinationId?: string) {
     Keyboard.dismiss();
     setRouteMode(true);
-    setRouteStartId(location?.node.id || points.find(point => point.id !== destinationId)?.id || '');
+    setRouteStartId(activeLocationNode?.id || points.find(point => point.id !== destinationId)?.id || '');
     setRouteEndId(destinationId || null);
     clearRoute();
     setExpanded(true);
@@ -180,10 +213,24 @@ export default function ZooMap() {
       setRouteError(t('routeDifferentPoints'));
       return;
     }
+    buildGraph(routePoints);
     const result = shortestPath(routeStartId, routeEndId);
     setRouteResult(result);
     setRouteError(result ? '' : t('routeNotFound'));
     if (result) setExpanded(false);
+  }
+
+  function startSimulation() {
+    const demo = routeResult?.path.length ? routeResult.path : shortestPath('w47', 'w16')?.path;
+    if (!demo || demo.length < 2) return;
+    if (!mapToGpsCoordinates(demo[0].x, demo[0].y, gpsAnchors)) {
+      setLocationError(t('locationCalibrationMissing'));
+      return;
+    }
+    simulation.start(demo);
+    setLocationError('');
+    setExpanded(false);
+    map.current?.reset();
   }
 
   async function locateMe() {
@@ -197,39 +244,12 @@ export default function ZooMap() {
       }
 
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const zebraPoi = points.find(point => {
-        const id = normalizeSearch(point.id);
-        const name = normalizeSearch(point.name);
-        return id.includes(GPS_ZEBRA_ANCHOR.id) || GPS_ZEBRA_ANCHOR.match.some(match => {
-          const normalizedMatch = normalizeSearch(match);
-          return id.includes(normalizedMatch) || name.includes(normalizedMatch);
-        });
-      });
-      if (!zebraPoi) {
-        setLocationError(t('locationZebraAnchorMissing'));
-        return;
-      }
-
-      const anchors = [
-        ...GPS_FIXED_ANCHORS.map(anchor => ({
-          latitude: anchor.latitude,
-          longitude: anchor.longitude,
-          x: anchor.x,
-          y: anchor.y,
-        })),
-        {
-          latitude: GPS_ZEBRA_ANCHOR.latitude,
-          longitude: GPS_ZEBRA_ANCHOR.longitude,
-          x: zebraPoi.x,
-          y: zebraPoi.y,
-        },
-      ];
-      if (anchors.length < 4) {
+      if (gpsAnchors.length < 4) {
         setLocationError(t('locationCalibrationMissing'));
         return;
       }
 
-      const coordinates = gpsToMapCoordinates(current.coords.latitude, current.coords.longitude, anchors);
+      const coordinates = gpsToMapCoordinates(current.coords.latitude, current.coords.longitude, gpsAnchors);
       if (!coordinates) {
         setLocationError(t('locationOutsideMap'));
         return;
@@ -275,7 +295,7 @@ export default function ZooMap() {
     setExpanded(true);
   }
 
-  const pathNodes = routeResult?.path ?? [];
+  const pathNodes = simulation.path.length ? simulation.path : routeResult?.path ?? [];
   const routeCaption = [routeStartId, routeEndId].map(id => routePoints.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
   const routeReady = !!routeStartId && !!routeEndId && routeStartId !== routeEndId;
 
@@ -321,12 +341,27 @@ export default function ZooMap() {
         <Text style={styles.locationStatusIcon}>!</Text>
         <Text style={styles.locationStatusText}>{locationError}</Text>
       </View>}
-      {location && !locationError && <View accessibilityRole="text" style={[styles.locationStatus, styles.locationSuccess]}>
+      {!simulation.active && location && !locationError && <View accessibilityRole="text" style={[styles.locationStatus, styles.locationSuccess]}>
         <Text style={styles.locationStatusIcon}>◎</Text>
         <Text style={styles.locationStatusText}>
           {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
           {location.accuracy != null ? `  ·  ±${Math.round(location.accuracy)}m` : ''}
         </Text>
+      </View>}
+      {__DEV__ && simulation.active && <View style={styles.simulationPanel}>
+        <View style={styles.sheetHeader}><Text style={styles.placeTitle}>{t('gpsSimulation')} · {Math.round(simulation.progress * 100)}%</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('gpsSimulationClose')} onPress={simulation.stop} style={styles.clear}><Text>×</Text></Pressable></View>
+        <Text style={styles.caption}>{simulation.progress >= 1 ? t('gpsSimulationDone') : t('gpsSimulationHint')}</Text>
+        {simulation.gps && <Text selectable style={styles.caption}>Lat {simulation.gps.latitude.toFixed(7)} / Lng {simulation.gps.longitude.toFixed(7)}</Text>}
+        <Text style={styles.caption}>{simulatedCoordinates ? `X ${simulatedCoordinates.x.toFixed(2)}% / Y ${simulatedCoordinates.y.toFixed(2)}%` : t('locationOutsideMap')}</Text>
+        <View style={styles.simulationActions}>
+          <Pressable accessibilityRole="button" onPress={simulation.toggle} style={styles.secondaryAction}><Text style={styles.swapText}>{simulation.running ? t('gpsSimulationPause') : t('gpsSimulationPlay')}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={simulation.reset} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationReset')}</Text></Pressable>
+        </View>
+        <View style={styles.simulationActions}>
+          <Pressable accessibilityRole="button" onPress={() => simulation.inject({ latitude: 10.787366007101104, longitude: 106.70500295127725 })} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationGate')}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => simulation.inject({ latitude: 10.76, longitude: 106.66 })} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationOutside')}</Text></Pressable>
+        </View>
       </View>}
     </View>
 
@@ -334,7 +369,8 @@ export default function ZooMap() {
       <Control label={t('zoomIn')} symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
       <Control label={t('zoomOut')} symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
       <Control label={t('resetMap')} symbol="⌖" onPress={() => map.current?.reset()} />
-      <Control label={t('myLocation')} symbol={locationLoading ? '…' : '◎'} disabled={locationLoading} onPress={() => void locateMe()} />
+      <Control label={t('myLocation')} symbol={locationLoading ? '…' : '◎'} disabled={locationLoading || simulation.active} onPress={() => void locateMe()} />
+      {__DEV__ && !simulation.active && <Control label={t('gpsSimulation')} symbol="▶" disabled={locationLoading} onPress={startSimulation} />}
     </View>
 
     {(!routeMode || expanded) && <View style={[styles.sheet, expanded && { height: Math.min(height * 0.56, Math.max(180, height - insets.top - 190)) }]}>
@@ -431,6 +467,8 @@ function Control({ label, symbol, onPress, disabled }: { label: string; symbol: 
 }
 
 const styles = StyleSheet.create({
+  simulationPanel: { backgroundColor: '#FFF', borderRadius: 16, padding: 12, gap: 6, marginRight: 58, borderWidth: 1, borderColor: '#BFDBFE' },
+  simulationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   selectedOverview: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   detailLink: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 8 },
   detailLinkText: { color: a.forest, fontSize: 14, fontWeight: '600' },

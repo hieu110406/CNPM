@@ -1,4 +1,14 @@
 const en = {
+  gpsSimulation: 'GPS simulation',
+  gpsSimulationHint: 'Synthetic GPS → map coordinates. Test from anywhere. The walk takes about 40 seconds.',
+  gpsSimulationGate: 'Test main gate',
+  gpsSimulationOutside: 'Test outside zoo',
+  gpsSimulationPlay: 'Play',
+  gpsSimulationPause: 'Pause',
+  gpsSimulationReset: 'Reset',
+  gpsSimulationClose: 'Close simulation',
+  gpsSimulationDone: 'Reached the end of the simulated route.',
+
   poiViewDetails: 'View details & photos',
   poiLoading: 'Loading animal POIs',
   poiLoadError: 'Could not load places. Check your connection and retry.',

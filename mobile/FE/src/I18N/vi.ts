@@ -1,4 +1,14 @@
 const vi = {
+  gpsSimulation: 'GPS giả lập',
+  gpsSimulationHint: 'GPS giả lập → tọa độ bản đồ. Không cần ở trong khu vườn. Tuyến chạy khoảng 40 giây.',
+  gpsSimulationGate: 'Thử cổng chính',
+  gpsSimulationOutside: 'Thử ngoài khu vườn',
+  gpsSimulationPlay: 'Chạy',
+  gpsSimulationPause: 'Tạm dừng',
+  gpsSimulationReset: 'Đặt lại',
+  gpsSimulationClose: 'Tắt giả lập',
+  gpsSimulationDone: 'Đã đến cuối tuyến giả lập.',
+
   poiViewDetails: 'Xem chi tiết & hình ảnh',
   poiLoading: 'Đang tải các POI động vật',
   poiLoadError: 'Chưa tải được danh sách. Vui lòng kiểm tra kết nối và thử lại.',

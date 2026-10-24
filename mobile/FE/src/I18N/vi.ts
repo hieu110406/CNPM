@@ -137,6 +137,13 @@ const vi = {
   directionsHere: 'Chỉ đường đến đây',
   clearFilters: 'Xóa bộ lọc',
   mapBrowseHint: 'Chạm địa điểm để xem thông tin và chỉ đường',
+  myLocation: 'Vị trí của tôi',
+  locationLoading: 'Đang lấy vị trí…',
+  locationPermissionDenied: 'Bạn chưa cấp quyền truy cập vị trí.',
+  locationFailed: 'Không lấy được vị trí. Hãy kiểm tra GPS và thử lại.',
+  locationCalibrationMissing: 'Dữ liệu chưa đủ điểm mốc để căn bản đồ.',
+  locationZebraAnchorMissing: 'Không tìm thấy POI ngựa vằn có tọa độ x/y trên bản đồ. Kiểm tra POI trong Neon đã hoạt động và có x/y chưa.',
+  locationOutsideMap: 'Vị trí hiện tại nằm ngoài vùng bản đồ đã hiệu chỉnh.',
 };
 
 export default vi;

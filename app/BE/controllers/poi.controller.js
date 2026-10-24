@@ -212,6 +212,8 @@ export async function listPublicPois(req, res) {
          p.emoji,
          p.x::float AS x,
          p.y::float AS y,
+         p.latitude::float AS latitude,
+         p.longitude::float AS longitude,
          p.opening_hours AS "openingHours",
          p.feeding_time AS "feedingTime",
          p.audio_available AS "audioAvailable",

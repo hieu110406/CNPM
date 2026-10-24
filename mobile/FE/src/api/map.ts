@@ -6,6 +6,8 @@ export type MapNode = {
   name: string;
   x: number;
   y: number;
+  latitude?: number | null;
+  longitude?: number | null;
   category: string;
   emoji?: string;
   zone?: string;
@@ -50,13 +52,30 @@ export async function request(path: string, options: RequestInit = {}) {
   }
 }
 
-function normalizeNode(node: { node_id?: string; id?: string; name: string; x: number | string; y: number | string; category?: string }): MapNode {
+function normalizeNode(node: {
+  node_id?: string;
+  id?: string;
+  name: string;
+  x: number | string;
+  y: number | string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  category?: string;
+}): MapNode {
   const id = node.node_id || node.id;
   if (!id || !node.name || node.x == null || node.y == null ||
       !Number.isFinite(Number(node.x)) || !Number.isFinite(Number(node.y))) {
     throw new Error('INVALID_MAP_NODE');
   }
-  return { id, name: node.name, x: Number(node.x), y: Number(node.y), category: node.category || 'poi' };
+  return {
+    id,
+    name: node.name,
+    x: Number(node.x),
+    y: Number(node.y),
+    latitude: node.latitude == null ? null : Number(node.latitude),
+    longitude: node.longitude == null ? null : Number(node.longitude),
+    category: node.category || 'poi',
+  };
 }
 
 export async function getMapPois(language = 'vi'): Promise<MapNode[]> {
@@ -73,4 +92,3 @@ export async function getMapPois(language = 'vi'): Promise<MapNode[]> {
     imageUrls: Array.isArray(poi.images) ? poi.images.flatMap((image: { url?: unknown }) => typeof image?.url === 'string' && image.url.trim() ? [image.url] : []) : [],
   }));
 }
-

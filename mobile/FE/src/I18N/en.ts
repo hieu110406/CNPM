@@ -137,6 +137,13 @@ const en = {
   directionsHere: 'Directions here',
   clearFilters: 'Clear filters',
   mapBrowseHint: 'Tap a place for details and directions',
+  myLocation: 'My location',
+  locationLoading: 'Getting location…',
+  locationPermissionDenied: 'Location permission was not granted.',
+  locationFailed: 'Could not get your location. Check GPS and try again.',
+  locationCalibrationMissing: 'There are not enough map anchors to calibrate the map.',
+  locationZebraAnchorMissing: 'Could not find a zebra POI with map x/y coordinates. Check that the Neon POI is active and has x/y values.',
+  locationOutsideMap: 'Your location is outside the calibrated map area.',
 };
 
 export default en;

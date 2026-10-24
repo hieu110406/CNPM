@@ -20,10 +20,12 @@ async function seedPois() {
 
       const { rows: inserted } = await client.query(
         `INSERT INTO poi
-           (code, category_id, name, zone, x, y, emoji, opening_hours,
+           (code, category_id, name, zone, x, y, latitude, longitude, emoji, opening_hours,
             feeding_time, audio_available)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (code) DO NOTHING
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (code) DO UPDATE
+           SET latitude = COALESCE(EXCLUDED.latitude, poi.latitude),
+               longitude = COALESCE(EXCLUDED.longitude, poi.longitude)
          RETURNING poi_id`,
         [
           marker.id,
@@ -32,6 +34,8 @@ async function seedPois() {
           marker.zone ?? null,
           marker.x,
           marker.y,
+          marker.latitude ?? null,
+          marker.longitude ?? null,
           marker.emoji ?? null,
           marker.openingHours ?? null,
           marker.feedingTime ?? null,

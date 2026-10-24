@@ -137,6 +137,13 @@ const zh = {
   directionsHere: '导航到这里',
   clearFilters: '清除筛选',
   mapBrowseHint: '点击地点查看详情和路线',
+  myLocation: '我的位置',
+  locationLoading: '正在获取位置…',
+  locationPermissionDenied: '尚未获得位置访问权限。',
+  locationFailed: '无法获取位置，请检查 GPS 后重试。',
+  locationCalibrationMissing: '地图校准所需的定位点不足。',
+  locationZebraAnchorMissing: '找不到带有地图 x/y 坐标的斑马景点。请检查 Neon 中的景点是否已启用并填写 x/y。',
+  locationOutsideMap: '当前位置在已校准地图范围之外。',
 };
 
 export default zh;

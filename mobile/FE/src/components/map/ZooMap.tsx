@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Pressable from '@/components/ui/AnimatedPressable';
 import Animated from 'react-native-reanimated';
@@ -15,6 +16,44 @@ import AppIcon from '@/components/ui/AppIcon';
 import PoiAudioControl from '@/components/audio/PoiAudioControl';
 import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
 import AnimalDetailPopup from '@/components/explore/AnimalDetailPopup';
+import { gpsToMapCoordinates } from '@/utils/gpsMapCalibration';
+
+const CURRENT_LOCATION_ID = 'current_location';
+
+const GPS_FIXED_ANCHORS = [
+  {
+    latitude: 10.787343,
+    longitude: 106.705036,
+    x: 41.5,
+    y: 91.5,
+  },
+  {
+    latitude: 10.78894312781009,
+    longitude: 106.70714945167893,
+    x: 57.3,
+    y: 40.1,
+  },
+  {
+    latitude: 10.788099697238112,
+    longitude: 106.70601961019264,
+    x: 43.9,
+    y: 64.2,
+  },
+];
+
+const GPS_ZEBRA_ANCHOR = {
+  id: 'zebra',
+  match: ['ngua van', 'zebra', '斑马'],
+  latitude: 10.78869726716698,
+  longitude: 106.70467729870951,
+};
+
+type DeviceMapLocation = {
+  node: MapNode;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+};
 
 const mapZoneFilters: { value: string; key: TranslationKey }[] = [
   { value: 'all', key: 'all' },
@@ -45,15 +84,26 @@ export default function ZooMap() {
   const [routeResult, setRouteResult] = useState<MapGraphPath | null>(null);
   const [routeError, setRouteError] = useState('');
   const [points, setPoints] = useState<MapNode[]>([]);
+  const [location, setLocation] = useState<DeviceMapLocation | null>(null);
+  const locationRef = useRef<DeviceMapLocation | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const [loadingPoints, setLoadingPoints] = useState(true);
   const [pointsError, setPointsError] = useState(false);
   const pointsVersion = useRef(0);
   const items = useMemo(() => points.filter(item => (zone === 'all' || item.category === zone) &&
     normalizeSearch(item.name).includes(normalizeSearch(query))), [points, zone, query]);
-  const mapMarkers = useMemo<MapMarker[]>(() => (routeMode ? points : items).map(point => ({
-    id: point.id, title: point.name, emoji: point.emoji || markerEmoji(point.category),
-    x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
-  })), [points, items, routeMode]);
+  const routePoints = useMemo(() => location ? [...points, location.node] : points, [points, location]);
+  const mapMarkers = useMemo<MapMarker[]>(() => [
+    ...(routeMode ? points : items).map(point => ({
+      id: point.id, title: point.name, emoji: point.emoji || markerEmoji(point.category),
+      x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
+    })),
+    ...(location ? [{
+      id: location.node.id, title: t('myLocation'), emoji: '●',
+      x: location.node.x, y: location.node.y, color: '#2563EB',
+    }] : []),
+  ], [points, items, routeMode, location, t]);
 
   const loadPoints = useCallback(async () => {
     const version = ++pointsVersion.current;
@@ -65,14 +115,14 @@ export default function ZooMap() {
     try {
       const nodes = await getMapPois(language);
       if (version !== pointsVersion.current) return;
-      buildGraph(nodes);
+      buildGraph([...nodes, ...(locationRef.current ? [locationRef.current.node] : [])]);
       setPoints(nodes);
       if (poiId) {
         setSelected(nodes.find(node => node.id === poiId) ?? null);
         setExpanded(true);
         setRouteMode(false);
       }
-      setRouteStartId(nodes.find(node => node.id === 'gate_main')?.id || nodes[0]?.id || '');
+      setRouteStartId(locationRef.current?.node.id || nodes.find(node => node.id === 'gate_main')?.id || nodes[0]?.id || '');
       setRouteEndId(null);
       setRouteResult(null);
     } catch {
@@ -96,7 +146,7 @@ export default function ZooMap() {
   function startRouteMode(destinationId?: string) {
     Keyboard.dismiss();
     setRouteMode(true);
-    setRouteStartId(points.find(point => point.id !== destinationId)?.id || '');
+    setRouteStartId(location?.node.id || points.find(point => point.id !== destinationId)?.id || '');
     setRouteEndId(destinationId || null);
     clearRoute();
     setExpanded(true);
@@ -136,6 +186,83 @@ export default function ZooMap() {
     if (result) setExpanded(false);
   }
 
+  async function locateMe() {
+    setLocationLoading(true);
+    setLocationError('');
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        setLocationError(t('locationPermissionDenied'));
+        return;
+      }
+
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const zebraPoi = points.find(point => {
+        const id = normalizeSearch(point.id);
+        const name = normalizeSearch(point.name);
+        return id.includes(GPS_ZEBRA_ANCHOR.id) || GPS_ZEBRA_ANCHOR.match.some(match => {
+          const normalizedMatch = normalizeSearch(match);
+          return id.includes(normalizedMatch) || name.includes(normalizedMatch);
+        });
+      });
+      if (!zebraPoi) {
+        setLocationError(t('locationZebraAnchorMissing'));
+        return;
+      }
+
+      const anchors = [
+        ...GPS_FIXED_ANCHORS.map(anchor => ({
+          latitude: anchor.latitude,
+          longitude: anchor.longitude,
+          x: anchor.x,
+          y: anchor.y,
+        })),
+        {
+          latitude: GPS_ZEBRA_ANCHOR.latitude,
+          longitude: GPS_ZEBRA_ANCHOR.longitude,
+          x: zebraPoi.x,
+          y: zebraPoi.y,
+        },
+      ];
+      if (anchors.length < 4) {
+        setLocationError(t('locationCalibrationMissing'));
+        return;
+      }
+
+      const coordinates = gpsToMapCoordinates(current.coords.latitude, current.coords.longitude, anchors);
+      if (!coordinates) {
+        setLocationError(t('locationOutsideMap'));
+        return;
+      }
+
+      const node: MapNode = {
+        id: CURRENT_LOCATION_ID,
+        name: t('myLocation'),
+        x: coordinates.x,
+        y: coordinates.y,
+        category: 'current_location',
+      };
+      const nextLocation = {
+        node,
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+        accuracy: current.coords.accuracy,
+      };
+      locationRef.current = nextLocation;
+      setLocation(nextLocation);
+      buildGraph([...points, node]);
+      if (routeMode) {
+        setRouteStartId(node.id);
+        clearRoute();
+      }
+    } catch (error) {
+      console.error('Không thể lấy vị trí GPS:', error);
+      setLocationError(t('locationFailed'));
+    } finally {
+      setLocationLoading(false);
+    }
+  }
+
   function selectMapMarker(id: string) {
     Keyboard.dismiss();
     if (routeMode) {
@@ -149,7 +276,7 @@ export default function ZooMap() {
   }
 
   const pathNodes = routeResult?.path ?? [];
-  const routeCaption = [routeStartId, routeEndId].map(id => points.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
+  const routeCaption = [routeStartId, routeEndId].map(id => routePoints.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
   const routeReady = !!routeStartId && !!routeEndId && routeStartId !== routeEndId;
 
   return <View style={styles.screen}>
@@ -190,12 +317,24 @@ export default function ZooMap() {
       {routeMode && !expanded && <Pressable accessibilityRole="button" onPress={() => setExpanded(true)} style={styles.routeAction}>
         <Text style={styles.routeActionText}>{t('editRoute')}</Text>
       </Pressable>}
+      {!!locationError && <View accessibilityRole="alert" style={[styles.locationStatus, styles.locationError]}>
+        <Text style={styles.locationStatusIcon}>!</Text>
+        <Text style={styles.locationStatusText}>{locationError}</Text>
+      </View>}
+      {location && !locationError && <View accessibilityRole="text" style={[styles.locationStatus, styles.locationSuccess]}>
+        <Text style={styles.locationStatusIcon}>◎</Text>
+        <Text style={styles.locationStatusText}>
+          {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+          {location.accuracy != null ? `  ·  ±${Math.round(location.accuracy)}m` : ''}
+        </Text>
+      </View>}
     </View>
 
     <View style={[styles.tools, { top: insets.top + (routeMode ? 72 : 194) }]}>
       <Control label={t('zoomIn')} symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
       <Control label={t('zoomOut')} symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
       <Control label={t('resetMap')} symbol="⌖" onPress={() => map.current?.reset()} />
+      <Control label={t('myLocation')} symbol={locationLoading ? '…' : '◎'} disabled={locationLoading} onPress={() => void locateMe()} />
     </View>
 
     {(!routeMode || expanded) && <View style={[styles.sheet, expanded && { height: Math.min(height * 0.56, Math.max(180, height - insets.top - 190)) }]}>
@@ -216,12 +355,12 @@ export default function ZooMap() {
             <Text style={styles.findRouteText}>{t('retry')}</Text>
           </Pressable>
         </> : !points.length ? <Text style={styles.body}>{t('mapEmpty')}</Text> : routeMode ? <>
-          <RoutePointSelector points={points} label={t('startPoint')} selectedId={routeStartId}
+          <RoutePointSelector points={routePoints} label={t('startPoint')} selectedId={routeStartId}
             onSelect={id => selectRoutePoint('start', id)} disabledId={routeEndId} />
           <Pressable accessibilityRole="button" accessibilityLabel={t('swapRoute')} disabled={!routeReady}
             onPress={() => { setRouteStartId(routeEndId!); setRouteEndId(routeStartId); clearRoute(); }}
             style={[styles.swap, !routeReady && styles.disabled]}><Text style={styles.swapText}>⇅  {t('swapRoute')}</Text></Pressable>
-          <RoutePointSelector points={points} label={t('endPoint')} selectedId={routeEndId}
+          <RoutePointSelector points={routePoints} label={t('endPoint')} selectedId={routeEndId}
             onSelect={id => selectRoutePoint('end', id)} disabledId={routeStartId} />
           <Pressable accessibilityRole="button" accessibilityState={{ disabled: !routeReady }} disabled={!routeReady} onPress={findRoute} style={[styles.findRoute, !routeReady && styles.disabled]}>
             <Text style={styles.findRouteText}>{t('findShortestRoute')}</Text>
@@ -312,6 +451,11 @@ const styles = StyleSheet.create({
   routeActionText: { color: '#285A46', fontSize: 13, fontWeight: '600' },
   routeActionTextActive: { color: '#FFF' },
   tools: { position: 'absolute', right: 16, gap: 10 },
+  locationStatus: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '88%', minHeight: 42, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9, elevation: 3, shadowColor: '#15251A', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  locationError: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' },
+  locationSuccess: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
+  locationStatusIcon: { color: '#1E3A8A', fontSize: 17, fontWeight: '700' },
+  locationStatusText: { flexShrink: 1, color: '#1E3A8A', fontSize: 13, lineHeight: 18, fontWeight: '500' },
   control: { width: 44, height: 44, backgroundColor: '#FFF', borderRadius: 22, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   controlText: { color: '#285A46', fontSize: 26 },
   sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: a.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, elevation: 6, shadowColor: '#15251A', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: -3 } },

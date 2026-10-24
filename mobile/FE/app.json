@@ -33,6 +33,12 @@
           "imageWidth": 76
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cho phép ứng dụng dùng vị trí để hiển thị bạn trên bản đồ và tìm đường trong Thảo Cầm Viên."
+        }
+      ],
       ["expo-audio", { "microphonePermission": false, "recordAudioAndroid": false, "enableBackgroundPlayback": false }]
     ],
     "experiments": {

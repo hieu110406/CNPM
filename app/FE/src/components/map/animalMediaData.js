@@ -490,6 +490,6 @@ export function getMarkerDetails(marker) {
       marker.desc,
       "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA.",
     ],
-    funFacts: marker.funFact ? [marker.funFact] : ["Thảo Cầm Viên là một trong những vườn thú lâu đời nhất trên thế giới."],
+    funFacts: marker.funFact ? [marker.funFact] : [""],
   };
 }

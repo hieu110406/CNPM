@@ -54,33 +54,12 @@ const ZH = {
   // SETTINGS
   settings: {
     title: "系统设置",
-    description: "自定义语言、字体大小和游览界面",
+    description: "自定义语言、地图和语音导览",
     languageHint: "选择整个应用程序的显示语言",
 
     tabs: {
       language: "语言",
-      font: "字体大小",
-      display: "界面",
       audio: "地图与语音导览",
-    },
-
-    font: {
-      selectLabel: "选择字体",
-      sizeLabel: "字体大小",
-      previewTitle: "实时字体预览：",
-      previewText:
-        "西贡动植物园（建于1864年）——位于城市中心的历史绿地，拥有众多珍稀动植物。",
-    },
-
-    theme: {
-      label: "界面主题",
-      light: "自然亮色",
-      dark: "护眼深色（夜间）",
-    },
-
-    motion: {
-      label: "平滑动画",
-      description: "启用地图平移、缩放和过渡动画",
     },
 
     audio: {
@@ -385,6 +364,11 @@ const ZH = {
     steps: "段",
     viewOnMapHint: "点击“在地图上查看”显示路线",
     viewMap: "在地图上查看",
+  },
+    animalDetailsDefaults: {
+    origin: "东南亚及西贡动植物园",
+    careStandard:
+      "按照 WAZA 和 SEAZA 的国际动物园标准进行照护。",
   },
 };
 

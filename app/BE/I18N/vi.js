@@ -51,33 +51,12 @@ const VI = {
 
   settings: {
     title: "Cài Đặt Hệ Thống",
-    description: "Tùy chỉnh ngôn ngữ, kích cỡ chữ và giao diện tham quan",
+    description: "Tùy chỉnh ngôn ngữ, bản đồ và âm thanh",
     languageHint: "Chọn ngôn ngữ hiển thị trên toàn bộ ứng dụng",
     
     tabs: {
       language: "Ngôn ngữ",
-      font: "Cỡ chữ",
-      display: "Giao diện",
       audio: "Bản đồ & Âm thanh",
-    },
-
-    font: {
-      selectLabel: "Chọn kiểu phông chữ",
-      sizeLabel: "Kích thước chữ",
-      previewTitle: "Bản xem trước kích thước chữ trực tiếp:",
-      previewText:
-        "Thảo Cầm Viên Sài Gòn (Est. 1864) — Không gian xanh lịch sử với hàng trăm loài động thực vật quý hiếm giữa lòng thành phố.",
-    },
-
-    theme: {
-      label: "Chế độ giao diện",
-      light: "Sáng tự nhiên",
-      dark: "Tối dịu mắt (Ban đêm)",
-    },
-
-    motion: {
-      label: "Hiệu ứng chuyển động mượt",
-      description: "Bật hoạt ảnh lướt, xoay và phóng to bản đồ mượt mà",
     },
 
     audio: {
@@ -369,6 +348,11 @@ const VI = {
     steps: "chặng",
     viewOnMapHint: "Bấm \"Xem trên bản đồ\" để hiện đường đi",
     viewMap: "Xem trên bản đồ",
+  },
+    animalDetailsDefaults: {
+    origin: "Đông Nam Á & Thảo Cầm Viên Sài Gòn",
+    careStandard:
+      "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA.",
   },
 };
 

@@ -227,7 +227,7 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
                 {
                   left: `${marker.x}%`,
                   top: `${marker.y}%`,
-                  zIndex: active ? 4 : 2,
+                  zIndex: active ? 10 : 2,
                   width: 44 * markerScale,
                   height: 58 * markerScale,
                   marginLeft: -22 * markerScale,
@@ -235,38 +235,55 @@ export default forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
                 },
               ]}
             >
-              {active && <Text numberOfLines={1} style={[
-                styles.markerLabel,
-                {
-                  bottom: 47 * markerScale,
-                  maxWidth: 140 * markerScale,
-                  paddingHorizontal: 8 * markerScale,
-                  paddingVertical: 5 * markerScale,
-                  borderRadius: 12 * markerScale,
-                  fontSize: 10 * markerScale,
-                },
-              ]}>{marker.title}</Text>}
               <Pressable
-                hitSlop={8}
+                hitSlop={14}
                 accessibilityRole="button"
                 accessibilityLabel={marker.title}
                 accessibilityState={{ selected: active }}
                 onPress={() => onSelectMarker(marker.id)}
-                style={[
-                  styles.markerPin,
-                  { backgroundColor: color },
-                  {
-                    width: (active ? 40 : 36) * markerScale,
-                    height: (active ? 40 : 36) * markerScale,
-                    marginBottom: (active ? 3 : 5) * markerScale,
-                    borderWidth: (active ? 3 : 2) * markerScale,
-                    borderRadius: 20 * markerScale,
-                    borderBottomLeftRadius: 3 * markerScale,
-                    elevation: active ? 7 : 4,
-                  },
-                ]}
+                style={styles.markerPressable}
               >
-                <Text style={[styles.markerEmoji, { fontSize: 16 * markerScale }]}>{marker.emoji}</Text>
+                {active && (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.markerLabel,
+                      isStart && styles.markerLabelStart,
+                      isEnd && styles.markerLabelEnd,
+                      {
+                        bottom: 47 * markerScale,
+                        maxWidth: 160 * markerScale,
+                        paddingHorizontal: 8 * markerScale,
+                        paddingVertical: 4 * markerScale,
+                        borderRadius: 12 * markerScale,
+                        fontSize: 10 * markerScale,
+                      },
+                    ]}
+                  >
+                    {isStart
+                      ? (routeStartId === 'current_location' ? `📍 ${marker.title}` : `🚩 1. ${marker.title}`)
+                      : isEnd
+                      ? `🏁 2. ${marker.title}`
+                      : marker.title}
+                  </Text>
+                )}
+                <View
+                  style={[
+                    styles.markerPin,
+                    { backgroundColor: color },
+                    {
+                      width: (active ? 40 : 36) * markerScale,
+                      height: (active ? 40 : 36) * markerScale,
+                      marginBottom: (active ? 3 : 5) * markerScale,
+                      borderWidth: (active ? 3 : 2) * markerScale,
+                      borderRadius: 20 * markerScale,
+                      borderBottomLeftRadius: 3 * markerScale,
+                      elevation: active ? 7 : 4,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.markerEmoji, { fontSize: 16 * markerScale }]}>{marker.emoji}</Text>
+                </View>
               </Pressable>
             </View>
           );
@@ -285,6 +302,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  markerPressable: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: '100%',
+    height: '100%',
+  },
   markerLabel: {
     position: 'absolute',
     overflow: 'hidden',
@@ -293,6 +316,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     elevation: 4,
+  },
+  markerLabelStart: {
+    backgroundColor: '#047857',
+  },
+  markerLabelEnd: {
+    backgroundColor: '#DC2626',
   },
   markerPin: {
     alignItems: 'center',

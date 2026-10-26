@@ -1,11 +1,12 @@
-import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
+import { useMemo, useState, type PropsWithChildren } from 'react';
+import { I18nContext, type I18nContextValue, type MobileLanguage, type TranslationKey } from './i18nState';
 
 import en from '@/I18N/en';
 import vi from '@/I18N/vi';
 import zh from '@/I18N/zh';
 
-export type MobileLanguage = 'vi' | 'en' | 'zh';
-export type TranslationKey = keyof typeof vi;
+export { useI18n, type MobileLanguage, type TranslationKey } from './i18nState';
+
 type Dictionary = Record<TranslationKey, string>;
 
 const dictionaries: Record<MobileLanguage, Dictionary> = {
@@ -13,14 +14,6 @@ const dictionaries: Record<MobileLanguage, Dictionary> = {
   en,
   zh,
 };
-
-type I18nContextValue = {
-  language: MobileLanguage;
-  setLanguage: (language: MobileLanguage) => void;
-  t: (key: TranslationKey) => string;
-};
-
-const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: PropsWithChildren) {
   const [language, setLanguage] = useState<MobileLanguage>('vi');
@@ -31,12 +24,4 @@ export function I18nProvider({ children }: PropsWithChildren) {
   }), [language]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-}
-
-export function useI18n() {
-  const context = useContext(I18nContext);
-  if (!context) {
-    throw new Error('useI18n must be used within I18nProvider');
-  }
-  return context;
 }

@@ -42,7 +42,8 @@
     "android": "node ../scripts/start.cjs --android",
     "ios": "node ../scripts/start.cjs --ios",
     "web": "node ../scripts/start.cjs --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:web": "expo export --platform web"
   },
   "private": true
 }

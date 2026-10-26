@@ -97,10 +97,10 @@ for (const [id,name,detail] of [
  ['UI-01','Click GPS and permission flow','BLOCKED: Edge not connected to automation'],
  ['UI-02','Visible map, zoom, pan and marker interaction','BLOCKED: no controllable browser/device'],
  ['UI-03','Play, pause, reset, close simulation using UI','BLOCKED: no controllable browser/device'],
- ['GPS-07','Live location updates while walking','NOT IMPLEMENTED: locateMe uses getCurrentPositionAsync once; no location watch'],
+ ['GPS-07','Live location updates while walking','BLOCKED: watchPositionAsync implemented; real-device/UI movement test still requires a connected device'],
  ['GPS-08','Device GPS accuracy on site','BLOCKED: no phone/emulator or surveyed ground truth'],
-]) results.push({id,name,status:id==='GPS-07'?'FAIL':'BLOCKED',detail});
-const report = ['# GPS test execution report','',`Executed: ${new Date().toISOString()}`,'','Automated function/API checks were executed. No UI interaction or real device GPS was verified.','', '| ID | Test | Result | Evidence |','|---|---|---|---|',...results.map(r=>`| ${r.id} | ${r.name} | ${r.status} | ${r.detail.replaceAll('|','/').replaceAll('\n',' ')} |`),'','Calibration fit is not a field accuracy measurement. Fixing the data needs surveyed, matching image/GPS landmarks.','GPS-07 is based on code inspection, not a device execution.',''].join('\n');
+]) results.push({id,name,status:'BLOCKED',detail});
+const report = ['# GPS test execution report','',`Executed: ${new Date().toISOString()}`,'','Automated function/API checks were executed. No UI interaction or real device GPS was verified.','', '| ID | Test | Result | Evidence |','|---|---|---|---|',...results.map(r=>`| ${r.id} | ${r.name} | ${r.status} | ${r.detail.replaceAll('|','/').replaceAll('\n',' ')} |`),'','Calibration fit is not a field accuracy measurement. Fixing the data needs surveyed, matching image/GPS landmarks.','GPS-07 requires a device execution; subscription lifecycle is tested separately in position-watcher.test.mjs.',''].join('\n');
 await writeFile(new URL('../../GPS_TEST_REPORT.md',import.meta.url),report);
 console.table(results);
 console.log(JSON.stringify(results.reduce((a,r)=>(a[r.status]=(a[r.status]||0)+1,a),{})));

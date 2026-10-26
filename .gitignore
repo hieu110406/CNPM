@@ -37,3 +37,6 @@ app/agent/.env.example
 app/FE/.env.example
 app/BE/.env.example
 mobile/expo-env.d.ts
+
+# Vercel local project metadata
+.vercel/

@@ -19,10 +19,11 @@ const languageOptions = [
 
 
 
-const feedingTimes = [
-  { time: '09:30', animal: 'Hà mã', place: 'Hồ nước ngọt', emoji: '🦛' },
-  { time: '10:15', animal: 'Hổ Bengal', place: 'Khu thú lớn', emoji: '🐅' },
-];
+const visitSteps = [
+  { icon: 'map', title: 'visitMapTitle', description: 'visitMapDescription', href: '/map' },
+  { icon: 'headphones', title: 'visitAudioTitle', description: 'visitAudioDescription', href: '/explore' },
+  { icon: 'leaf', title: 'visitCareTitle', description: 'visitCareDescription' },
+] as const;
 
 export default function HomeScreen() {
   const reducedMotion = useReducedMotion();
@@ -82,47 +83,46 @@ export default function HomeScreen() {
             
           </View>
 
-          {/* Info */}
           <View style={styles.infoRow}>
-            <View style={styles.infoCard}>
-              <AppIcon name="sun" size={20} />
+            <Pressable accessibilityRole="button" onPress={() => router.navigate('/map')} style={styles.infoCard}>
+              <AppIcon name="map" size={22} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>{t('weather')}</Text>
-                <Text style={styles.infoValue}>{t('weatherValue')}</Text>
+                <Text style={styles.infoLabel}>{t('map')}</Text>
+                <Text style={styles.infoValue}>{t('homeMapShortcut')}</Text>
               </View>
-            </View>
-            <View style={styles.infoCard}>
-              <AppIcon name="clock" size={20} />
+              <AppIcon name="chevron" size={16} />
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.navigate('/explore')} style={styles.infoCard}>
+              <AppIcon name="explore" size={22} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>{t('openingHours')}</Text>
-                <Text style={styles.infoValue}>{t('openingHoursValue')}</Text>
+                <Text style={styles.infoLabel}>{t('explore')}</Text>
+                <Text style={styles.infoValue}>{t('homeExploreShortcut')}</Text>
               </View>
-            </View>
+              <AppIcon name="chevron" size={16} />
+            </Pressable>
           </View>
 
-          <Text style={styles.preview}>{t('preview')}</Text>
           <MostListenedPois />
 
-          {/* Feeding schedule */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('feedingSchedule')}</Text>
+            <Text style={styles.sectionTitle}>{t('visitGuide')}</Text>
           </View>
-          <View style={styles.scheduleCard}>
-            {feedingTimes.map((item, index) => (
-              <View
-                key={item.time}
-                style={[styles.scheduleRow, index === 0 && styles.scheduleFirst]}>
-                <Text style={styles.scheduleEmoji}>{item.emoji}</Text>
-                <View style={styles.scheduleDetail}>
-                  <Text style={styles.animalText}>{t(item.time === '09:30' ? 'hippo' : 'bengalTiger')}</Text>
-                  <Text style={styles.placeText}>{t(item.time === '09:30' ? 'freshwaterPond' : 'largeAnimalZone')}</Text>
+          <View style={styles.guideCard}>
+            {visitSteps.map((item, index) => {
+              const content = <>
+                <View style={styles.guideIcon}><AppIcon name={item.icon} size={22} /></View>
+                <View style={styles.guideDetail}>
+                  <Text style={styles.guideTitle}>{t(item.title)}</Text>
+                  <Text style={styles.guideDescription}>{t(item.description)}</Text>
                 </View>
-                <View style={styles.scheduleTime}>
-                  <Text style={styles.timeText}>{item.time}</Text>
-                  <Text style={styles.upcoming}>{t('sampleSchedule')}</Text>
-                </View>
-              </View>
-            ))}
+              </>;
+              const rowStyle = [styles.guideRow, index === 0 && styles.guideFirst];
+              return 'href' in item
+                ? <Pressable key={item.title} accessibilityRole="button" onPress={() => router.navigate(item.href)} style={rowStyle}>
+                    {content}<AppIcon name="chevron" size={18} />
+                  </Pressable>
+                : <View key={item.title} style={rowStyle}>{content}</View>;
+            })}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -305,7 +305,6 @@ function SettingsMenuItem({ icon, title, subtitle, onPress }: {
 const styles = StyleSheet.create({
   heroCircleOne: { position: 'absolute', width: 200, height: 200, borderRadius: 100, right: -80, top: -60, backgroundColor: '#FFFFFF10' },
   heroCircleTwo: { position: 'absolute', width: 150, height: 150, borderRadius: 75, right: 28, bottom: -95, backgroundColor: '#FFFFFF0C' },
-  preview: { color: a.muted, fontSize: 10, lineHeight: 16, marginTop: 4 },
   screen: { flex: 1, alignItems: 'center', backgroundColor: a.background },
   safeArea: { flex: 1, maxWidth: 680, width: '100%' },
   content: { paddingHorizontal: 20, paddingBottom: 28 },
@@ -429,14 +428,11 @@ const styles = StyleSheet.create({
   destinationTitle: { color: '#26463E', fontSize: 14, fontWeight: '600' },
   destinationSubtitle: { color: '#6C817A', fontSize: 11, marginTop: 4 },
 
-  scheduleCard: { backgroundColor: '#FFF', borderRadius: 22, paddingHorizontal: 14, borderWidth: 1, borderColor: a.border, overflow: 'hidden' },
-  scheduleRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderTopColor: a.border, gap: 12 },
-  scheduleFirst: { borderTopWidth: 0 },
-  scheduleEmoji: { width: 44, height: 44, textAlign: 'center', lineHeight: 44, borderRadius: 14, backgroundColor: a.pale, fontSize: 21, overflow: 'hidden' },
-  scheduleTime: { alignItems: 'flex-end', minWidth: 54 },
-  timeText: { color: a.ink, fontSize: 15, fontWeight: '600' },
-  upcoming: { color: '#A45B17', fontSize: 11, marginTop: 4 },
-  scheduleDetail: { flex: 1 },
-  animalText: { color: a.ink, fontSize: 14, fontWeight: '600' },
-  placeText: { color: a.muted, fontSize: 12, marginTop: 4 },
+  guideCard: { backgroundColor: '#FFF', borderRadius: 22, paddingHorizontal: 14, borderWidth: 1, borderColor: a.border, overflow: 'hidden' },
+  guideRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderTopColor: a.border, gap: 12 },
+  guideFirst: { borderTopWidth: 0 },
+  guideIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: a.pale },
+  guideDetail: { flex: 1 },
+  guideTitle: { color: a.ink, fontSize: 14, fontWeight: '600' },
+  guideDescription: { color: a.muted, fontSize: 12, lineHeight: 19, marginTop: 4 },
 });

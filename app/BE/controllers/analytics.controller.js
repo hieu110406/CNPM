@@ -119,7 +119,7 @@ export async function pingSession(req, res) {
     `, [sessionId, language, currentPoi, device, ip]);
 
     await cleanupSessions();
-    const { rows } = await query(`SELECT COUNT(*)*2::int AS count
+    const { rows } = await query(`SELECT COUNT(*)::int AS count
          FROM online_session`);
     return res.json({ ok: true, online: rows[0].count, sessionId });
 }

@@ -9,6 +9,7 @@
     "ios": "npm --prefix FE run ios --",
     "web": "npm --prefix FE run web --",
     "lint": "npm --prefix FE run lint",
-    "typecheck": "node FE/node_modules/typescript/bin/tsc --noEmit -p FE/tsconfig.json"
+    "typecheck": "node FE/node_modules/typescript/bin/tsc --noEmit -p FE/tsconfig.json",
+    "build:web": "npm --prefix FE run build:web"
   }
 }

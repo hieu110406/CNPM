@@ -51,35 +51,12 @@ const EN = {
 
   settings: {
     title: "System Settings",
-    description:
-      "Customize language, text size, and display preferences",
+    description: "Customize language, map, and audio preferences",
     languageHint: "Choose the display language for the entire application",
 
     tabs: {
       language: "Language",
-      font: "Text Size",
-      display: "Display",
       audio: "Map & Audio",
-    },
-
-    font: {
-      selectLabel: "Select Font Family",
-      sizeLabel: "Text Size",
-      previewTitle: "Live Text Size Preview:",
-      previewText:
-        "Saigon Zoo & Botanical Gardens (Est. 1864) — A historic green space with hundreds of rare animal and plant species.",
-    },
-
-    theme: {
-      label: "Theme Mode",
-      light: "Natural Light",
-      dark: "Eye-comfort Dark",
-    },
-
-    motion: {
-      label: "Smooth Animations",
-      description:
-        "Enable fluid panning, zooming, and transitions",
     },
 
     audio: {
@@ -389,6 +366,11 @@ const EN = {
     steps: "steps",
     viewOnMapHint: "Click \"View on map\" to show the route",
     viewMap: "View on map",
+  },
+    animalDetailsDefaults: {
+    origin: "Southeast Asia & Saigon Zoo and Botanical Gardens",
+    careStandard:
+      "Cared for in accordance with international zoo standards established by WAZA and SEAZA.",
   },
 };
 

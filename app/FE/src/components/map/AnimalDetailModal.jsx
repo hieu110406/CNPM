@@ -32,15 +32,56 @@ export default function AnimalDetailModal({ marker, markers = [], onClose, onSta
 
   const baseDetails = getMarkerDetails(marker);
 
+
 const localizedDetails =
   i18n.t(`animalDetails.${marker?.id}`, {
     returnObjects: true,
     defaultValue: {},
   }) || {};
 
+const defaultOrigin = t(
+  "animalDetailsDefaults.origin",
+  "Đông Nam Á & Thảo Cầm Viên Sài Gòn"
+);
+
+const defaultCareStandard = t(
+  "animalDetailsDefaults.careStandard",
+  "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA."
+);
+
+const baseCharacteristics =
+  localizedDetails.characteristics ??
+  baseDetails?.characteristics ??
+  [];
+
+const characteristics = baseCharacteristics.map((item) => {
+  if (
+    item ===
+    "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA."
+  ) {
+    return defaultCareStandard;
+  }
+
+  return item;
+});
+
 const details = {
   ...baseDetails,
   ...localizedDetails,
+
+  origin:
+    localizedDetails.origin ??
+    (baseDetails?.origin ===
+    "Đông Nam Á & Thảo Cầm Viên Sài Gòn"
+      ? defaultOrigin
+      : baseDetails?.origin),
+
+  characteristics,
+
+  funFacts:
+    localizedDetails.funFacts ??
+    baseDetails?.funFacts ??
+    [],
 
   conservation: {
     ...baseDetails?.conservation,
@@ -50,10 +91,11 @@ const details = {
   images: (baseDetails?.images || []).map((image, index) => ({
     ...image,
     caption:
-      localizedDetails?.images?.[index]?.caption ||
+      localizedDetails?.images?.[index]?.caption ??
       image.caption,
   })),
 };
+
   const markerName = marker?.fromDatabase
     ? marker.name
     : t(`markers.${marker?.id}.name`, marker?.name);

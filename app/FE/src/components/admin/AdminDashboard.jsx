@@ -1722,7 +1722,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="dash-card analytics-live-card">
                                 <div className="dash-card__head">
                                     <h3 className="dash-card__title"><Users size={17} className="text-emerald" /> Người dùng đang hoạt động</h3>
-                                    <strong>{analytics?.onlineUsers ?? onlineData.total}</strong>
+                                    <strong>{(analytics?.onlineUsers ?? onlineData.total) }</strong>
                                 </div>
                                 <div className="dash-card__body analytics-live-card__body">
                                     <span>Đang online</span>

@@ -124,11 +124,7 @@ export const api = {
     },
     deleteAudio: (id) => request(`/audio/${id}`, { method: "DELETE" }),
 
-    // UC7 - Admin & Analytics
-    getAdmins: () => request("/admin-accounts"),
-    createAdmin: (data) => request("/admin-accounts", { method: "POST", body: JSON.stringify(data) }),
-    deactivateAdmin: (id) => request(`/admin-accounts/${id}/deactivate`, { method: "PUT" }),
-    updateAdmin: (id, data) => request(`/admin-accounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    // Analytics used by the Overview tab
     getAnalytics: ({ from, to } = {}) => {
         const params = new URLSearchParams();
         if (from) params.set("from", from);
@@ -145,8 +141,6 @@ export const api = {
         if (!res.ok) throw new Error("Không thể xuất báo cáo");
         return res.blob();
     },
-    getAuditLogs: () => request("/audit-logs"),
-
     // API Bổ trợ cho Khu Nổi Bật (Tự động)
     getTopPopularPois: (language = "vi") =>
         request(`/analytics/top-popular?lang=${encodeURIComponent(language)}`),

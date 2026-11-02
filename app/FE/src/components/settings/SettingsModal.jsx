@@ -1,35 +1,24 @@
 // components/settings/SettingsModal.jsx
-// Hộp thoại Cài đặt hệ thống: Chuyển ngôn ngữ, Phông chữ, Cỡ chữ, Giao diện & Tiện ích
+// Hộp thoại cài đặt hệ thống: Ngôn ngữ, bản đồ và âm thanh
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Globe,
-  Type,
-  Palette,
   Volume2,
   X,
   RotateCcw,
   Check,
-  Sun,
-  Moon,
-  Sparkles,
   MapPin,
   Sliders,
   CheckCircle2,
 } from "lucide-react";
-import { useSettings, LANGUAGES, FONT_SIZES } from "../../context/SettingsContext";
+import { useSettings, LANGUAGES } from "../../context/SettingsContext";
 import "./settings.css";
 
 export default function SettingsModal() {
   const {
     language,
     setLanguage,
-    fontSize,
-    setFontSize,
-    theme,
-    setTheme,
-    motionEnabled,
-    setMotionEnabled,
     autoAudio,
     setAutoAudio,
     showLabels,
@@ -40,7 +29,7 @@ export default function SettingsModal() {
     t,
   } = useSettings();
 
-  const [activeTab, setActiveTab] = useState("lang"); // "lang" | "font" | "display" | "audio"
+  const [activeTab, setActiveTab] = useState("lang");
 
   // Đóng modal bằng phím ESC
   useEffect(() => {
@@ -99,22 +88,6 @@ export default function SettingsModal() {
           </button>
 
           <button
-            onClick={() => setActiveTab("font")}
-            className={`settings-tab-btn ${activeTab === "font" ? "is-active" : ""}`}
-          >
-            <Type size={15} />
-            <span>{t("tabFont")}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("display")}
-            className={`settings-tab-btn ${activeTab === "display" ? "is-active" : ""}`}
-          >
-            <Palette size={15} />
-            <span>{t("tabDisplay")}</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab("audio")}
             className={`settings-tab-btn ${activeTab === "audio" ? "is-active" : ""}`}
           >
@@ -159,121 +132,7 @@ export default function SettingsModal() {
             </div>
           )}
 
-          {/* ================= TAB 2: CỠ CHỮ ================= */}
-          {activeTab === "font" && (
-            <div className="settings-section animate-fade-in">
-              {/* Chọn kích thước chữ */}
-              <div className="settings-subgroup">
-                <label className="settings-label">
-                  <span>{t("fontSizeLabel")}</span>
-                  <span className="settings-label__hint">
-                    Điều chỉnh kích thước hiển thị chữ trên toàn bộ giao diện
-                  </span>
-                </label>
-
-                <div className="fontsize-segmented">
-                  {FONT_SIZES.map((size) => {
-                    const isSelected = fontSize === size.id;
-                    return (
-                      <button
-                        key={size.id}
-                        onClick={() => setFontSize(size.id)}
-                        className={`fontsize-btn ${isSelected ? "is-selected" : ""}`}
-                      >
-                        <span className="fontsize-btn__label">{size.label}</span>
-                        <span className="fontsize-btn__desc">{size.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Xem trước trực tiếp */}
-              <div className="font-preview-box">
-                <div className="font-preview-box__head">
-                  <Sparkles size={14} className="text-amber" />
-                  <span>{t("previewTitle")}</span>
-                </div>
-                <p
-                  className="font-preview-box__text"
-                  style={{
-                    fontSize:
-                      fontSize === "small"
-                        ? "13px"
-                        : fontSize === "large"
-                        ? "16.5px"
-                        : "14.5px",
-                  }}
-                >
-                  {t("previewText")}
-                </p>
-                <div className="font-preview-box__foot">
-                  <span>
-                    Kích thước:{" "}
-                    <strong>
-                      {fontSize === "small"
-                        ? "Nhỏ (92%)"
-                        : fontSize === "large"
-                        ? "Lớn (112%)"
-                        : "Tiêu chuẩn (100%)"}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 3: GIAO DIỆN & HIỂN THỊ ================= */}
-          {activeTab === "display" && (
-            <div className="settings-section animate-fade-in">
-              <label className="settings-label">
-                <span>{t("themeLabel")}</span>
-              </label>
-
-              <div className="theme-grid">
-                <button
-                  onClick={() => setTheme("light")}
-                  className={`theme-card ${theme === "light" ? "is-selected" : ""}`}
-                >
-                  <div className="theme-card__icon theme-card__icon--light">
-                    <Sun size={24} />
-                  </div>
-                  <div className="theme-card__title">{t("themeLight")}</div>
-                  <div className="theme-card__desc">Tươi sáng, dịu mát với màu xanh thảo mộc</div>
-                  {theme === "light" && <div className="theme-card__badge">Đang dùng</div>}
-                </button>
-
-                <button
-                  onClick={() => setTheme("dark")}
-                  className={`theme-card ${theme === "dark" ? "is-selected" : ""}`}
-                >
-                  <div className="theme-card__icon theme-card__icon--dark">
-                    <Moon size={24} />
-                  </div>
-                  <div className="theme-card__title">{t("themeDark")}</div>
-                  <div className="theme-card__desc">Giảm chói sáng, tiết kiệm năng lượng pin</div>
-                  {theme === "dark" && <div className="theme-card__badge">Đang dùng</div>}
-                </button>
-              </div>
-
-              {/* Công tắc chuyển động mượt */}
-              <div className="toggle-row">
-                <div className="toggle-row__info">
-                  <div className="toggle-row__title">{t("motionLabel")}</div>
-                  <div className="toggle-row__desc">{t("motionDesc")}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMotionEnabled(!motionEnabled)}
-                  className={`toggle-switch ${motionEnabled ? "is-on" : ""}`}
-                >
-                  <span className="toggle-switch__thumb" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ================= TAB 4: ÂM THANH & BẢN ĐỒ ================= */}
+          {/* ================= TAB 2: ÂM THANH & BẢN ĐỒ ================= */}
           {activeTab === "audio" && (
             <div className="settings-section animate-fade-in">
               {/* Tự động phát thuyết minh */}
@@ -323,7 +182,7 @@ export default function SettingsModal() {
             type="button"
             onClick={resetDefaults}
             className="settings-btn-reset"
-            title="Khôi phục ngôn ngữ, font và giao diện về trạng thái ban đầu"
+            title="Khôi phục ngôn ngữ và tùy chọn bản đồ/âm thanh về mặc định"
           >
             <RotateCcw size={14} />
             <span>{t("resetBtn")}</span>

@@ -25,12 +25,77 @@ import RoutePickerModal from "./RoutePickerModal";
 import "./animalModal.css";
 
 export default function AnimalDetailModal({ marker, markers = [], onClose, onStartRouteMode, onPathReady }) {
-  const { t, language } = useSettings();
+  const { t, language, i18n } = useSettings();
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [showRoute, setShowRoute] = useState(false);
 
-  const details = getMarkerDetails(marker);
+  const baseDetails = getMarkerDetails(marker);
+
+
+const localizedDetails =
+  i18n.t(`animalDetails.${marker?.id}`, {
+    returnObjects: true,
+    defaultValue: {},
+  }) || {};
+
+const defaultOrigin = t(
+  "animalDetailsDefaults.origin",
+  "Đông Nam Á & Thảo Cầm Viên Sài Gòn"
+);
+
+const defaultCareStandard = t(
+  "animalDetailsDefaults.careStandard",
+  "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA."
+);
+
+const baseCharacteristics =
+  localizedDetails.characteristics ??
+  baseDetails?.characteristics ??
+  [];
+
+const characteristics = baseCharacteristics.map((item) => {
+  if (
+    item ===
+    "Được chăm sóc theo quy chuẩn vườn thú chuẩn quốc tế WAZA và SEAZA."
+  ) {
+    return defaultCareStandard;
+  }
+
+  return item;
+});
+
+const details = {
+  ...baseDetails,
+  ...localizedDetails,
+
+  origin:
+    localizedDetails.origin ??
+    (baseDetails?.origin ===
+    "Đông Nam Á & Thảo Cầm Viên Sài Gòn"
+      ? defaultOrigin
+      : baseDetails?.origin),
+
+  characteristics,
+
+  funFacts:
+    localizedDetails.funFacts ??
+    baseDetails?.funFacts ??
+    [],
+
+  conservation: {
+    ...baseDetails?.conservation,
+    ...localizedDetails?.conservation,
+  },
+
+  images: (baseDetails?.images || []).map((image, index) => ({
+    ...image,
+    caption:
+      localizedDetails?.images?.[index]?.caption ??
+      image.caption,
+  })),
+};
+
   const markerName = marker?.fromDatabase
     ? marker.name
     : t(`markers.${marker?.id}.name`, marker?.name);

@@ -8,6 +8,7 @@ import poiRoutes from "./routes/poi.routes.js";
 import audioRoutes from "./routes/audio.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import pathfindingRoutes from "./routes/pathfinding.routes.js";
+import offlineRoutes from './routes/offline.routes.js';
 
 const app = express();
 app.use(cors());
@@ -22,6 +23,8 @@ app.use("/api/audio", audioRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/pathfinding", pathfindingRoutes);
 app.use("/api/route", pathfindingRoutes);
+app.use('/api/offline', offlineRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 

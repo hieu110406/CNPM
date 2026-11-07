@@ -3028,31 +3028,6 @@
         height: 20px !important;
     }
 
-/* AUDIT LOG */
-.audit-item__title {
-    font-size: 16px !important;
-    font-weight: 700 !important;
-}
-
-.audit-item__detail {
-    font-size: 14px !important;
-    margin-top: 4px !important;
-}
-
-.audit-item__time {
-    font-size: 13.5px !important;
-}
-
-.audit-item__icon {
-    width: 42px !important;
-    height: 42px !important;
-}
-
-    .audit-item__icon svg {
-        width: 20px !important;
-        height: 20px !important;
-    }
-
 /* MODAL */
 .form-group > label {
     font-size: 14.5px !important;

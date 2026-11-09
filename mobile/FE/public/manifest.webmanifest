@@ -1,0 +1,13 @@
+{
+  "id": "/",
+  "name": "Thảo Cầm Viên Sài Gòn",
+  "short_name": "Saigon Zoo",
+  "description": "Khám phá Thảo Cầm Viên Sài Gòn với bản đồ, thông tin động vật và nội dung hỗ trợ Offline.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#205E48",
+  "orientation": "portrait"
+}

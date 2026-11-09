@@ -3,6 +3,7 @@ import { request } from './map';
 import {
     getOfflinePois,
     getOfflineMediaUri,
+    getOfflinePoiAudio,
 } from './offlineReader';
 
 // ==================== TYPES ====================
@@ -57,9 +58,13 @@ function normalizePoi(
         id: poi.id as string,
         name: poi.name as string,
         zone:
-            typeof poi.zone === 'string' ? poi.zone : '',
+            typeof poi.zone === 'string'
+                ? poi.zone
+                : '',
         emoji:
-            typeof poi.emoji === 'string' ? poi.emoji : '🐾',
+            typeof poi.emoji === 'string'
+                ? poi.emoji
+                : '🐾',
         shortDesc:
             typeof poi.shortDesc === 'string'
                 ? poi.shortDesc
@@ -73,7 +78,7 @@ function normalizePoi(
     };
 }
 
-// Chuẩn hóa dữ liệu online.
+// Chuẩn hóa POI lấy trực tiếp từ Backend.
 function normalizeOnlinePois(data: unknown): AnimalPoi[] {
     if (!Array.isArray(data)) {
         throw new Error('INVALID_POIS');
@@ -83,9 +88,11 @@ function normalizeOnlinePois(data: unknown): AnimalPoi[] {
         .filter((poi: RawPoi) => isValidPoi(poi))
         .map((poi: RawPoi) => {
             const images: RawPoiImage[] =
-                Array.isArray(poi.images) ? poi.images : [];
+                Array.isArray(poi.images)
+                    ? poi.images
+                    : [];
 
-            const imageUrls = images.flatMap((image) =>
+            const imageUrls = images.flatMap(image =>
                 typeof image?.url === 'string' &&
                     image.url.trim()
                     ? [image.url]
@@ -96,42 +103,51 @@ function normalizeOnlinePois(data: unknown): AnimalPoi[] {
         });
 }
 
-// Giải nén các ảnh của một POI.
+// Lấy ảnh đã đóng gói trong ZIP.
+// Giữ nguyên thứ tự ảnh trong manifest.
 async function resolveOfflineImages(
     language: string,
     poi: RawPoi
 ): Promise<string[]> {
     const images: RawPoiImage[] =
-        Array.isArray(poi.images) ? poi.images : [];
+        Array.isArray(poi.images)
+            ? poi.images
+            : [];
 
-    const paths = images.flatMap((image) =>
+    const paths = images.flatMap(image =>
         typeof image?.path === 'string' &&
             image.path.trim()
             ? [image.path]
             : []
     );
 
-    const results = await Promise.allSettled(
-        paths.map((path) =>
-            getOfflineMediaUri(language, path)
-        )
-    );
+    const imageUrls: string[] = [];
 
-    results.forEach((result, index) => {
-        if (result.status === 'rejected' && __DEV__) {
-            console.warn('OFFLINE IMAGE EXTRACT ERROR:', {
-                poiId: poi.id,
-                path: paths[index],
-                error: String(result.reason),
-            });
+    // Xử lý tuần tự để tránh mở quá nhiều ZIP
+    // cùng một lúc trên Safari.
+    for (const path of paths) {
+        try {
+            const uri = await getOfflineMediaUri(
+                language,
+                path
+            );
+
+            if (uri) {
+                imageUrls.push(uri);
+            }
+        } catch (error) {
+            if (__DEV__) {
+                console.warn(
+                    '[Offline] Không đọc được ảnh:',
+                    poi.id,
+                    path,
+                    error
+                );
+            }
         }
-    });
+    }
 
-    return results.flatMap((result) =>
-        result.status === 'fulfilled' && result.value
-            ? [result.value]
-            : []
-    );
+    return imageUrls;
 }
 
 // ==================== GET POIS ====================
@@ -142,7 +158,7 @@ export async function getAnimalPois(
     let onlinePois: AnimalPoi[] | null = null;
     let onlineError: unknown = null;
 
-    // Bước 1: Lấy POI online nếu Backend hoạt động.
+    // 1. Thử tải dữ liệu từ Backend.
     try {
         const data: unknown = await request(
             `/pois/public?lang=${encodeURIComponent(language)}`
@@ -153,7 +169,7 @@ export async function getAnimalPois(
         onlineError = error;
     }
 
-    // Bước 2: Kiểm tra dữ liệu trong ZIP.
+    // 2. Đọc POI trong ZIP đã tải.
     let offlinePois: RawPoi[] | null = null;
 
     try {
@@ -161,43 +177,49 @@ export async function getAnimalPois(
     } catch (error) {
         if (__DEV__) {
             console.warn(
-                'OFFLINE PACKAGE ERROR:',
-                String(error)
+                '[Offline] Không đọc được POI:',
+                error
             );
         }
     }
 
-    // Không có package: dùng dữ liệu online.
+    // Không có ZIP: dùng dữ liệu online như cũ.
     if (!offlinePois) {
-        if (onlinePois) return onlinePois;
+        if (onlinePois !== null) {
+            return onlinePois;
+        }
 
-        throw onlineError ??
-        new Error('Không có dữ liệu POI.');
+        throw (
+            onlineError ??
+            new Error(
+                'Chưa có dữ liệu POI Offline. Hãy tải gói trước.'
+            )
+        );
     }
-
-    // Bước 3: Giải nén ảnh từ ZIP.
-    const offlineImageMap = new Map<string, string[]>();
 
     const validOfflinePois = offlinePois.filter(isValidPoi);
 
-    await Promise.all(
-        validOfflinePois.map(async (poi) => {
-            const imageUrls = await resolveOfflineImages(
-                language,
-                poi
-            );
+    // 3. Lấy ảnh từ ZIP.
+    // Mỗi POI được xử lý lần lượt để giảm áp lực
+    // bộ nhớ khi Safari mở gói ZIP lớn.
+    const offlineImageMap = new Map<string, string[]>();
 
-            offlineImageMap.set(
-                poi.id as string,
-                imageUrls
-            );
-        })
-    );
+    for (const poi of validOfflinePois) {
+        const images = await resolveOfflineImages(
+            language,
+            poi
+        );
 
-    // Bước 4: Có mạng thì giữ thông tin POI online,
-    // nhưng ưu tiên hình ảnh đã tải trong ZIP.
-    if (onlinePois) {
-        return onlinePois.map((poi) => {
+        offlineImageMap.set(
+            poi.id as string,
+            images
+        );
+    }
+
+    // 4. Nếu Backend hoạt động:
+    // giữ dữ liệu online, ưu tiên ảnh Offline đã có.
+    if (onlinePois !== null) {
+        return onlinePois.map(poi => {
             const localImages =
                 offlineImageMap.get(poi.id) ?? [];
 
@@ -214,8 +236,9 @@ export async function getAnimalPois(
         });
     }
 
-    // Bước 5: Không có mạng thì đọc POI và ảnh từ ZIP.
-    return validOfflinePois.map((poi) => {
+    // 5. Nếu mất mạng:
+    // trả về thông tin và ảnh lấy từ ZIP.
+    return validOfflinePois.map(poi => {
         const imageUrls =
             offlineImageMap.get(poi.id as string) ?? [];
 
@@ -225,21 +248,51 @@ export async function getAnimalPois(
 
 // ==================== GET AUDIO ====================
 
-// Giữ nguyên audio online.
-// Sẽ bổ sung fallback audio offline sau.
 export async function getPoiAudio(
     id: string,
     language: string
 ): Promise<PoiAudio | null> {
-    const data = await request(
-        `/audio/public?poiCode=${encodeURIComponent(id)}&lang=${encodeURIComponent(language)}`
+    // Ưu tiên file audio đã tải trong ZIP.
+    // Nhờ vậy khi Offline không cần gọi Supabase.
+    try {
+        const offlineUri = await getOfflinePoiAudio(
+            language,
+            id
+        );
+
+        if (offlineUri) {
+            return {
+                fileUrl: offlineUri,
+                language,
+            };
+        }
+    } catch (error) {
+        if (__DEV__) {
+            console.warn(
+                '[Offline] Không đọc được audio:',
+                id,
+                error
+            );
+        }
+    }
+
+    // Chưa có audio Offline:
+    // dùng API online như trước.
+    const data: unknown = await request(
+        `/audio/public?poiCode=${encodeURIComponent(id)}` +
+        `&lang=${encodeURIComponent(language)}`
     );
 
-    if (!data) return null;
+    if (!data) {
+        return null;
+    }
 
     if (
+        typeof data !== 'object' ||
+        !('fileUrl' in data) ||
         typeof data.fileUrl !== 'string' ||
         !data.fileUrl.trim() ||
+        !('language' in data) ||
         typeof data.language !== 'string'
     ) {
         throw new Error('INVALID_AUDIO');

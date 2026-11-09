@@ -79,7 +79,14 @@ async function requestRoute(from, to, language) {
     return data;
 }
 
+export const offlineDownloadUrl = (language = "vi") =>
+    `${BASE}/offline/download?lang=${encodeURIComponent(language)}&platform=web`;
+
 export const api = {
+
+    // Offline Package
+    getOfflinePackageMetadata: () => request("/offline"),
+
     // UC4 - Auth
     login: (email, password) =>
         request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),

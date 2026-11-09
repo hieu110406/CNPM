@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import {
   Globe,
   Volume2,
+  Download,
   X,
   RotateCcw,
   Check,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useSettings, LANGUAGES } from "../../context/SettingsContext";
+import { offlineDownloadUrl } from "../../api/client";
 import "./settings.css";
 
 export default function SettingsModal() {
@@ -30,6 +32,90 @@ export default function SettingsModal() {
   } = useSettings();
 
   const [activeTab, setActiveTab] = useState("lang");
+  const [downloadState, setDownloadState] = useState({
+      busy: false,
+      progress: 0,
+      error: "",
+      done: false,
+  });
+
+  const downloadPackage = async () => {
+      if (downloadState.busy) return;
+        setDownloadState({
+            busy: true,
+            progress: 0,
+            error: "",
+            done: false,
+        });
+
+        try {
+            const response = await fetch(offlineDownloadUrl(language));
+
+            if (!response.ok) {
+                throw new Error("Không thể tải package offline.");
+            }
+
+            const total = Number(response.headers.get("content-length"));
+            const reader = response.body?.getReader();
+
+            let blob;
+
+            if (reader) {
+                const chunks = [];
+                let received = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    chunks.push(value);
+                    received += value.length;
+
+                    if (total > 0) {
+                        setDownloadState((prev) => ({
+                            ...prev,
+                            progress: Math.min(
+                                99,
+                                Math.round((received / total) * 100)
+                            ),
+                        }));
+                    }
+                }
+
+                blob = new Blob(chunks, {
+                    type: "application/zip",
+                });
+            } else {
+                blob = await response.blob();
+            }
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.download = `zoo-offline-${language}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            setDownloadState({
+                busy: false,
+                progress: 100,
+                error: "",
+                done: true,
+            });
+        } catch (error) {
+            setDownloadState({
+                busy: false,
+                progress: 0,
+                error: error.message || "Tải package thất bại.",
+                done: false,
+            });
+        }
+    };
+
 
   // Đóng modal bằng phím ESC
   useEffect(() => {
@@ -94,6 +180,15 @@ export default function SettingsModal() {
             <Volume2 size={15} />
             <span>{t("tabAudio")}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("download")}
+            className={`settings-tab-btn ${activeTab === "download" ? "is-active" : ""
+            }`}
+            >
+            <Download size={15} />
+            <span>Gói Offline</span>
+           </button>
         </div>
 
         {/* Nội dung từng Tab */}
@@ -174,6 +269,64 @@ export default function SettingsModal() {
               </div>
             </div>
           )}
+
+                  {/* ================= TAB 3: GÓI OFFLINE ================= */}
+                  {activeTab === "download" && (
+                      <div className="settings-section animate-fade-in">
+                          <h3>Gói dữ liệu ngoại tuyến</h3>
+
+                          <p>
+                              Tải bản đồ, thông tin POI, hình ảnh và
+                              audio để lưu về thiết bị.
+                          </p>
+
+                          <p>
+                              Ngôn ngữ: {language.toUpperCase()}
+                          </p>
+
+                          <button
+                              type="button"
+                              className="settings-btn-save"
+                              onClick={downloadPackage}
+                              disabled={downloadState.busy}
+                          >
+                              <Download size={16} />
+                              <span>
+                                  {downloadState.busy
+                                      ? "Đang tải..."
+                                      : "Tải package ZIP"}
+                              </span>
+                          </button>
+
+                          {downloadState.busy && (
+                              <div style={{ marginTop: "16px" }}>
+                                  <progress
+                                      value={downloadState.progress}
+                                      max="100"
+                                      style={{ width: "100%" }}
+                                  />
+                                  <p>
+                                      {downloadState.progress > 0
+                                          ? `${downloadState.progress}%`
+                                          : "Đang tải dữ liệu..."}
+                                  </p>
+                              </div>
+                          )}
+
+                          {downloadState.done && (
+                              <p style={{ color: "#16a34a" }} role="status">
+                                  Đã tạo yêu cầu lưu package thành công!
+                              </p>
+                          )}
+
+                          {downloadState.error && (
+                              <p style={{ color: "#dc2626" }} role="alert">
+                                  {downloadState.error}
+                              </p>
+                          )}
+                      </div>
+                  )}
+
         </div>
 
         {/* Footer Modal */}

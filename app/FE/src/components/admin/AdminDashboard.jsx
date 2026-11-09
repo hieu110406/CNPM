@@ -146,14 +146,6 @@ const DEFAULT_POI_ZONES = [
     "Dịch vụ vận chuyển", "Ẩm thực & Giải khát", "Tiện ích vệ sinh", "Hỗ trợ y tế",
 ];
 
-const OFFLINE_PACKAGE = {
-    version: "v2026.09.21",
-    totalMb: 148.6,
-    limitMb: 150,
-    publishedAt: "21-09-2026",
-    downloads: { android: 1284, ios: 972, web: 305 },
-};
-
 export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     /* ---- Điều hướng ---- */
     const [currentTab, setCurrentTab] = useState("overview");
@@ -1099,27 +1091,40 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="dash-card" style={{ marginTop: 16 }}>
                                 <div className="dash-card__head">
                                     <div>
-                                        <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline đang phát hành</h3>
-                                        <p className="dash-card__desc">Ngưỡng PRD: ≤ 150 MB</p>
+                                        <h3 className="dash-card__title">
+                                            <Download size={17} className="text-emerald" /> Thống kê tải gói Offline
+                                        </h3>
+                                        <p className="dash-card__desc">
+                                            Số lượt yêu cầu tải ZIP được Backend ghi nhận trong khoảng thời gian đang chọn.
+                                        </p>
                                     </div>
-                                    <button onClick={() => setCurrentTab("analytics")} className="dash-card__link">
-                                        Xem chi tiết &rarr;
-                                    </button>
                                 </div>
                                 <div className="package-card">
                                     <div className="package-card__row">
-                                        <span>Phiên bản: <strong>{OFFLINE_PACKAGE.version}</strong></span>
-                                        <span>Phát hành: {OFFLINE_PACKAGE.publishedAt}</span>
+                                        <span>Tổng lượt tải Offline</span>
+                                        <strong style={{ fontSize: 28, color: "#205E48" }}>
+                                            {analytics?.offlineDownloads
+                                                ? Number(analytics.offlineDownloads.total ?? 0).toLocaleString("vi-VN")
+                                                : analyticsLoading ? "Đang tải..." : "Chưa có dữ liệu"}
+                                        </strong>
                                     </div>
-                                    <div>
-                                        <div className="package-card__row">
-                                            <span>Dung lượng hiện tại</span>
-                                            <span className="package-card__size">{OFFLINE_PACKAGE.totalMb} / {OFFLINE_PACKAGE.limitMb} MB</span>
-                                        </div>
-                                        <div className={`meter ${OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb > 0.95 ? "is-danger" : ""}`}>
-                                            <div className="meter__fill" style={{ "--pct": `${(OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb) * 100}%` }} />
-                                        </div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginTop: 18 }}>
+                                        {[
+                                            { label: "Web", value: analytics?.offlineDownloads?.web },
+                                            { label: "Android", value: analytics?.offlineDownloads?.android },
+                                            { label: "iOS", value: analytics?.offlineDownloads?.ios },
+                                        ].map((item) => (
+                                            <div key={item.label} style={{ padding: "14px 8px", borderRadius: 12, background: "#F0F7F2", textAlign: "center" }}>
+                                                <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{item.label}</div>
+                                                <strong style={{ fontSize: 22, color: "#205E48" }}>
+                                                    {item.value == null ? "—" : Number(item.value).toLocaleString("vi-VN")}
+                                                </strong>
+                                            </div>
+                                        ))}
                                     </div>
+                                    <p style={{ marginTop: 16, fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>
+                                        Mỗi yêu cầu tải ZIP được Backend ghi nhận là một lượt. Không thống kê danh tính người tải.
+                                    </p>
                                 </div>
                             </div>
                         </div>

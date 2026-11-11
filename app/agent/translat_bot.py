@@ -13,6 +13,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from pydantic import BaseModel, Field, ValidationError, field_validator
+from translation_errors import translation_error_detail
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -233,7 +234,7 @@ Mô tả chi tiết: {detail}""",
         logger.exception("Translation model request failed")
         raise HTTPException(
             status_code=502,
-            detail=f"Không gọi được model dịch ({type(error).__name__}); kiểm tra cấu hình agent trên Render.",
+            detail=translation_error_detail(error),
         ) from error
 
     if not isinstance(result.content, str):
@@ -264,7 +265,7 @@ Chỉ trả về JSON hợp lệ theo cấu trúc: {{"en":"...","zh":"..."}}."""
         logger.exception("Audio script translation request failed")
         raise HTTPException(
             status_code=502,
-            detail=f"Không gọi được model dịch ({type(error).__name__}); kiểm tra cấu hình model trên Render.",
+            detail=translation_error_detail(error),
         ) from error
 
     if not isinstance(result.content, str):

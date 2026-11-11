@@ -1,0 +1,18 @@
+{
+  "0": "ZooMap.tsx",
+  "19": "dependencies",
+  "23": "MapCanvas.tsx",
+  "34": "HomeScreen.tsx",
+  "46": "ExploreScreen.tsx",
+  "70": "AppTabs.tsx",
+  "71": "I18nContext.tsx",
+  "78": "supabaseStorage.js",
+  "80": "request",
+  "84": "sw.js",
+  "96": "Q: Phan tich kien truc CNPM va file co the xoa khong anh huong code base",
+  "97": "expo",
+  "98": "expo-file-system",
+  "99": "expo-web-browser@~58.0.6",
+  "100": "jszip",
+  "101": "react-native-gesture-handler@~3.3.0"
+}

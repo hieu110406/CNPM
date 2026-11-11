@@ -33,7 +33,7 @@ function readPoiInput(body) {
   if (!Number.isFinite(x) || x < 0 || x > 100 || !Number.isFinite(y) || y < 0 || y > 100) {
     return { error: "Tọa độ bản đồ X và Y phải nằm trong khoảng 0–100." };
   }
-
+// caigiv
   if (!Number.isInteger(geofenceRadius) || geofenceRadius < 5 || geofenceRadius > 200) {
     return { error: "Bán kính geofence phải nằm trong khoảng 5–200m." };
   }
@@ -212,6 +212,8 @@ export async function listPublicPois(req, res) {
          p.emoji,
          p.x::float AS x,
          p.y::float AS y,
+         p.latitude::float AS latitude,
+         p.longitude::float AS longitude,
          p.opening_hours AS "openingHours",
          p.feeding_time AS "feedingTime",
          p.audio_available AS "audioAvailable",

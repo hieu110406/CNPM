@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Pressable from '@/components/ui/AnimatedPressable';
 import Animated from 'react-native-reanimated';
-import { fadeIn, slideIn } from '@/components/ui/motion';
+import { fadeIn } from '@/components/ui/motion';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapCanvas, { type MapCanvasHandle, type MapMarker } from './MapCanvas';
 import { getMapPois, type MapNode } from '@/api/map';
@@ -15,6 +16,47 @@ import AppIcon from '@/components/ui/AppIcon';
 import PoiAudioControl from '@/components/audio/PoiAudioControl';
 import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
 import AnimalDetailPopup from '@/components/explore/AnimalDetailPopup';
+import useGpsSimulation from './useGpsSimulation';
+import { createPositionWatcher } from '@/utils/positionWatcher';
+import { gpsToMapCoordinates, mapToGpsCoordinates } from '@/utils/gpsMapCalibration';
+
+const CURRENT_LOCATION_ID = 'current_location';
+
+const GPS_FIXED_ANCHORS = [
+  {
+    latitude: 10.787343,
+    longitude: 106.705036,
+    x: 41.5,
+    y: 91.5,
+  },
+  {
+    latitude: 10.78894312781009,
+    longitude: 106.70714945167893,
+    x: 57.3,
+    y: 40.1,
+  },
+  {
+    latitude: 10.788099697238112,
+    longitude: 106.70601961019264,
+    x: 43.9,
+    y: 64.2,
+  },
+];
+
+const GPS_ZEBRA_ANCHOR = {
+  id: 'zebra',
+  match: ['ngua van', 'zebra', '斑马'],
+  latitude: 10.78869726716698,
+  longitude: 106.70467729870951,
+};
+
+type DeviceMapLocation = {
+  node: MapNode;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: number;
+};
 
 const mapZoneFilters: { value: string; key: TranslationKey }[] = [
   { value: 'all', key: 'all' },
@@ -40,20 +82,172 @@ export default function ZooMap() {
   const [detailPoi, setDetailPoi] = useState<MapNode | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [routeMode, setRouteMode] = useState(false);
-  const [routeStartId, setRouteStartId] = useState<string>('gate_main');
+  const [manualRouteStartId, setRouteStartId] = useState<string>('');
   const [routeEndId, setRouteEndId] = useState<string | null>(null);
+  const [selectingTarget, setSelectingTarget] = useState<'start' | 'end' | null>(null);
   const [routeResult, setRouteResult] = useState<MapGraphPath | null>(null);
   const [routeError, setRouteError] = useState('');
   const [points, setPoints] = useState<MapNode[]>([]);
+  const gpsAnchors = useMemo(() => {
+    const zebraPoi = points.find(point => {
+        const id = normalizeSearch(point.id);
+        const name = normalizeSearch(point.name);
+        return id.includes(GPS_ZEBRA_ANCHOR.id) || GPS_ZEBRA_ANCHOR.match.some(match => {
+          const normalizedMatch = normalizeSearch(match);
+          return id.includes(normalizedMatch) || name.includes(normalizedMatch);
+        });
+      });
+    if (!zebraPoi) return [];
+    return [
+        ...GPS_FIXED_ANCHORS.map(anchor => ({
+          latitude: anchor.latitude,
+          longitude: anchor.longitude,
+          x: anchor.x,
+          y: anchor.y,
+        })),
+        {
+          latitude: GPS_ZEBRA_ANCHOR.latitude,
+          longitude: GPS_ZEBRA_ANCHOR.longitude,
+          x: zebraPoi.x,
+          y: zebraPoi.y,
+        },
+      ];
+  }, [points]);
+  const simulation = useGpsSimulation(gpsAnchors);
+  const simulatedCoordinates = simulation.gps
+    ? gpsToMapCoordinates(simulation.gps.latitude, simulation.gps.longitude, gpsAnchors) : null;
+  const simulatedNode: MapNode | null = simulatedCoordinates ? {
+    id: CURRENT_LOCATION_ID, name: t('gpsSimulation'), category: 'current_location', ...simulatedCoordinates,
+  } : null;
+  const [location, setLocation] = useState<DeviceMapLocation | null>(null);
+  const locationRef = useRef<DeviceMapLocation | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [locationTracking, setLocationTracking] = useState(false);
+  const gpsContext = useRef({ gpsAnchors, points, t });
+  useEffect(() => { gpsContext.current = { gpsAnchors, points, t }; }, [gpsAnchors, points, t]);
+  const locationRequest = useRef(0);
+  const [locationWatcher] = useState(() => createPositionWatcher<Location.LocationObject>(
+    (onPosition, onError) => Location.watchPositionAsync({
+      accuracy: Location.Accuracy.High, distanceInterval: 2, timeInterval: 2000,
+    }, onPosition, onError),
+  ));
+  const stopLocationTracking = useCallback(() => {
+    locationRequest.current++;
+    locationWatcher.stop();
+    setLocationTracking(false);
+    setLocationLoading(false);
+  }, [locationWatcher]);
   const [loadingPoints, setLoadingPoints] = useState(true);
   const [pointsError, setPointsError] = useState(false);
   const pointsVersion = useRef(0);
   const items = useMemo(() => points.filter(item => (zone === 'all' || item.category === zone) &&
     normalizeSearch(item.name).includes(normalizeSearch(query))), [points, zone, query]);
-  const mapMarkers = useMemo<MapMarker[]>(() => (routeMode ? points : items).map(point => ({
-    id: point.id, title: point.name, emoji: point.emoji || markerEmoji(point.category),
-    x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
-  })), [points, items, routeMode]);
+  const activeLocationNode = simulation.active ? simulatedNode : location?.node;
+  const routePoints = activeLocationNode ? [...points, activeLocationNode] : points;
+  const gpsAvailable = !!activeLocationNode && (simulation.active || locationTracking);
+  const gpsRouting = routeMode && gpsAvailable;
+  const routeStartId = gpsRouting ? CURRENT_LOCATION_ID :
+    (manualRouteStartId !== routeEndId ? manualRouteStartId : '');
+  const gpsX = activeLocationNode?.x;
+  const gpsY = activeLocationNode?.y;
+  const gpsRouteResult = (() => {
+    if (!gpsRouting || !routeEndId || gpsX == null || gpsY == null) return null;
+    buildGraph([...points, { id: CURRENT_LOCATION_ID, name: CURRENT_LOCATION_ID, category: 'current_location', x: gpsX, y: gpsY }]);
+    return shortestPath(CURRENT_LOCATION_ID, routeEndId);
+  })();
+  const currentRouteResult = gpsRouting ? gpsRouteResult : routeResult?.path[0]?.id === routeStartId &&
+    routeResult.path[routeResult.path.length - 1]?.id === routeEndId ? routeResult : null;
+  const startPointName = gpsRouting
+    ? (simulation.active ? t('gpsSimulation') : t('myLocation'))
+    : points.find(p => p.id === manualRouteStartId)?.name || '';
+  const endPointName = points.find(p => p.id === routeEndId)?.name || '';
+  const mapMarkers: MapMarker[] = [
+    ...(routeMode ? points : items).map(point => ({
+      id: point.id, title: point.name, emoji: point.emoji || markerEmoji(point.category),
+      x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
+    })),
+    ...(activeLocationNode ? [{
+      id: activeLocationNode.id, title: simulatedNode ? t('gpsSimulation') : t('myLocation'), emoji: '●',
+      x: activeLocationNode.x, y: activeLocationNode.y, color: '#2563EB',
+    }] : []),
+  ];
+
+  const startLocationTracking = useCallback(async (isUserAction = false): Promise<boolean> => {
+    if (locationTracking) return true;
+    const request = ++locationRequest.current;
+    setLocationLoading(true);
+    setLocationError('');
+    const isCurrent = () => request === locationRequest.current;
+    try {
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (!permission.granted && isUserAction) {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      if (!isCurrent()) return false;
+      if (!permission.granted) {
+        if (isUserAction) setLocationError(t('locationPermissionDenied'));
+        return false;
+      }
+      if (!await Location.hasServicesEnabledAsync()) {
+        if (isUserAction) setLocationError(t('locationFailed'));
+        return false;
+      }
+      if (!isCurrent()) return false;
+      setLocationTracking(true);
+      await locationWatcher.start(current => {
+        if (!isCurrent()) return;
+        setLocationLoading(false);
+        const { gpsAnchors: anchors, points: currentPoints, t: translate } = gpsContext.current;
+        const coordinates = gpsToMapCoordinates(current.coords.latitude, current.coords.longitude, anchors);
+        if (!coordinates) {
+          locationRef.current = null;
+          setLocation(null);
+          setRouteResult(result => result?.path[0]?.id === CURRENT_LOCATION_ID ? null : result);
+          setLocationError(anchors.length < 4 ? translate('locationCalibrationMissing') : translate('locationOutsideMap'));
+          return;
+        }
+        setLocationError('');
+        const node: MapNode = { id: CURRENT_LOCATION_ID, name: t('myLocation'),
+          x: coordinates.x, y: coordinates.y, category: 'current_location' };
+        const nextLocation = { node, latitude: current.coords.latitude,
+          longitude: current.coords.longitude, accuracy: current.coords.accuracy, timestamp: current.timestamp };
+        locationRef.current = nextLocation;
+        setLocation(nextLocation);
+        buildGraph([...currentPoints, node]);
+        setRouteResult(result => {
+          if (!result || result.path[0]?.id !== CURRENT_LOCATION_ID) return result;
+          return shortestPath(CURRENT_LOCATION_ID, result.path[result.path.length - 1].id);
+        });
+      }, () => {
+        if (!isCurrent()) return;
+        stopLocationTracking();
+        setLocationError(t('locationFailed'));
+      });
+      return true;
+    } catch {
+      if (isCurrent()) { stopLocationTracking(); if (isUserAction) setLocationError(t('locationFailed')); }
+      return false;
+    } finally {
+      if (isCurrent()) setLocationLoading(false);
+    }
+  }, [locationTracking, locationWatcher, t, stopLocationTracking]);
+
+  // Request permission on each map visit, without restarting the watcher on GPS updates.
+  const startLocationRef = useRef(startLocationTracking);
+  useEffect(() => { startLocationRef.current = startLocationTracking; }, [startLocationTracking]);
+  useFocusEffect(useCallback(() => {
+    void startLocationRef.current(true);
+    return stopLocationTracking;
+  }, [stopLocationTracking]));
+
+  const toggleLocationTracking = useCallback(async () => {
+    if (locationTracking) {
+      stopLocationTracking();
+      return;
+    }
+    await startLocationTracking(true);
+  }, [locationTracking, stopLocationTracking, startLocationTracking]);
 
   const loadPoints = useCallback(async () => {
     const version = ++pointsVersion.current;
@@ -65,14 +259,14 @@ export default function ZooMap() {
     try {
       const nodes = await getMapPois(language);
       if (version !== pointsVersion.current) return;
-      buildGraph(nodes);
+      buildGraph([...nodes, ...(locationRef.current ? [locationRef.current.node] : [])]);
       setPoints(nodes);
       if (poiId) {
         setSelected(nodes.find(node => node.id === poiId) ?? null);
         setExpanded(true);
         setRouteMode(false);
       }
-      setRouteStartId(nodes.find(node => node.id === 'gate_main')?.id || nodes[0]?.id || '');
+      setRouteStartId('');
       setRouteEndId(null);
       setRouteResult(null);
     } catch {
@@ -90,67 +284,170 @@ export default function ZooMap() {
   useFocusEffect(useCallback(() => {
     void loadPoints();
     setExpanded(false);
-    return () => { pointsVersion.current++; setDetailPoi(null); };
-  }, [loadPoints]));
+    return () => { pointsVersion.current++; setDetailPoi(null); stopLocationTracking(); };
+  }, [loadPoints, stopLocationTracking]));
 
-  function startRouteMode(destinationId?: string) {
+  async function startRouteMode(destinationId?: string) {
     Keyboard.dismiss();
     setRouteMode(true);
-    setRouteStartId(points.find(point => point.id !== destinationId)?.id || '');
-    setRouteEndId(destinationId || null);
+    setSelectingTarget(null);
     clearRoute();
-    setExpanded(true);
     map.current?.reset();
+
+    let hasGps = gpsAvailable;
+    if (!hasGps && !simulation.active && !locationTracking) {
+      hasGps = await startLocationTracking(false);
+    }
+
+    if (hasGps || gpsAvailable) {      setRouteEndId(destinationId || null);
+      if (destinationId) {
+        const activeNode = simulation.active ? simulatedNode : locationRef.current?.node;
+        if (activeNode) {
+          buildGraph([...points, activeNode]);
+          const result = shortestPath(CURRENT_LOCATION_ID, destinationId);
+          setRouteResult(result);
+          setRouteError(result ? '' : t('routeNotFound'));
+        }
+      }
+    } else {      if (destinationId) {
+        setRouteEndId(destinationId);
+        setRouteStartId('');
+        setSelectingTarget('start');
+      } else {
+        setRouteStartId('');
+        setRouteEndId(null);
+        setSelectingTarget('start');
+      }
+    }
   }
 
   function leaveRouteMode() {
     setRouteMode(false);
+    setSelectingTarget(null);
     clearRoute();
   }
 
-  function selectRoutePoint(kind: 'start' | 'end', id: string) {
-    Keyboard.dismiss();
-    if (kind === 'start') {
-      setRouteStartId(id);
-      if (id === routeEndId) setRouteEndId(null);
-    } else {
-      setRouteEndId(id);
-      if (id === routeStartId) setRouteStartId('');
-    }
-    clearRoute();
+  function stopNavigation() {
+    leaveRouteMode();
+    simulation.stop();
+    setSelected(null);
+    setExpanded(false);
   }
 
-  function findRoute() {
-    Keyboard.dismiss();
-    if (!routeStartId || !routeEndId) {
-      setRouteError(t('routeSelectPoints'));
-      return;
-    }
-    if (routeStartId === routeEndId) {
-      setRouteError(t('routeDifferentPoints'));
-      return;
-    }
-    const result = shortestPath(routeStartId, routeEndId);
+  function swapPoints() {
+    if (!manualRouteStartId || !routeEndId) return;
+    const newStart = routeEndId;
+    const newEnd = manualRouteStartId;
+    setRouteStartId(newStart);
+    setRouteEndId(newEnd);
+    clearRoute();
+    buildGraph(routePoints);
+    const result = shortestPath(newStart, newEnd);
     setRouteResult(result);
     setRouteError(result ? '' : t('routeNotFound'));
-    if (result) setExpanded(false);
+  }
+
+  function resetPoints() {
+    setRouteStartId('');
+    setRouteEndId(null);
+    clearRoute();
+    setSelectingTarget('start');
+  }
+
+  function startSimulation() {
+    const demo = currentRouteResult?.path.length ? currentRouteResult.path : shortestPath('w47', 'w16')?.path;
+    if (!demo || demo.length < 2) return;
+    if (!mapToGpsCoordinates(demo[0].x, demo[0].y, gpsAnchors)) {
+      setLocationError(t('locationCalibrationMissing'));
+      return;
+    }
+    stopLocationTracking();
+    simulation.start(demo);
+    setLocationError('');
+    setExpanded(false);
+    map.current?.reset();
   }
 
   function selectMapMarker(id: string) {
     Keyboard.dismiss();
     if (routeMode) {
-      setRouteEndId(id === routeStartId ? null : id);
-      clearRoute();
-      setExpanded(true);
+      if (!points.some(point => point.id === id)) return;
+
+      if (gpsRouting) {
+        setRouteEndId(id);
+        clearRoute();
+        buildGraph(routePoints);
+        const result = shortestPath(CURRENT_LOCATION_ID, id);
+        setRouteResult(result);
+        setRouteError(result ? '' : t('routeNotFound'));
+        return;
+      }
+
+      // Manual 2 POI selection by tapping on the map
+      if (selectingTarget === 'start') {
+        if (id === routeEndId) {
+          setRouteEndId(null);
+        }
+        setRouteStartId(id);
+        setSelectingTarget(null);
+        if (routeEndId && id !== routeEndId) {
+          buildGraph(routePoints);
+          const result = shortestPath(id, routeEndId);
+          setRouteResult(result);
+          setRouteError(result ? '' : t('routeNotFound'));
+        } else {
+          clearRoute();
+        }
+        return;
+      }
+
+      if (selectingTarget === 'end') {
+        if (id === manualRouteStartId) {
+          setRouteStartId('');
+        }
+        setRouteEndId(id);
+        setSelectingTarget(null);
+        if (manualRouteStartId && id !== manualRouteStartId) {
+          buildGraph(routePoints);
+          const result = shortestPath(manualRouteStartId, id);
+          setRouteResult(result);
+          setRouteError(result ? '' : t('routeNotFound'));
+        } else {
+          clearRoute();
+        }
+        return;
+      }
+
+      // Default sequential picking:
+      if (!manualRouteStartId) {
+        setRouteStartId(id);
+        if (id === routeEndId) setRouteEndId(null);
+        clearRoute();
+      } else if (!routeEndId) {
+        if (id === manualRouteStartId) return;
+        setRouteEndId(id);
+        buildGraph(routePoints);
+        const result = shortestPath(manualRouteStartId, id);
+        setRouteResult(result);
+        setRouteError(result ? '' : t('routeNotFound'));
+      } else {
+        if (id === manualRouteStartId) return;
+        setRouteEndId(id);
+        buildGraph(routePoints);
+        const result = shortestPath(manualRouteStartId, id);
+        setRouteResult(result);
+        setRouteError(result ? '' : t('routeNotFound'));
+      }
       return;
     }
+
     setSelected(points.find(item => item.id === id) ?? null);
     setExpanded(true);
   }
 
-  const pathNodes = routeResult?.path ?? [];
-  const routeCaption = [routeStartId, routeEndId].map(id => points.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
-  const routeReady = !!routeStartId && !!routeEndId && routeStartId !== routeEndId;
+  const pathNodes = currentRouteResult?.path ?? simulation.path;
+  const routeCaption = [routeStartId, routeEndId].map(id => routePoints.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
+  const navigating = routeMode && !!currentRouteResult;
 
   return <View style={styles.screen}>
     <MapCanvas
@@ -178,82 +475,233 @@ export default function ZooMap() {
           <Text style={[styles.chipText, zone === value && styles.chipTextActive]}>{t(key)}</Text>
         </Pressable>)}
       </ScrollView>}
-      <Pressable accessibilityRole="button" accessibilityState={{ selected: routeMode }}
+      {!navigating && <Pressable accessibilityRole="button" accessibilityState={{ selected: routeMode }}
         disabled={!routeMode && (loadingPoints || pointsError || points.length < 2)}
-        onPress={() => routeMode ? leaveRouteMode() : startRouteMode()}
+        onPress={() => routeMode ? leaveRouteMode() : void startRouteMode()}
         style={[styles.routeAction, routeMode && styles.routeActionActive]}>
         <Text style={[styles.routeActionIcon, routeMode && styles.routeActionTextActive]}>{routeMode ? '×' : '↗'}</Text>
         <Text style={[styles.routeActionText, routeMode && styles.routeActionTextActive]}>
           {routeMode ? t('closeRoute') : t('findRoute')}
         </Text>
-      </Pressable>
-      {routeMode && !expanded && <Pressable accessibilityRole="button" onPress={() => setExpanded(true)} style={styles.routeAction}>
-        <Text style={styles.routeActionText}>{t('editRoute')}</Text>
       </Pressable>}
+      {!!locationError && <View accessibilityRole="alert" style={[styles.locationStatus, styles.locationError]}>
+        <Text style={styles.locationStatusIcon}>!</Text>
+        <Text style={styles.locationStatusText}>{locationError}</Text>
+      </View>}
+      {__DEV__ && simulation.active && <View style={styles.simulationPanel}>
+        <View style={styles.sheetHeader}><Text style={styles.placeTitle}>{t('gpsSimulation')} · {Math.round(simulation.progress * 100)}%</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('gpsSimulationClose')} onPress={simulation.stop} style={styles.clear}><Text>×</Text></Pressable></View>
+        <Text style={styles.caption}>{simulation.progress >= 1 ? t('gpsSimulationDone') : t('gpsSimulationHint')}</Text>
+        {simulation.gps && <Text selectable style={styles.caption}>Lat {simulation.gps.latitude.toFixed(7)} / Lng {simulation.gps.longitude.toFixed(7)}</Text>}
+        <Text style={styles.caption}>{simulatedCoordinates ? `X ${simulatedCoordinates.x.toFixed(2)}% / Y ${simulatedCoordinates.y.toFixed(2)}%` : t('locationOutsideMap')}</Text>
+        <View style={styles.simulationActions}>
+          <Pressable accessibilityRole="button" onPress={simulation.toggle} style={styles.secondaryAction}><Text style={styles.swapText}>{simulation.running ? t('gpsSimulationPause') : t('gpsSimulationPlay')}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={simulation.reset} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationReset')}</Text></Pressable>
+        </View>
+        <View style={styles.simulationActions}>
+          <Pressable accessibilityRole="button" onPress={() => simulation.inject({ latitude: 10.787366007101104, longitude: 106.70500295127725 })} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationGate')}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => simulation.inject({ latitude: 10.76, longitude: 106.66 })} style={styles.secondaryAction}><Text style={styles.swapText}>{t('gpsSimulationOutside')}</Text></Pressable>
+        </View>
+      </View>}
     </View>
 
     <View style={[styles.tools, { top: insets.top + (routeMode ? 72 : 194) }]}>
       <Control label={t('zoomIn')} symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
       <Control label={t('zoomOut')} symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
       <Control label={t('resetMap')} symbol="⌖" onPress={() => map.current?.reset()} />
+      {!navigating && <Control label={locationTracking ? t('locationStopTracking') : t('myLocation')} symbol={locationLoading ? '…' : locationTracking ? '■' : '◎'} disabled={locationLoading || simulation.active} onPress={() => void toggleLocationTracking()} />}
+      {__DEV__ && !navigating && !simulation.active && <Control label={t('gpsSimulation')} symbol="▶" disabled={locationLoading} onPress={startSimulation} />}
     </View>
 
-    {(!routeMode || expanded) && <View style={[styles.sheet, expanded && { height: Math.min(height * 0.56, Math.max(180, height - insets.top - 190)) }]}>
-      <Pressable motion={false} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={expanded ? t('collapseList') : t('expandList')} onPress={() => setExpanded(value => !value)} style={styles.sheetToggle}>
-        <View style={styles.handleArea}>
-          <View style={styles.handle} />
-        </View>
-        <View style={styles.sheetHeader}>
-          <Text numberOfLines={2} style={styles.title}>{routeMode ? routeResult ? t('routeFound') : t('findRoute') : selected ? selected.name : `${t('garden')} · ${items.length}`}</Text>
-          <Text style={styles.caption}>{expanded ? '⌄' : '⌃'}</Text>
-        </View>
-        <Text numberOfLines={2} style={styles.caption}>{loadingPoints ? t('mapLoading') : pointsError ? t('mapLoadFailed') : routeMode ? routeResult ? routeCaption : t('routeHelp') : t('mapBrowseHint')}</Text>
+    {navigating ? (
+      <Pressable accessibilityRole="button" accessibilityLabel={t('stopNavigation')}
+        onPress={stopNavigation} style={[styles.stopNavigation, { bottom: Math.max(insets.bottom, 16) }]}>
+        <Text style={styles.findRouteText}>■ {t('stopNavigation')}</Text>
       </Pressable>
-      {expanded && <Animated.View entering={fadeIn} style={{ flex: 1 }}><ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        {loadingPoints ? <View style={styles.loading}><ActivityIndicator color="#285A46" /><Text style={styles.body}>{t('mapLoading')}</Text></View> : pointsError ? <>
-          <Text accessibilityRole="alert" style={styles.routeError}>{t('mapLoadFailed')}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void loadPoints()} style={styles.findRoute}>
-            <Text style={styles.findRouteText}>{t('retry')}</Text>
-          </Pressable>
-        </> : !points.length ? <Text style={styles.body}>{t('mapEmpty')}</Text> : routeMode ? <>
-          <RoutePointSelector points={points} label={t('startPoint')} selectedId={routeStartId}
-            onSelect={id => selectRoutePoint('start', id)} disabledId={routeEndId} />
-          <Pressable accessibilityRole="button" accessibilityLabel={t('swapRoute')} disabled={!routeReady}
-            onPress={() => { setRouteStartId(routeEndId!); setRouteEndId(routeStartId); clearRoute(); }}
-            style={[styles.swap, !routeReady && styles.disabled]}><Text style={styles.swapText}>⇅  {t('swapRoute')}</Text></Pressable>
-          <RoutePointSelector points={points} label={t('endPoint')} selectedId={routeEndId}
-            onSelect={id => selectRoutePoint('end', id)} disabledId={routeStartId} />
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !routeReady }} disabled={!routeReady} onPress={findRoute} style={[styles.findRoute, !routeReady && styles.disabled]}>
-            <Text style={styles.findRouteText}>{t('findShortestRoute')}</Text>
-          </Pressable>
-          {!!routeError && <Text accessibilityRole="alert" style={styles.routeError}>{routeError}</Text>}
-          {routeResult && <Animated.Text entering={slideIn} accessibilityRole="summary" style={styles.routeSummary}>
-            {t('routeFound')} · {routeResult.stepsCount} {t('segments')}
-          </Animated.Text>}
-          {routeResult && <Pressable accessibilityRole="button" onPress={() => setExpanded(false)} style={styles.secondaryAction}><Text style={styles.swapText}>{t('viewRouteMap')} ↗</Text></Pressable>}
-        </> : selected ? <>
-          <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={{ paddingVertical: 8 }}><Text style={styles.body}>{t('backToList')}</Text></Pressable>
-          <View style={styles.selectedOverview}>
-            <AnimalThumbnail id={selected.id} emoji={selected.emoji || markerEmoji(selected.category)} imageUrl={selected.imageUrl ?? null} width={88} height={80} radius={16} />
-            <View style={{ flex: 1, gap: 6 }}><Text style={styles.placeTitle}>{selected.name}</Text><Text style={styles.caption}>{selected.zone}</Text></View>
+    ) : routeMode ? (
+      <View style={[styles.routeSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.routeSheetHeader}>
+          <View style={styles.routeSheetTitleRow}>
+            <View style={styles.routeSheetIconBadge}>
+              <Text style={styles.routeSheetIconEmoji}>{gpsRouting ? '📍' : '🧭'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.routeSheetTitle}>{currentRouteResult ? t('routeFound') : t('findRoute')}</Text>
+              <Text numberOfLines={1} style={styles.routeSheetSubtitle}>
+                {gpsRouting
+                  ? (routeEndId ? routeCaption : t('routeStepGps'))
+                  : (!manualRouteStartId && !routeEndId)
+                  ? t('routeStepStart')
+                  : (manualRouteStartId && !routeEndId)
+                  ? t('routeStepEnd')
+                  : (!manualRouteStartId && routeEndId)
+                  ? t('routeStepStart')
+                  : routeCaption}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('closeRoute')}
+              onPress={leaveRouteMode}
+              style={styles.routeCloseBtn}
+            >
+              <Text style={styles.routeCloseBtnText}>✕</Text>
+            </Pressable>
           </View>
-          <View style={styles.detail}><Text numberOfLines={4} style={styles.body}>{selected.shortDesc || selected.detailDesc || t('poiDescriptionMissing')}</Text></View>
-          <Pressable accessibilityRole="button" onPress={() => setDetailPoi(selected)} style={styles.detailLink}>
-            <Text style={styles.detailLinkText}>{t('poiViewDetails')} ↗</Text>
+        </View>
+
+        {/* Selected Points Cards */}
+        <View style={styles.routePointsBox}>
+          {/* Start Point */}
+          <Pressable
+            accessibilityRole="button"
+            disabled={gpsRouting}
+            onPress={() => setSelectingTarget('start')}
+            style={[
+              styles.routePointRow,
+              !gpsRouting && selectingTarget === 'start' && styles.routePointRowActive,
+            ]}
+          >
+            <View style={[styles.routeDot, { backgroundColor: '#047857' }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.routePointLabel}>{t('startPoint')}</Text>
+              <Text numberOfLines={1} style={[styles.routePointVal, !startPointName && styles.routePointValEmpty]}>
+                {startPointName || t('routeTapOnMap')}
+              </Text>
+            </View>
+            {!gpsRouting && !!manualRouteStartId && (
+              <Text style={styles.routePointChangeText}>{selectingTarget === 'start' ? '●' : t('routeChange')}</Text>
+            )}
           </Pressable>
-          {!detailPoi && <PoiAudioControl key={`${selected.id}:${language}`} poiId={selected.id} />}
-          <Pressable accessibilityRole="button" disabled={points.length < 2} onPress={() => startRouteMode(selected.id)} style={styles.findRoute}><Text style={styles.findRouteText}>{t('directionsHere')} ↗</Text></Pressable>
-        </> : <>
-          {items.map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => setSelected(item)} style={styles.place}>
-            <AnimalThumbnail id={item.id} emoji={item.emoji || markerEmoji(item.category)} imageUrl={item.imageUrl ?? null} width={44} height={44} radius={14} />
-            <View style={{ flex: 1, gap: 4 }}><Text style={styles.placeTitle}>{item.name}</Text><Text style={styles.caption}>{item.zone || t('liveMap')}</Text></View>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>)}
-          {!items.length && <View style={styles.loading}><Text style={styles.body}>{t('noMatchingPlaces')}</Text>
-            <Pressable accessibilityRole="button" onPress={() => { setQuery(''); setZone('all'); Keyboard.dismiss(); }} style={styles.secondaryAction}><Text style={styles.swapText}>{t('clearFilters')}</Text></Pressable></View>}
-        </>}
-      </ScrollView></Animated.View>}
-    </View>}
+
+          {/* End Point */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setSelectingTarget('end')}
+            style={[
+              styles.routePointRow,
+              selectingTarget === 'end' && styles.routePointRowActive,
+            ]}
+          >
+            <View style={[styles.routeDot, { backgroundColor: '#DC2626' }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.routePointLabel}>{t('endPoint')}</Text>
+              <Text numberOfLines={1} style={[styles.routePointVal, !endPointName && styles.routePointValEmpty]}>
+                {endPointName || t('routeTapOnMap')}
+              </Text>
+            </View>
+            {!!routeEndId && (
+              <Text style={styles.routePointChangeText}>{selectingTarget === 'end' ? '●' : t('routeChange')}</Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Footer Actions / Results */}
+        {!!routeError && (
+          <Text accessibilityRole="alert" style={styles.routeError}>{routeError}</Text>
+        )}
+
+        {currentRouteResult ? (
+          <View style={styles.routeResultBar}>
+            <View style={styles.routeResultInfo}>
+              <Text style={styles.routeResultSteps}>
+                {currentRouteResult.stepsCount} {t('segments')}
+              </Text>
+              {typeof currentRouteResult.totalDistance === 'number' && (
+                <Text style={styles.routeResultDist}>
+                  ~{Math.round(currentRouteResult.totalDistance * 10)}m
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {!gpsRouting && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('swapRoute')}
+                  onPress={swapPoints}
+                  style={styles.routeSmallBtn}
+                >
+                  <Text style={styles.routeSmallBtnText}>⇄ {t('swapRoute')}</Text>
+                </Pressable>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('routeReset')}
+                onPress={resetPoints}
+                style={styles.routeSmallBtn}
+              >
+                <Text style={styles.routeSmallBtnText}>{t('routeReset')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.routeActionBar}>
+            <Text style={styles.routeHintText}>
+              {!gpsRouting
+                ? !manualRouteStartId
+                  ? '👉 ' + t('routeStepStart')
+                  : !routeEndId
+                  ? '👉 ' + t('routeStepEnd')
+                  : ''
+                : !routeEndId
+                ? '👉 ' + t('routeStepGps')
+                : ''}
+            </Text>
+            {!gpsRouting && (manualRouteStartId || routeEndId) ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('routeReset')}
+                onPress={resetPoints}
+                style={styles.routeSmallBtn}
+              >
+                <Text style={styles.routeSmallBtnText}>{t('routeReset')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+      </View>
+    ) : (
+      <View style={[styles.sheet, expanded && { height: Math.min(height * 0.56, Math.max(180, height - insets.top - 190)) }]}>
+        <Pressable motion={false} accessibilityRole="button" accessibilityState={{ expanded }} accessibilityLabel={expanded ? t('collapseList') : t('expandList')} onPress={() => setExpanded(value => !value)} style={styles.sheetToggle}>
+          <View style={styles.handleArea}>
+            <View style={styles.handle} />
+          </View>
+          <View style={styles.sheetHeader}>
+            <Text numberOfLines={2} style={styles.title}>{selected ? selected.name : `${t('garden')} · ${items.length}`}</Text>
+            <Text style={styles.caption}>{expanded ? '⌄' : '⌃'}</Text>
+          </View>
+          <Text numberOfLines={2} style={styles.caption}>{loadingPoints ? t('mapLoading') : pointsError ? t('mapLoadFailed') : t('mapBrowseHint')}</Text>
+        </Pressable>
+        {expanded && <Animated.View entering={fadeIn} style={{ flex: 1 }}><ScrollView style={{ flex: 1 }} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          {loadingPoints ? <View style={styles.loading}><ActivityIndicator color="#285A46" /><Text style={styles.body}>{t('mapLoading')}</Text></View> : pointsError ? <>
+            <Text accessibilityRole="alert" style={styles.routeError}>{t('mapLoadFailed')}</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadPoints()} style={styles.findRoute}>
+              <Text style={styles.findRouteText}>{t('retry')}</Text>
+            </Pressable>
+          </> : !points.length ? <Text style={styles.body}>{t('mapEmpty')}</Text> : selected ? <>
+            <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={{ paddingVertical: 8 }}><Text style={styles.body}>{t('backToList')}</Text></Pressable>
+            <View style={styles.selectedOverview}>
+              <AnimalThumbnail id={selected.id} emoji={selected.emoji || markerEmoji(selected.category)} imageUrl={selected.imageUrl ?? null} width={88} height={80} radius={16} />
+              <View style={{ flex: 1, gap: 6 }}><Text style={styles.placeTitle}>{selected.name}</Text><Text style={styles.caption}>{selected.zone}</Text></View>
+            </View>
+            <View style={styles.detail}><Text numberOfLines={4} style={styles.body}>{selected.shortDesc || selected.detailDesc || t('poiDescriptionMissing')}</Text></View>
+            <Pressable accessibilityRole="button" onPress={() => setDetailPoi(selected)} style={styles.detailLink}>
+              <Text style={styles.detailLinkText}>{t('poiViewDetails')} ↗</Text>
+            </Pressable>
+            {!detailPoi && <PoiAudioControl key={`${selected.id}:${language}`} poiId={selected.id} />}
+            <Pressable accessibilityRole="button" disabled={points.length < 2} onPress={() => void startRouteMode(selected.id)} style={styles.findRoute}><Text style={styles.findRouteText}>{t('directionsHere')} ↗</Text></Pressable>
+          </> : <>
+            {items.map(item => <Pressable key={item.id} accessibilityRole="button" onPress={() => setSelected(item)} style={styles.place}>
+              <AnimalThumbnail id={item.id} emoji={item.emoji || markerEmoji(item.category)} imageUrl={item.imageUrl ?? null} width={44} height={44} radius={14} />
+              <View style={{ flex: 1, gap: 4 }}><Text style={styles.placeTitle}>{item.name}</Text><Text style={styles.caption}>{item.zone || t('liveMap')}</Text></View>
+              <Text style={styles.arrow}>›</Text>
+            </Pressable>)}
+            {!items.length && <View style={styles.loading}><Text style={styles.body}>{t('noMatchingPlaces')}</Text>
+              <Pressable accessibilityRole="button" onPress={() => { setQuery(''); setZone('all'); Keyboard.dismiss(); }} style={styles.secondaryAction}><Text style={styles.swapText}>{t('clearFilters')}</Text></Pressable></View>}
+          </>}
+        </ScrollView></Animated.View>}
+      </View>
+    )}
     {detailPoi && <AnimalDetailPopup key={`${detailPoi.id}:${language}`} poi={{
       id: detailPoi.id, name: detailPoi.name, zone: detailPoi.zone || '',
       emoji: detailPoi.emoji || markerEmoji(detailPoi.category),
@@ -263,35 +711,15 @@ export default function ZooMap() {
   </View>;
 }
 
-function RoutePointSelector({ points, label, selectedId, onSelect, disabledId }: {
-  points: MapNode[];
-  label: string;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  disabledId: string | null;
-}) {
-  return <View style={styles.routeSelector}>
-    <Text style={styles.routeLabel}>{label}</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.routeChoices}>
-      {points.map(point => {
-        const selected = point.id === selectedId;
-        const disabled = point.id === disabledId;
-        return <Pressable key={point.id} accessibilityRole="button" accessibilityState={{ selected, disabled }}
-          disabled={disabled} onPress={() => onSelect(point.id)}
-          style={[styles.routeChoice, selected && styles.routeChoiceActive, disabled && styles.routeChoiceDisabled]}>
-          <Text numberOfLines={1} style={[styles.routeChoiceText, selected && styles.routeChoiceTextActive]}>{point.name}</Text>
-        </Pressable>;
-      })}
-    </ScrollView>
-  </View>;
-}
-
 function Control({ label, symbol, onPress, disabled }: { label: string; symbol: string; onPress: () => void; disabled?: boolean }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled}
     onPress={onPress} style={({ pressed }) => [styles.control, (pressed || disabled) && { opacity: 0.45 }]}><Text style={styles.controlText}>{symbol}</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
+  stopNavigation: { position: 'absolute', alignSelf: 'center', minHeight: 48, paddingHorizontal: 28, borderRadius: 24, backgroundColor: '#285A46', alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  simulationPanel: { backgroundColor: '#FFF', borderRadius: 16, padding: 12, gap: 6, marginRight: 58, borderWidth: 1, borderColor: '#BFDBFE' },
+  simulationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   selectedOverview: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   detailLink: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 8 },
   detailLinkText: { color: a.forest, fontSize: 14, fontWeight: '600' },
@@ -312,6 +740,11 @@ const styles = StyleSheet.create({
   routeActionText: { color: '#285A46', fontSize: 13, fontWeight: '600' },
   routeActionTextActive: { color: '#FFF' },
   tools: { position: 'absolute', right: 16, gap: 10 },
+  locationStatus: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '88%', minHeight: 42, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9, elevation: 3, shadowColor: '#15251A', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  locationError: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' },
+  locationSuccess: { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' },
+  locationStatusIcon: { color: '#1E3A8A', fontSize: 17, fontWeight: '700' },
+  locationStatusText: { flexShrink: 1, color: '#1E3A8A', fontSize: 13, lineHeight: 18, fontWeight: '500' },
   control: { width: 44, height: 44, backgroundColor: '#FFF', borderRadius: 22, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   controlText: { color: '#285A46', fontSize: 26 },
   sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: a.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, elevation: 6, shadowColor: '#15251A', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: -3 } },
@@ -328,21 +761,174 @@ const styles = StyleSheet.create({
   arrow: { fontSize: 24, color: '#788078' },
   detail: { gap: 12, paddingTop: 8 },
   body: { fontSize: 15, lineHeight: 23, color: '#626D63' },
-  routeSelector: { gap: 8 },
-  routeLabel: { color: '#626D63', fontSize: 12, fontWeight: '600' },
-  routeChoices: { gap: 8 },
-  routeChoice: { maxWidth: 260, minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: 'transparent', backgroundColor: '#F2F5F0', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10 },
-  routeChoiceActive: { backgroundColor: '#DDF5E8', borderWidth: 1, borderColor: '#285A46' },
-  routeChoiceDisabled: { opacity: 0.35 },
-  routeChoiceText: { color: '#343D36', fontSize: 14 },
-  routeChoiceTextActive: { color: '#285A46', fontWeight: '600' },
   findRoute: { alignItems: 'center', justifyContent: 'center', minHeight: 44, backgroundColor: '#285A46', borderRadius: 22, marginTop: 2 },
   findRouteText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
   routeError: { color: '#B42318', fontSize: 12 },
-  routeSummary: { color: '#285A46', fontSize: 12, fontWeight: '600' },
   loading: { alignItems: 'center', paddingVertical: 24, gap: 12 },
-  swap: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  swapText: { color: '#285A46', fontSize: 14, fontWeight: '600' },
-  disabled: { opacity: 0.4 },
   secondaryAction: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: '#EDF5EF', paddingHorizontal: 16 },
+  swapText: { color: '#285A46', fontSize: 14, fontWeight: '600' },
+
+  /* Dedicated Route Mode Sheet */
+  routeSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: a.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    gap: 10,
+    elevation: 8,
+    shadowColor: '#15251A',
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  routeSheetHeader: {
+    gap: 2,
+  },
+  routeSheetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  routeSheetIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#EDF5EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeSheetIconEmoji: {
+    fontSize: 18,
+  },
+  routeSheetTitle: {
+    fontSize: 17,
+    lineHeight: 21,
+    color: a.ink,
+    fontWeight: '700',
+    fontFamily: a.serif,
+  },
+  routeSheetSubtitle: {
+    fontSize: 12,
+    color: '#626D63',
+    marginTop: 1,
+  },
+  routeCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F2F5F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeCloseBtnText: {
+    fontSize: 15,
+    color: '#343D36',
+    fontWeight: '600',
+  },
+  routePointsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  routePointRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  routePointRowActive: {
+    borderColor: '#285A46',
+    backgroundColor: '#F0FDF4',
+  },
+  routeDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  routePointLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  routePointVal: {
+    fontSize: 12,
+    color: '#1E293B',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  routePointValEmpty: {
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    fontWeight: '400',
+  },
+  routePointChangeText: {
+    fontSize: 11,
+    color: '#285A46',
+    fontWeight: '600',
+  },
+  routeResultBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EDF5EF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  routeResultInfo: {
+    flex: 1,
+  },
+  routeResultSteps: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#285A46',
+  },
+  routeResultDist: {
+    fontSize: 11,
+    color: '#626D63',
+    marginTop: 1,
+  },
+  routeActionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 32,
+  },
+  routeHintText: {
+    fontSize: 12,
+    color: '#285A46',
+    fontWeight: '600',
+    flex: 1,
+  },
+  routeSmallBtn: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#285A46',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeSmallBtnText: {
+    fontSize: 12,
+    color: '#285A46',
+    fontWeight: '600',
+  },
 });

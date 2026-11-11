@@ -9,6 +9,6 @@
     "dev:local": "concurrently --kill-others --names Agent,BE,FE \"npm run dev:agent\" \"npm run dev:be\" \"npm run dev:fe\""
   },
   "devDependencies": {
-    "concurrently": "^9.2.4"
+    "concurrently": "^9.2.5"
   }
 }

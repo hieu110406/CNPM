@@ -6,10 +6,9 @@ import { initDb } from "./db/database.js";
 import authRoutes from "./routes/auth.routes.js";
 import poiRoutes from "./routes/poi.routes.js";
 import audioRoutes from "./routes/audio.routes.js";
-import adminRoutes from "./routes/admin.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
-import auditRoutes from "./routes/audit.routes.js";
 import pathfindingRoutes from "./routes/pathfinding.routes.js";
+import offlineRoutes from './routes/offline.routes.js';
 
 const app = express();
 app.use(cors());
@@ -21,11 +20,11 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/pois", poiRoutes);
 app.use("/api/audio", audioRoutes);
-app.use("/api/admin-accounts", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/audit-logs", auditRoutes);
 app.use("/api/pathfinding", pathfindingRoutes);
 app.use("/api/route", pathfindingRoutes);
+app.use('/api/offline', offlineRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
-    LayoutDashboard, MapPin, Headphones, BarChart3, Users, ShieldCheck,
+    LayoutDashboard, MapPin, Headphones, Users, ShieldCheck,
     Search, Plus, Trash2, LogOut, Compass, Check, X, AlertCircle,
     CheckCircle2, Clock, Download, Upload, Sparkles,
-    Languages, FileAudio, History, Activity, TrendingUp, ArrowUpRight,
+    Languages, FileAudio, Activity, TrendingUp, ArrowUpRight,
     Edit3, Globe, ExternalLink, UserCog, Info, Server,
     FileText, Mic, RefreshCw, Save, Lock,
 } from "lucide-react";
@@ -146,18 +146,6 @@ const DEFAULT_POI_ZONES = [
     "Dịch vụ vận chuyển", "Ẩm thực & Giải khát", "Tiện ích vệ sinh", "Hỗ trợ y tế",
 ];
 
-const ROLE_OPTIONS = [
-    { value: "admin", label: "Admin", cls: "role-badge--super" },
-];
-
-const OFFLINE_PACKAGE = {
-    version: "v2026.09.21",
-    totalMb: 148.6,
-    limitMb: 150,
-    publishedAt: "21-09-2026",
-    downloads: { android: 1284, ios: 972, web: 305 },
-};
-
 export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     /* ---- Điều hướng ---- */
     const [currentTab, setCurrentTab] = useState("overview");
@@ -212,16 +200,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
     const [exporting, setExporting] = useState(false);
     const [onlineData, setOnlineData] = useState({ total: 0, sessions: [], byLanguage: [], byDevice: [] });
 
-    /* ---- UC7: Admin accounts ---- */
-    const [adminList, setAdminList] = useState([]);
-    const [adminLoading, setAdminLoading] = useState(false);
-    const [showAddAdminModal, setShowAddAdminModal] = useState(false);
-    const [newAdminForm, setNewAdminForm] = useState({ name: "", email: "", password: "" });
-    const [savingAdmin, setSavingAdmin] = useState(false);
-    const [showEditAdminModal, setShowEditAdminModal] = useState(false);
-    const [editAdminForm, setEditAdminForm] = useState(null);
-    const [savingEditAdmin, setSavingEditAdmin] = useState(false);
-
     const getAnalyticsRange = () => {
         if (range === "custom") return { from: customFrom, to: customTo };
         const end = new Date();
@@ -231,10 +209,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         const formatDate = (date) => date.toISOString().slice(0, 10);
         return { from: formatDate(start), to: formatDate(end) };
     };
-
-    /* ---- UC4: Audit log ---- */
-    const [auditLogs, setAuditLogs] = useState([]);
-    const [auditLoading, setAuditLoading] = useState(false);
 
     /* ---- Helper ---- */
     const showToast = (msg, tone = "ok") => {
@@ -265,22 +239,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         const tracks = generatedAudio?.tracks || [];
         return () => tracks.forEach(({ url }) => URL.revokeObjectURL(url));
     }, [generatedAudio]);
-
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            setAdminLoading(true);
-            try {
-                const data = await api.getAdmins();
-                if (!cancelled) setAdminList(data);
-            } catch (err) {
-                if (!cancelled) showToast(err.message, "error");
-            } finally {
-                if (!cancelled) setAdminLoading(false);
-            }
-        })();
-        return () => { cancelled = true; };
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -318,22 +276,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
         })();
         return () => { cancelled = true; };
     }, [range, customFrom, customTo]);
-
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            setAuditLoading(true);
-            try {
-                const data = await api.getAuditLogs();
-                if (!cancelled) setAuditLogs(data);
-            } catch (err) {
-                if (!cancelled) console.error("Audit:", err.message);
-            } finally {
-                if (!cancelled) setAuditLoading(false);
-            }
-        })();
-        return () => { cancelled = true; };
-    }, []);
 
     useEffect(() => {
         if (!audioPoiId) {
@@ -383,73 +325,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
             const data = await api.getAnalytics(getAnalyticsRange());
             setAnalytics(data);
             showToast("Đã đặt lại lượt nghe audio về 0", "success");
-        } catch (err) {
-            showToast(err.message, "error");
-        }
-    };
-
-    /* =========================================================
-       UC7 — ADMIN
-       ========================================================= */
-    const handleCreateAdmin = async (e) => {
-        e.preventDefault();
-        if (!newAdminForm.name.trim()) return showToast("Vui lòng nhập họ tên", "error");
-        if (!newAdminForm.email.trim()) return showToast("Vui lòng nhập email", "error");
-        if (newAdminForm.password.length < 6) return showToast("Mật khẩu tối thiểu 6 ký tự", "error");
-
-        setSavingAdmin(true);
-        try {
-            const created = await api.createAdmin(newAdminForm);
-            setAdminList((prev) => [...prev, created]);
-            setShowAddAdminModal(false);
-            setNewAdminForm({ name: "", email: "", password: "" });
-            showToast("Đã tạo tài khoản mới");
-        } catch (err) {
-            showToast(err.message, "error");
-        } finally {
-            setSavingAdmin(false);
-        }
-    };
-
-    const handleOpenEditAdmin = (a) => {
-        setEditAdminForm({
-            dbId: a.dbId, id: a.id, name: a.name,
-            email: a.email, status: a.status,
-        });
-        setShowEditAdminModal(true);
-    };
-
-    const handleSaveEditAdmin = async (e) => {
-        e.preventDefault();
-        if (!editAdminForm.name.trim()) return showToast("Vui lòng nhập họ tên", "error");
-        if (!editAdminForm.email.trim()) return showToast("Vui lòng nhập email", "error");
-
-        setSavingEditAdmin(true);
-        try {
-            const updated = await api.updateAdmin(editAdminForm.dbId, {
-                name: editAdminForm.name,
-                email: editAdminForm.email,
-                status: editAdminForm.status,
-            });
-            setAdminList((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
-            setShowEditAdminModal(false);
-            setEditAdminForm(null);
-            showToast("Đã cập nhật tài khoản");
-        } catch (err) {
-            showToast(err.message, "error");
-        } finally {
-            setSavingEditAdmin(false);
-        }
-    };
-
-    const handleDeactivateAdmin = async (a) => {
-        if (!window.confirm(`Vô hiệu hoá tài khoản ${a.email}?`)) return;
-        try {
-            await api.deactivateAdmin(a.dbId);
-            setAdminList((prev) =>
-                prev.map((x) => (x.id === a.id ? { ...x, status: "deactivated" } : x))
-            );
-            showToast("Đã vô hiệu hoá tài khoản");
         } catch (err) {
             showToast(err.message, "error");
         }
@@ -928,22 +803,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                     <div className="admin-nav-group" style={{ marginTop: 24 }}>
                         <div className="admin-nav-title">GIÁM SÁT &amp; HỆ THỐNG</div>
 
-                        <button onClick={() => setCurrentTab("analytics")}
-                            className={`admin-nav-item ${currentTab === "analytics" ? "is-active" : ""}`}>
-                            <BarChart3 size={18} /><span>Phân tích &amp; Thống kê</span>
-                        </button>
-
-                        <button onClick={() => setCurrentTab("accounts")}
-                            className={`admin-nav-item ${currentTab === "accounts" ? "is-active" : ""}`}>
-                            <Users size={18} /><span>Tài khoản Admin</span>
-                            <span className="admin-nav-badge">{adminList.length}</span>
-                        </button>
-
-                        <button onClick={() => setCurrentTab("audit")}
-                            className={`admin-nav-item ${currentTab === "audit" ? "is-active" : ""}`}>
-                            <History size={18} /><span>Audit Log</span>
-                        </button>
-
                         <div className="admin-dash__system-card">
                             <div className="admin-dash__system-head">
                                 <span className="admin-dash__ping" />
@@ -1177,10 +1036,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="dash-grid-2">
                                 <div className="dash-card">
                                     <div className="dash-card__head">
-                                        <div>
-                                            <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ sử dụng</h3>
-                                            <p className="dash-card__desc">Dựa trên USAGE_LOG — language_code</p>
-                                        </div>
+                                        <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ sử dụng</h3>
+                                        <p className="dash-card__desc">Dựa trên USAGE_LOG — language_code</p>
                                     </div>
                                     <div className="dash-card__body">
                                         {(() => {
@@ -1205,10 +1062,8 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
 
                                 <div className="dash-card">
                                     <div className="dash-card__head">
-                                        <div>
-                                            <h3 className="dash-card__title"><Activity size={17} className="text-amber" /> Top POI được nghe nhiều nhất</h3>
-                                            <p className="dash-card__desc">Lượt auto-play + manual play</p>
-                                        </div>
+                                        <h3 className="dash-card__title"><Activity size={17} className="text-amber" /> Top POI được nghe nhiều nhất</h3>
+                                        <p className="dash-card__desc">Lượt auto-play + manual play</p>
                                     </div>
                                     <div className="zones-rank-list">
                                         {(analytics?.topPois?.length > 0 ? analytics.topPois : [
@@ -1236,27 +1091,26 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                             <div className="dash-card" style={{ marginTop: 16 }}>
                                 <div className="dash-card__head">
                                     <div>
-                                        <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline đang phát hành</h3>
-                                        <p className="dash-card__desc">Ngưỡng PRD: ≤ 150 MB</p>
+                                        <h3 className="dash-card__title">
+                                            <Download size={17} className="text-emerald" /> Thống kê tải Offline trên Web
+                                        </h3>
+                                        <p className="dash-card__desc">
+                                            Số lượt yêu cầu tải ZIP qua Safari, Chrome và các trình duyệt Web trong khoảng thời gian đang chọn.
+                                        </p>
                                     </div>
-                                    <button onClick={() => setCurrentTab("analytics")} className="dash-card__link">
-                                        Xem chi tiết &rarr;
-                                    </button>
                                 </div>
                                 <div className="package-card">
                                     <div className="package-card__row">
-                                        <span>Phiên bản: <strong>{OFFLINE_PACKAGE.version}</strong></span>
-                                        <span>Phát hành: {OFFLINE_PACKAGE.publishedAt}</span>
+                                        <span>Lượt tải Offline trên Web</span>
+                                        <strong style={{ fontSize: 28, color: "#205E48" }}>
+                                            {analytics?.offlineDownloads
+                                                ? Number(analytics.offlineDownloads.web ?? 0).toLocaleString("vi-VN")
+                                                : analyticsLoading ? "Đang tải..." : "Chưa có dữ liệu"}
+                                        </strong>
                                     </div>
-                                    <div>
-                                        <div className="package-card__row">
-                                            <span>Dung lượng hiện tại</span>
-                                            <span className="package-card__size">{OFFLINE_PACKAGE.totalMb} / {OFFLINE_PACKAGE.limitMb} MB</span>
-                                        </div>
-                                        <div className={`meter ${OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb > 0.95 ? "is-danger" : ""}`}>
-                                            <div className="meter__fill" style={{ "--pct": `${(OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb) * 100}%` }} />
-                                        </div>
-                                    </div>
+                                    <p style={{ marginTop: 16, fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>
+                                        Mỗi yêu cầu tải ZIP từ Website được Backend ghi nhận là một lượt, không phải số người dùng duy nhất hay xác nhận lưu thành công. Không thống kê danh tính người tải.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -1642,318 +1496,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                         </div>
                     )}
 
-                    {/* ================= TAB: ANALYTICS (UC7) ================= */}
-                    {currentTab === "analytics" && (
-                        <div className="admin-tab-view animate-fade">
-                            <div className="admin-tab-head">
-                                <div>
-                                    <h1 className="admin-tab-title">Phân Tích &amp; Thống Kê</h1>
-                                </div>
-                                <div className="admin-tab-actions">
-                                    <div className="admin-filter-tabs">
-                                        {["1d", "7d", "30d", "custom"].map((r) => (
-                                            <button key={r}
-                                                className={`filter-btn ${range === r ? "is-active" : ""}`}
-                                                onClick={() => setRange(r)}>
-                                                {r === "1d" ? "Hôm nay" : r === "7d" ? "7 ngày" : r === "30d" ? "30 ngày" : "Tuỳ chọn"}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <button className="btn-export" onClick={() => handleExport("PDF")} disabled={exporting}>
-                                        <FileText size={14} /> PDF
-                                    </button>
-                                    <button className="btn-export" onClick={() => handleExport("Excel")} disabled={exporting}>
-                                        <Download size={14} /> Excel
-                                    </button>
-                                    <button className="btn-export" style={{ color: '#ef4444', borderColor: '#fca5a5' }} onClick={handleResetUsage} title="Đặt lại toàn bộ lượt nghe audio về 0">
-                                        <RefreshCw size={14} /> Reset về 0
-                                    </button>
-                                </div>
-                            </div>
-
-                            {analyticsLoading && (
-                                <div className="admin-banner admin-banner--ok" style={{ marginBottom: 16 }}>
-                                    <Clock size={16} /> Đang tải dữ liệu phân tích...
-                                </div>
-                            )}
-
-                            {!analyticsLoading && !analytics?.hasData && (
-                                <div className="admin-banner admin-banner--warning" style={{ marginBottom: 16 }}>
-                                    <Info size={16} /> Không có dữ liệu trong khoảng thời gian đã chọn.
-                                </div>
-                            )}
-
-                            <div className="stats-grid">
-                                <div className="stat-card">
-                                    <div className="stat-card__icon stat-card__icon--blue"><TrendingUp size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {analytics?.totalVisits?.toLocaleString() ?? "—"}
-                                    </div>
-                                    <div className="stat-card__label">Tổng lượt truy cập</div>
-                                    <div className="stat-card__foot">Theo khoảng thời gian đã chọn</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-card__icon stat-card__icon--emerald"><Activity size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {analytics ? `${analytics.completedRate}%` : "—"}
-                                    </div>
-                                    <div className="stat-card__label">Tỉ lệ nghe hoàn thành ≥80%</div>
-                                    <div className="stat-card__foot">Theo dõi qua cột completed</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-card__icon stat-card__icon--amber"><Download size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {(analytics?.offlineDownloads?.total ?? 0).toLocaleString()}
-                                    </div>
-                                    <div className="stat-card__label">Lượt tải offline package</div>
-                                    <div className="stat-card__foot">Theo dữ liệu usage_log offline</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-card__icon stat-card__icon--purple"><Server size={20} /></div>
-                                    <div className="stat-card__value" style={{ marginTop: 10 }}>
-                                        {analytics?.totalAudioPublished ?? "—"}
-                                    </div>
-                                    <div className="stat-card__label">Audio đã publish</div>
-                                    <div className="stat-card__foot">
-                                        Trên tổng {analytics?.totalPois ?? "—"} POI
-                                    </div>
-                                </div>
-
-                            <div className="dash-card analytics-live-card">
-                                <div className="dash-card__head">
-                                    <h3 className="dash-card__title"><Users size={17} className="text-emerald" /> Người dùng đang hoạt động</h3>
-                                    <strong>{analytics?.onlineUsers ?? onlineData.total}</strong>
-                                </div>
-                                <div className="dash-card__body analytics-live-card__body">
-                                    <span>Đang online</span>
-                                    <span>{onlineData.byLanguage?.map((item) => `${item.lang.toUpperCase()}: ${item.c}`).join(" • ") || "Chưa có dữ liệu"}</span>
-                                </div>
-                            </div>
-                            </div>
-
-                            <div className="dash-grid-2">
-                                <div className="dash-card">
-                                    <div className="dash-card__head">
-                                        <h3 className="dash-card__title"><Languages size={17} className="text-emerald" /> Phân bổ ngôn ngữ</h3>
-                                    </div>
-                                    <div className="dash-card__body">
-                                        {(() => {
-                                            const d = analytics?.languageDist || { vi: 0, en: 0, zh: 0 };
-                                            return (
-                                                <>
-                                                    <div className="lang-dist__bar">
-                                                        <div className="lang-dist__seg lang-dist__seg--vi" style={{ "--w": `${d.vi}%` }} />
-                                                        <div className="lang-dist__seg lang-dist__seg--en" style={{ "--w": `${d.en}%` }} />
-                                                        <div className="lang-dist__seg lang-dist__seg--zh" style={{ "--w": `${d.zh}%` }} />
-                                                    </div>
-                                                    <div className="lang-dist__legend">
-                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-vi)" }} /><span className="lang-dist__name">Tiếng Việt</span><span className="lang-dist__val">{d.vi}%</span></div>
-                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-en)" }} /><span className="lang-dist__name">English</span><span className="lang-dist__val">{d.en}%</span></div>
-                                                        <div className="lang-dist__item"><span className="lang-dist__swatch" style={{ "--c": "var(--lang-zh)" }} /><span className="lang-dist__name">中文</span><span className="lang-dist__val">{d.zh}%</span></div>
-                                                    </div>
-                                                </>
-                                            );
-                                        })()}
-                                    </div>
-                                </div>
-
-                                <div className="dash-card">
-                                    <div className="dash-card__head">
-                                        <h3 className="dash-card__title"><Server size={17} className="text-emerald" /> Gói Offline</h3>
-                                    </div>
-                                    <div className="package-card">
-                                        <div className="package-card__row">
-                                            <span>Phiên bản</span>
-                                            <strong>{OFFLINE_PACKAGE.version}</strong>
-                                        </div>
-                                        <div>
-                                            <div className="package-card__row">
-                                                <span>Dung lượng</span>
-                                                <span className="package-card__size">{OFFLINE_PACKAGE.totalMb} / {OFFLINE_PACKAGE.limitMb} MB</span>
-                                            </div>
-                                            <div className={`meter ${OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb > 0.95 ? "is-danger" : "is-warning"}`}>
-                                                <div className="meter__fill" style={{ "--pct": `${(OFFLINE_PACKAGE.totalMb / OFFLINE_PACKAGE.limitMb) * 100}%` }} />
-                                            </div>
-                                        </div>
-                                        <div className="package-card__row">
-                                            <span>Android</span><strong>{OFFLINE_PACKAGE.downloads.android.toLocaleString()}</strong>
-                                        </div>
-                                        <div className="package-card__row">
-                                            <span>iOS</span><strong>{OFFLINE_PACKAGE.downloads.ios.toLocaleString()}</strong>
-                                        </div>
-                                        <div className="package-card__row">
-                                            <span>Web (browser)</span><strong>{OFFLINE_PACKAGE.downloads.web.toLocaleString()}</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="dash-card" style={{ marginTop: 16 }}>
-                                <div className="dash-card__head">
-                                    <h3 className="dash-card__title"><MapPin size={17} className="text-emerald" /> Top 5 POI phổ biến nhất</h3>
-                                    <p className="dash-card__desc">Xếp hạng theo lượt play audio từ USAGE_LOG</p>
-                                </div>
-                                <div className="table-responsive">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>POI</th>
-                                                <th>Lượt nghe</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {analytics?.topPois?.length > 0 ? analytics.topPois.map((row, i) => (
-                                                <tr key={i}>
-                                                    <td><strong>#{i + 1}</strong></td>
-                                                    <td>{row.name}</td>
-                                                    <td><span className="price-badge">{row.plays}</span></td>
-                                                </tr>
-                                            )) : (
-                                                <tr>
-                                                    <td colSpan={3} style={{ textAlign: "center", padding: 20, color: "var(--dash-text-3)" }}>
-                                                        Chưa có dữ liệu
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ================= TAB: ADMIN ACCOUNTS (UC7) ================= */}
-                    {currentTab === "accounts" && (
-                        <div className="admin-tab-view animate-fade">
-                            <div className="admin-tab-head">
-                                <div>
-                                    <h1 className="admin-tab-title">Tài Khoản Admin &amp; Phân Quyền</h1>
-                                </div>
-                                <div className="admin-tab-actions">
-                                    <button className="btn-primary-admin" onClick={() => setShowAddAdminModal(true)}>
-                                        <Plus size={16} /> Thêm tài khoản
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="dash-card">
-                                <div className="table-responsive">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Mã</th>
-                                                <th>Nhân sự</th>
-                                                <th>Quyền</th>
-                                                <th>Trạng thái</th>
-                                                <th>Đăng nhập gần nhất</th>
-                                                <th style={{ textAlign: "right" }}>Thao tác</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {adminLoading && (
-                                                <tr>
-                                                     <td colSpan={6} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
-                                                        Đang tải danh sách tài khoản...
-                                                    </td>
-                                                </tr>
-                                            )}
-                                            {!adminLoading && adminList.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={7} style={{ textAlign: "center", padding: 30, color: "var(--dash-text-3)" }}>
-                                                        Chưa có tài khoản nào
-                                                    </td>
-                                                </tr>
-                                            )}
-                                            {!adminLoading && adminList.map((a) => {
-                                                const role = ROLE_OPTIONS.find((r) => r.value === a.role);
-                                                return (
-                                                    <tr key={a.id}>
-                                                        <td><span className="code-badge">{a.id}</span></td>
-                                                        <td>
-                                                            <div className="table-item-title">
-                                                                <div className="avatar-initial">{a.name.charAt(0)}</div>
-                                                                <div>
-                                                                    <div className="font-semibold text-slate-100">{a.name}</div>
-                                                                    <div className="text-xs text-slate-400">{a.email}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td><span className={`role-badge ${role?.cls || ""}`}>{role?.label}</span></td>
-                                                        <td>
-                                                            <span className={`account-status account-status--${a.status}`}>
-                                                                {a.status === "active" && "Đang hoạt động"}
-                                                                {a.status === "locked" && "Đang bị khoá"}
-                                                                {a.status === "deactivated" && "Đã vô hiệu"}
-                                                            </span>
-                                                        </td>
-                                                        <td className="text-xs text-slate-400">{a.lastLogin}</td>
-                                                        <td style={{ textAlign: "right" }}>
-                                                            <div className="table-actions">
-                                                                <button className="btn-action-edit" title="Sửa" onClick={() => handleOpenEditAdmin(a)}>
-                                                                    <UserCog size={15} />
-                                                                </button>
-                                                                 <button className="btn-action-delete" title={a.status === "deactivated" ? "Tài khoản đã vô hiệu" : "Vô hiệu hoá"}
-                                                                     disabled={a.status === "deactivated"}
-                                                                    onClick={() => handleDeactivateAdmin(a)}>
-                                                                    <Lock size={15} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ================= TAB: AUDIT LOG (UC4/UC7) ================= */}
-                    {currentTab === "audit" && (
-                        <div className="admin-tab-view animate-fade">
-                            <div className="admin-tab-head">
-                                <div>
-                                    <h1 className="admin-tab-title">Audit Log</h1>
-                                </div>
-                            </div>
-
-                            <div className="dash-card">
-                                <div className="audit-list">
-                                    {auditLoading && (
-                                        <div className="audit-item" style={{ justifyContent: "center", padding: 30 }}>
-                                            Đang tải nhật ký...
-                                        </div>
-                                    )}
-                                    {!auditLoading && auditLogs.length === 0 && (
-                                        <div className="audit-item" style={{ justifyContent: "center", padding: 30, color: "var(--dash-text-3)" }}>
-                                            Chưa có bản ghi nào
-                                        </div>
-                                    )}
-                                    {!auditLoading && auditLogs.map((log) => (
-                                        <div key={log.id} className={`audit-item audit-item--${log.type}`}>
-                                            <div className="audit-item__icon">
-                                                {log.type === "success" && <CheckCircle2 size={16} />}
-                                                {log.type === "failed" && <AlertCircle size={16} />}
-                                                {log.type === "lock" && <Lock size={16} />}
-                                                {log.type === "change" && <Edit3 size={16} />}
-                                            </div>
-                                            <div>
-                                                <div className="audit-item__title">{log.event}</div>
-                                                <div className="audit-item__detail">
-                                                    {log.admin} • {log.detail}
-                                                </div>
-                                            </div>
-                                            <div className="audit-item__time">
-                                                {log.time ? new Date(log.time).toLocaleString("vi-VN") : "—"}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </main>
             </div>
 
@@ -2057,6 +1599,7 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                             {/* Tabs */}
                                             <div style={{ display: 'flex', gap: 2, padding: '6px 8px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                                                 {[
+
                                                     { key: 'animal', label: '🐾 Động vật' },
                                                     { key: 'plant', label: '🌿 Thực vật' },
                                                     { key: 'facility', label: '🏛️ Tiện ích' },
@@ -2339,109 +1882,6 @@ export default function AdminDashboard({ user, onLogout, onGoToMap }) {
                                 )}
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ================= MODAL: THÊM TÀI KHOẢN ADMIN ================= */}
-            {showAddAdminModal && (
-                <div className="admin-modal-backdrop"
-                    onClick={() => !savingAdmin && setShowAddAdminModal(false)}>
-                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="admin-modal__head">
-                            <div>
-                                <h2 className="admin-modal__title">Thêm tài khoản Admin</h2>
-                                <p className="admin-modal__desc">Tạo tài khoản mới cho nhân sự quản trị Thảo Cầm Viên Sài Gòn</p>
-                            </div>
-                            <button className="clear-btn" onClick={() => setShowAddAdminModal(false)} disabled={savingAdmin}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateAdmin} className="admin-modal__form">
-                            <div className="form-group">
-                                <label>Họ và tên</label>
-                                <input type="text" required placeholder="VD: Nguyễn Văn A"
-                                    value={newAdminForm.name}
-                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, name: e.target.value })}
-                                    disabled={savingAdmin} />
-                            </div>
-                            <div className="form-group">
-                                <label>Email</label>
-                                <input type="email" required placeholder="VD: a.nguyen@saigonzoo.net"
-                                    value={newAdminForm.email}
-                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
-                                    disabled={savingAdmin} />
-                            </div>
-                            <div className="form-group">
-                                <label>Mật khẩu ban đầu (tối thiểu 6 ký tự)</label>
-                                <input type="password" required minLength={6} placeholder="••••••••"
-                                    value={newAdminForm.password}
-                                    onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
-                                    disabled={savingAdmin} />
-                            </div>
-                            <div className="admin-modal__foot">
-                                <button type="button" className="btn-secondary-admin"
-                                    onClick={() => setShowAddAdminModal(false)} disabled={savingAdmin}>
-                                    Huỷ
-                                </button>
-                                <button type="submit" className="btn-primary-admin" disabled={savingAdmin}>
-                                    {savingAdmin ? <><span className="btn-spinner" /> Đang lưu...</> : <><Check size={16} /> Lưu tài khoản</>}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* ================= MODAL: SỬA TÀI KHOẢN ADMIN ================= */}
-            {showEditAdminModal && editAdminForm && (
-                <div className="admin-modal-backdrop"
-                    onClick={() => !savingEditAdmin && setShowEditAdminModal(false)}>
-                    <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="admin-modal__head">
-                            <div>
-                                <h2 className="admin-modal__title">Chỉnh sửa tài khoản Admin</h2>
-                                <p className="admin-modal__desc">Cập nhật thông tin tài khoản {editAdminForm.id}</p>
-                            </div>
-                            <button className="clear-btn" onClick={() => setShowEditAdminModal(false)} disabled={savingEditAdmin}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveEditAdmin} className="admin-modal__form">
-                            <div className="form-group">
-                                <label>Họ và tên</label>
-                                <input type="text" required value={editAdminForm.name}
-                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, name: e.target.value })}
-                                    disabled={savingEditAdmin} />
-                            </div>
-                            <div className="form-group">
-                                <label>Email</label>
-                                <input type="email" required value={editAdminForm.email}
-                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, email: e.target.value })}
-                                    disabled={savingEditAdmin} />
-                            </div>
-                            <div className="form-group">
-                                <label>Trạng thái</label>
-                                <select value={editAdminForm.status}
-                                    onChange={(e) => setEditAdminForm({ ...editAdminForm, status: e.target.value })}
-                                    disabled={savingEditAdmin}>
-                                    <option value="active">Đang hoạt động</option>
-                                    <option value="deactivated">Đã vô hiệu hoá</option>
-                                    <option value="locked">Đang bị khoá</option>
-                                </select>
-                            </div>
-                            <div className="admin-modal__foot">
-                                <button type="button" className="btn-secondary-admin"
-                                    onClick={() => setShowEditAdminModal(false)} disabled={savingEditAdmin}>
-                                    Huỷ
-                                </button>
-                                <button type="submit" className="btn-primary-admin" disabled={savingEditAdmin}>
-                                    {savingEditAdmin ? <><span className="btn-spinner" /> Đang lưu...</> : <><Check size={16} /> Lưu thay đổi</>}
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             )}

@@ -2,6 +2,18 @@
 
 Ứng dụng React Native / Expo. Bản đồ lấy địa điểm từ database qua backend và dùng waypoint, cạnh nối, Dijkstra trong `app/FE/src/components/map/mapGraph.js` của web để tìm đường ngay trên thiết bị. Trang chủ và trang khám phá hiện vẫn dùng dữ liệu mẫu.
 
+## Android và iOS
+
+Dự án dùng Expo SDK 58 để khớp với Expo Go 58 trên điện thoại. Các gói Expo và React Native được đồng bộ bằng `npx.cmd expo install --fix`; không chỉ nâng riêng gói `expo`. Thư mục `mobile` chỉ chứa lệnh chuyển tiếp, không cài thêm Expo tại đó.
+
+Sau khi cập nhật dependencies, dừng Metro cũ rồi chạy từ `mobile`:
+
+```powershell
+npm.cmd start -- --clear
+```
+
+Dùng Expo Go hỗ trợ SDK 58 hoặc development build tương ứng trên Android/iOS. Không sửa `node_modules` hay thêm alias cho asset registry để che lỗi lệch SDK.
+
 ## Kết nối bản đồ với Neon
 
 Backend trong `app/BE` đọc `DATABASE_URL` từ `.env` (đã cấu hình Neon). Mobile không chứa thông tin đăng nhập database.
@@ -88,3 +100,31 @@ npx.cmd tsc --noEmit
 ```
 
 Tìm kiếm, lọc khu vực và hộp chi tiết ở Khám phá chạy bằng dữ liệu mẫu. Bản đồ mobile dùng ảnh tham khảo và đồ thị waypoint `mapGraph.js` của web để tìm tuyến giữa cổng chính và các điểm tham quan mẫu; chưa dùng GPS hoặc phát audio.
+
+
+## Deploy mobile frontend as a website on Vercel
+
+Create a separate Vercel project from the same Git repository. Set Root Directory to mobile/FE and enable "Include source files outside of the Root Directory in the Build Step" in Vercel project settings, because mobile imports app/FE/src/components/map/mapGraph.js.
+
+| Setting | Value |
+| --- | --- |
+| Framework Preset | Other |
+| Root Directory | mobile/FE |
+| Install Command | npm ci |
+| Build Command | npm run build:web |
+| Output Directory | dist |
+| Environment variable | EXPO_PUBLIC_API_URL=https://cnpm-2-9qj5.onrender.com/api |
+
+Set the environment variable for Production and Preview. Expo embeds EXPO_PUBLIC_* values when building, so redeploy after changing them. Only the public API URL belongs here; do not put database or service credentials in EXPO_PUBLIC_* variables.
+
+Push the mobile configuration changes to the repository before importing it. In Vercel choose Add New / Project, import the same repository, and use a separate project name such as cnpm-mobile. Existing web project settings remain independent.
+
+The Expo web output is static; routes /, /explore, and /map are exported as HTML. mobile/FE/vercel.json enables cleanUrls so Vercel serves /map.html as /map and /explore.html as /explore, without an SPA catch-all rewrite. GPS requires HTTPS and permission from the visitor.
+
+API prerequisites: /api/health and /api/pois/public?lang=vi must return JSON successfully, and CORS must allow the mobile website origin. On 2026-10-26 the supplied Render service returned HTTP 503 with the page title Service Suspended; resume that service before expecting POIs and audio to load.
+
+Local production export from the repository root:
+
+```powershell
+npm.cmd --prefix mobile/FE run build:web
+```

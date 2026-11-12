@@ -1,20 +1,43 @@
 # POI Translation and Audio Agent
 
-Agent FastAPI dịch thông tin POI và kịch bản tiếng Việt sang tiếng Anh/Trung giản thể, đồng thời tạo MP3 cho cả ba ngôn ngữ qua 9Router.
+## Local Ollama
 
-## Chạy thử
+Translation uses Ollama, with no OpenAI API key. Speech still uses 9Router.
 
-1. Cài các package Python: `py -m pip install -r agent/requirements.txt` trên Windows hoặc `python -m pip install -r agent/requirements.txt` trên macOS/Linux (chạy tại thư mục `app`).
-2. Sao chép `agent/.env.example` thành `agent/.env`, rồi điền thông tin model dịch cùng `NINEROUTER_API_KEY` và `NINEROUTER_BASE_URL`. URL tunnel trong file mẫu có thể thay đổi; khi chạy local, đặt base URL thành `http://localhost:20128/v1`.
-3. Chạy `npm run dev` tại thư mục `app` để khởi động backend và frontend; frontend hiện gọi agent trên Render.
-4. Nếu muốn chạy agent trên máy local, cài dependencies Python trước rồi chạy `npm run dev:local` tại thư mục `app`. Lệnh `npm run dev:agent` khởi động riêng agent.
+1. Install Ollama and run `ollama pull qwen2.5:1.5b`.
+2. Install Python dependencies: `python -m pip install -r app/agent/requirements.txt`.
+3. Copy `app/agent/.env.example` to `app/agent/.env`. Configure 9Router only if speech is needed.
+4. From `app/agent`, run `uvicorn translat_bot:app --host 0.0.0.0 --port 8000`.
 
-Agent cung cấp `GET /health`, `POST /translate-poi`, `POST /translate-script` và `POST /text-to-speech`. Thêm các biến API key tương ứng vào `agent/.env` khi chạy local và vào Environment của Render khi deploy. Không đặt API key trong frontend hoặc commit vào Git.
+`OLLAMA_BASE_URL` defaults to `http://localhost:11434` (without `/v1`).
+`OLLAMA_MODEL` defaults to `qwen2.5:1.5b`; pull any replacement model before using it.
+Existing OPENAI_* settings are no longer used.
 
-Tab Audio có thể dịch kịch bản VI sang EN/ZH rồi bấm một lần để tạo audio cho cả ba ngôn ngữ. Endpoint 9Router là OpenAI-compatible `/audio/speech`; các model lần lượt là `edge-tts/vi-VN-HoaiMyNeural`, `edge-tts/en-US-EmmaNeural` và `edge-tts/zh-CN-shaanxi-XiaoniNeural`. Agent trả MP3 để frontend có thể xem trước hoặc tải lên lưu trong Supabase Storage.
+## Independent Render service
 
-## Dịch thông tin POI
+The root `render.yaml` creates a standalone Docker web service containing FastAPI and Ollama.
+It does not depend on Ollama running on your personal computer. Ollama listens only on the
+container loopback address. Only FastAPI is exposed publicly.
 
-Agent nhận tên POI, phân khu, mô tả tiếng Việt và metadata; endpoint `POST /translate-poi` trả về bản dịch tiếng Anh và tiếng Trung. Khi thêm POI trên giao diện quản trị, nội dung đã dịch được đưa vào file `.txt` tải về thay vì ghi POI mới vào database.
+1. Push this repository to your Git provider, then choose New > Blueprint in Render and select it.
+2. Review the paid compute plan (`pro`) and 10 GB persistent disk before creating resources.
+3. Set `AGENT_ALLOWED_ORIGINS` to the exact frontend origin (comma-separated for multiple origins).
+   Set `NINEROUTER_BASE_URL` and `NINEROUTER_API_KEY` for speech. That URL must be reachable
+   from Render; `localhost` refers to this container, not your PC.
+4. Startup pulls the configured model if missing, then starts the API on Render's `$PORT`.
+   First startup may take time to download the model. Subsequent restarts reuse `/var/data/ollama`.
+5. Verify `https://<service>.onrender.com/health`, then configure the frontend agent URL
+   to the new service URL. An existing Render service URL can be retained by deploying
+   this Dockerfile to that service instead of creating a new Blueprint service.
 
-Điền `OPENAI_API_KEY`, `OPENAI_BASE_URL` và `OPENAI_MODEL` trong `agent/.env` khi chạy local; cấu hình các biến tương ứng trong Environment của Render khi deploy.
+Endpoints: `GET /health`, `POST /translate-poi`, `POST /translate-script`,
+`POST /text-to-speech`. Request and response shapes are unchanged.
+`/health` checks the API process; run an actual translation to verify model inference.
+
+The small default model is intended as an initial resource-conscious configuration.
+Validate Vietnamese/English/Chinese translation quality and CPU latency with real content;
+use a larger model and more RAM if needed. Translation requests time out after 180 seconds.
+CORS controls browser origins; these endpoints currently have no API authentication.
+
+Render disk documentation: https://render.com/docs/disks
+Ollama model: https://ollama.com/library/qwen2.5:1.5b

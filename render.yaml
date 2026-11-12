@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: poi-ollama-agent
+    runtime: docker
+    plan: pro
+    region: singapore
+    dockerContext: ./app/agent
+    dockerfilePath: ./app/agent/Dockerfile
+    healthCheckPath: /health
+    disk:
+      name: ollama-models
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: OLLAMA_MODEL
+        value: qwen2.5:1.5b
+      - key: AGENT_ALLOWED_ORIGINS
+        sync: false
+      - key: NINEROUTER_BASE_URL
+        sync: false
+      - key: NINEROUTER_API_KEY
+        sync: false

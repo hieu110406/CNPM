@@ -10,8 +10,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from openai import OpenAIError
+from langchain_ollama import ChatOllama
+from ollama import ResponseError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from translation_errors import translation_error_detail
 
@@ -150,20 +150,14 @@ def health() -> dict[str, bool]:
     return {"ok": True}
 
 
-def get_translation_model() -> ChatOpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("OPENAI_BASE_URL")
-    model_name = os.getenv("OPENAI_MODEL")
-    if not api_key or not base_url or not model_name:
-        raise HTTPException(
-            status_code=503,
-            detail="Thiếu cấu hình model dịch OPENAI_API_KEY, OPENAI_BASE_URL hoặc OPENAI_MODEL.",
-        )
-    return ChatOpenAI(
-        model=model_name,
-        base_url=base_url,
-        api_key=api_key,
+def get_translation_model() -> ChatOllama:
+    return ChatOllama(
+        model=os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b"),
+        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0,
+        format="json",
+        num_ctx=8192,
+        client_kwargs={"timeout": 180},
     )
 
 
@@ -230,7 +224,7 @@ Mô tả chi tiết: {detail}""",
                 "detail": request.descriptionsVi.detail,
             }
         )
-    except OpenAIError as error:
+    except (ResponseError, httpx.RequestError) as error:
         logger.exception("Translation model request failed")
         raise HTTPException(
             status_code=502,
@@ -261,7 +255,7 @@ Chỉ trả về JSON hợp lệ theo cấu trúc: {{"en":"...","zh":"..."}}."""
     )
     try:
         result = (prompt | get_translation_model()).invoke({"script": request.script})
-    except OpenAIError as error:
+    except (ResponseError, httpx.RequestError) as error:
         logger.exception("Audio script translation request failed")
         raise HTTPException(
             status_code=502,

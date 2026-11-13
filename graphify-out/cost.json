@@ -1,0 +1,14 @@
+{
+  "runs": [
+    {
+      "date": "2026-11-02T07:40:30.888272+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 165,
+      "usage_measured": false,
+      "usage_note": "Semantic agent token usage unavailable; numeric zero placeholders."
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0
+}

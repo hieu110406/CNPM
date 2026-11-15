@@ -1,29 +1,29 @@
-# Graph Report - CNPM  (2026-11-11)
+# Graph Report - CNPM  (2026-11-15)
 
 ## Corpus Check
-- 138 files · ~76,469 words
+- 138 files · ~75,701 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 41 file(s) not represented in the graph (top: (none) 28, .css 10, .example 2)
 
 ## Summary
-- 960 nodes · 1803 edges · 102 communities (57 shown, 45 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 56 edges (avg confidence: 0.86)
+- 963 nodes · 1798 edges · 101 communities (56 shown, 45 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 58 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ed405a64`
+- Built from commit: `0af22480`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- ZooMap.tsx
+- AnimalDetailPopup.tsx
 - Translation Model Service
 - Zoo Waypoint Routing
-- POI Administration
+- poi.controller.js
 - Expo App Configuration
 - Web Map Rendering
 - Backend Dependencies
-- GPS Presence Lifecycle
+- offline.controller.js
 - Zoo Database Schema
 - Product Requirements
 - Backend Route Finding
@@ -39,7 +39,7 @@
 - Database and Route Seeding
 - Translation and Speech Agent
 - Web App Session
-- MapCanvas.tsx
+- offlineReader.ts
 - Expo Package Scripts
 - Monorepo Development Scripts
 - Mobile TypeScript Tooling
@@ -47,7 +47,7 @@
 - Web Layout Navigation
 - Mobile Zoo Navigation
 - Expo Project Reset
-- Audio Track Management
+- MapCanvas.tsx
 - Mobile Deployment Architecture
 - Root Mobile Scripts
 - HomeScreen.tsx
@@ -94,14 +94,14 @@
 - expo image Dependency
 - expo linking Dependency
 - expo location Dependency
-- supabaseStorage.js
+- ZooMap.tsx
 - expo status bar Dependency
-- request
+- map.ts
 - expo system ui Dependency
 -  Dependency
 - react dom Dependency
-- sw.js
-- react native worklets Dependency
+- expo-splash-screen@~58.0.11
+- expo-symbols
 - CSS Module Types
 - Web HTML Entry
 - Hero Illustration
@@ -114,19 +114,18 @@
 - Android Icon Foreground
 - Q: Phan tich kien truc CNPM va file co the xoa khong anh huong code base
 - expo
-- expo-file-system
+- react@19.3.0
 - expo-web-browser@~58.0.6
-- jszip
-- react-native-gesture-handler@~3.3.0
+- react-native-web@^0.21.4
 
 ## God Nodes (most connected - your core abstractions)
-1. `ZooMap()` - 26 edges
-2. `query()` - 25 edges
-3. `useSettings()` - 25 edges
+1. `query()` - 25 edges
+2. `useSettings()` - 25 edges
+3. `ZooMap()` - 23 edges
 4. `lucide-react` - 22 edges
 5. `useI18n()` - 22 edges
 6. `ZooMap()` - 21 edges
-7. `react-native` - 21 edges
+7. `react-native` - 20 edges
 8. `Automated Audio Guide Product Requirements` - 18 edges
 9. `request()` - 14 edges
 10. `AppIcon()` - 14 edges
@@ -146,23 +145,23 @@
 ## Import Cycles
 - None detected.
 
-## Communities (102 total, 45 thin omitted)
+## Communities (101 total, 45 thin omitted)
 
-### Community 0 - "ZooMap.tsx"
-Cohesion: 0.12
-Nodes (23): react-native-reanimated@4.7.1, getPoiAudio(), formatTime(), PoiAudioControl(), styles, TrackPlayer(), styles, Control() (+15 more)
+### Community 0 - "AnimalDetailPopup.tsx"
+Cohesion: 0.33
+Nodes (9): formatTime(), PoiAudioControl(), styles, TrackPlayer(), AnimalDetailPopup(), styles, AppIcon(), names (+1 more)
 
 ### Community 1 - "Translation Model Service"
-Cohesion: 0.06
-Nodes (19): TranslationErrorsTest, get_translation_model(), health(), LanguageTranslation, LocalizedPoiField, parse_json_response(), PoiDescriptions, PoiFields (+11 more)
+Cohesion: 0.05
+Nodes (22): OllamaTranslationTest, respond(), TranslationErrorsTest, DescriptionTranslations, get_translation_model(), health(), LanguageTranslation, LocalizedPoiField (+14 more)
 
 ### Community 2 - "Zoo Waypoint Routing"
-Cohesion: 0.09
-Nodes (34): activeGraphAdj, activeNodeMap, buildGraph(), EDGES, getDistance(), shortestPath(), STATIC_WAYPOINT_ADJ, WAYPOINT_MAP (+26 more)
+Cohesion: 0.06
+Nodes (35): activeGraphAdj, activeNodeMap, buildGraph(), EDGES, getDistance(), shortestPath(), STATIC_WAYPOINT_ADJ, WAYPOINT_MAP (+27 more)
 
-### Community 3 - "POI Administration"
-Cohesion: 0.27
-Nodes (15): createPoi(), deletePoi(), getCategoryId(), LANGUAGES, listPois(), listPublicPois(), readPoiInput(), readPoiRequestBody() (+7 more)
+### Community 3 - "poi.controller.js"
+Cohesion: 0.11
+Nodes (36): createAudio(), deleteAudio(), LANGUAGES, listAudio(), listPublicAudio(), sendAudioError(), createPoi(), deletePoi() (+28 more)
 
 ### Community 4 - "Expo App Configuration"
 Cohesion: 0.08
@@ -173,12 +172,12 @@ Cohesion: 0.16
 Nodes (13): buildSmoothPath(), MapCanvas(), MapControls(), FILTER_CATEGORIES, HIGHLIGHT_GROUPS, MARKERS, TYPE_META, MapLegend() (+5 more)
 
 ### Community 6 - "Backend Dependencies"
-Cohesion: 0.09
-Nodes (26): dependencies, bcryptjs@^2.4.3, cors@^2.8.5, dotenv@^16.4.5, express@^4.19.2, jsonwebtoken@^9.0.2, multer@^2.4.0, pg@^8.13.1 (+18 more)
+Cohesion: 0.11
+Nodes (22): dependencies, bcryptjs@^2.4.3, cors@^2.8.5, dotenv@^16.4.5, pg@^8.13.1, seed@^0.4.4, devDependencies, nodemon@^3.1.7 (+14 more)
 
-### Community 7 - "GPS Presence Lifecycle"
-Cohesion: 0.18
-Nodes (13): setup(), createPositionWatcher(), start(), stop(), PositionSubscribe, PositionSubscription, createPresenceHeartbeat(), close() (+5 more)
+### Community 7 - "offline.controller.js"
+Cohesion: 0.22
+Nodes (10): allowedMediaHost(), downloadOfflinePackage(), addMedia(), extensionFor(), languageFrom(), LANGUAGES, retrieveMedia(), crc32() (+2 more)
 
 ### Community 8 - "Zoo Database Schema"
 Cohesion: 0.17
@@ -193,8 +192,8 @@ Cohesion: 0.19
 Nodes (8): findShortestPath(), getRouteTranslations(), PriorityQueue, ROUTE_TRANSLATIONS, sendRouteError(), EN, VI, ZH
 
 ### Community 11 - "Development Startup"
-Cohesion: 0.08
-Nodes (23): allowedMediaHost(), downloadOfflinePackage(), addMedia(), extensionFor(), languageFrom(), LANGUAGES, retrieveMedia(), crc32() (+15 more)
+Cohesion: 0.14
+Nodes (13): config, { getDefaultConfig }, path, backendDir, children, frontendDir, fs, healthy() (+5 more)
 
 ### Community 12 - "Web UI Dependencies"
 Cohesion: 0.15
@@ -213,8 +212,8 @@ Cohesion: 0.24
 Nodes (10): AdminDashboard(), CATEGORY_OPTIONS, DEFAULT_POI_ZONES, getAudioDuration(), getPoiTranslationRequest(), getPoiTranslations(), getPoiTranslationSource(), LANGUAGES (+2 more)
 
 ### Community 16 - "Backend Route Registration"
-Cohesion: 0.23
-Nodes (9): getOfflineMetadata(), listNodes(), router, r, router, router, r, app (+1 more)
+Cohesion: 0.21
+Nodes (10): getOfflineMetadata(), listNodes(), express@^4.19.2, router, r, r, router, router (+2 more)
 
 ### Community 17 - "Web Lint Configuration"
 Cohesion: 0.18
@@ -226,7 +225,7 @@ Nodes (6): api, getToken(), request(), requestFormData(), TRANSLATION_API_URL, H
 
 ### Community 19 - "dependencies"
 Cohesion: 0.12
-Nodes (16): dependencies, expo-audio@~58.0.10, expo-constants@~58.0.13, expo-router@~58.0.25, expo-splash-screen@~58.0.11, expo-symbols@~58.0.4, react@19.3.0, react-native@0.88.0 (+8 more)
+Nodes (17): dependencies, expo-audio@~58.0.10, expo-constants@~58.0.13, expo-file-system@~58.0.13, expo-router@~58.0.25, jszip@^3.10.2, react-native@0.88.0, react-native-gesture-handler@~3.3.0 (+9 more)
 
 ### Community 20 - "Database and Route Seeding"
 Cohesion: 0.23
@@ -240,9 +239,9 @@ Nodes (13): POI Translation and Audio Agent, Admin POI Translation Text Download
 Cohesion: 0.33
 Nodes (7): App(), AppContent(), createSessionId(), AdminLogin(), OfflineNotice(), useNetworkStatus(), SettingsProvider()
 
-### Community 23 - "MapCanvas.tsx"
-Cohesion: 0.07
-Nodes (48): getApiBase(), getMapPois(), getOfflineMapPois(), getOnlineImageUrls(), getOnlineMapPois(), MapApiError, MapNode, normalizeNode() (+40 more)
+### Community 23 - "offlineReader.ts"
+Cohesion: 0.12
+Nodes (37): downloadNativePackage(), downloadOfflinePackage(), downloadWebPackage(), getApiBaseUrl(), getWebOfflinePackage(), hasOfflinePackage(), offlinePackagePath(), openOfflineDatabase() (+29 more)
 
 ### Community 24 - "Expo Package Scripts"
 Cohesion: 0.15
@@ -268,9 +267,9 @@ Nodes (7): offlineDownloadUrl(), AppLayout(), Header(), NAV_ITEMS, NavItem(), Si
 Cohesion: 0.18
 Nodes (7): exampleDirPath, fs, oldDirs, path, readline, rl, root
 
-### Community 31 - "Audio Track Management"
-Cohesion: 0.38
-Nodes (7): createAudio(), deleteAudio(), LANGUAGES, listAudio(), listPublicAudio(), sendAudioError(), audioUpload
+### Community 31 - "MapCanvas.tsx"
+Cohesion: 0.19
+Nodes (11): apply(), begin(), BUNDLED_MAP, getMapSize(), getPanLimits(), loadMapImage(), MapCanvasProps, MapMarker (+3 more)
 
 ### Community 32 - "Mobile Deployment Architecture"
 Cohesion: 0.22
@@ -281,8 +280,8 @@ Cohesion: 0.22
 Nodes (9): scripts, android, build:web, ios, lint, reset-project, start, start:fe (+1 more)
 
 ### Community 34 - "HomeScreen.tsx"
-Cohesion: 0.19
-Nodes (19): downloadNativePackage(), downloadOfflinePackage(), downloadWebPackage(), getApiBaseUrl(), getWebOfflinePackage(), hasOfflinePackage(), offlinePackagePath(), openOfflineDatabase() (+11 more)
+Cohesion: 0.16
+Nodes (14): HomeScreen(), languageOptions, SettingsMenuItem(), styles, visitSteps, AnimatedPressable, AnimatedPressableProps, MotionPressable (+6 more)
 
 ### Community 35 - "Vite Build Configuration"
 Cohesion: 0.25
@@ -314,7 +313,7 @@ Nodes (7): buildCommand, cleanUrls, framework, headers, installCommand, outputDi
 
 ### Community 43 - "Authentication and Auditing"
 Cohesion: 0.36
-Nodes (7): logAudit(), login(), logout(), me(), requireAuth(), r, jsonwebtoken
+Nodes (7): logAudit(), login(), logout(), me(), requireAuth(), jsonwebtoken@^9.0.2, jsonwebtoken
 
 ### Community 44 - "Proposed Frontend Architecture"
 Cohesion: 0.33
@@ -326,7 +325,7 @@ Nodes (6): React Branding, React Logo 2x, React Branding, React Logo 3x, React B
 
 ### Community 46 - "ExploreScreen.tsx"
 Cohesion: 0.21
-Nodes (15): AnimalDetailPopup(), ExploreScreen(), styles, MostListenedPois(), styles, AnimalThumbnail(), photos, Heading() (+7 more)
+Nodes (13): AnimalPoi, ExploreScreen(), styles, MostListenedPois(), styles, AnimalThumbnail(), photos, Heading() (+5 more)
 
 ### Community 47 - "Web Run Scripts"
 Cohesion: 0.40
@@ -353,24 +352,20 @@ Cohesion: 0.67
 Nodes (3): dependencies, @supabase/supabase-js@^2.117.3, @supabase/supabase-js
 
 ### Community 70 - "AppTabs.tsx"
-Cohesion: 0.22
-Nodes (10): react-native-safe-area-context@~5.10.1, Layout(), WebServiceWorker(), AppTabs(), Button(), styles, PageTransition(), I18nProvider() (+2 more)
+Cohesion: 0.24
+Nodes (9): Layout(), WebServiceWorker(), AppTabs(), Button(), styles, PageTransition(), I18nProvider(), expo-router (+1 more)
 
 ### Community 71 - "I18nContext.tsx"
 Cohesion: 0.24
 Nodes (9): dictionaries, Dictionary, I18nContext, I18nContextValue, MobileLanguage, TranslationKey, en, vi (+1 more)
 
-### Community 78 - "supabaseStorage.js"
-Cohesion: 0.31
-Nodes (11): assertImageContent(), encodeStoragePath(), GENERIC_AUDIO_MIME_TYPES, getAudioFormat(), getImageExtension(), getStorageConfig(), IMAGE_EXTENSIONS, StorageServiceError (+3 more)
+### Community 78 - "ZooMap.tsx"
+Cohesion: 0.22
+Nodes (7): MapCanvasHandle, DeviceMapLocation, GPS_FIXED_ANCHORS, GPS_ZEBRA_ANCHOR, mapZoneFilters, styles, normalizeSearch()
 
-### Community 80 - "request"
-Cohesion: 0.35
-Nodes (8): getMostListenedPois(), pingOnlineSession(), PopularPoi, removeOnlineSession(), request(), PresenceTracker(), presenceDevice(), PresenceOptions
-
-### Community 84 - "sw.js"
-Cohesion: 0.39
-Nodes (6): cachePageAndAssets(), getReferencedAssets(), isStaticAsset(), isValidResponse(), PAGES, sameOrigin()
+### Community 80 - "map.ts"
+Cohesion: 0.09
+Nodes (34): cachePageAndAssets(), getReferencedAssets(), isStaticAsset(), isValidResponse(), PAGES, sameOrigin(), setup(), getMostListenedPois() (+26 more)
 
 ### Community 96 - "Q: Phan tich kien truc CNPM va file co the xoa khong anh huong code base"
 Cohesion: 0.40
@@ -378,23 +373,23 @@ Nodes (4): Answer, Outcome, Q: Phan tich kien truc CNPM va file co the xoa khong
 
 ## Knowledge Gaps
 - **84 isolated node(s):** `expo/tsconfig.base`, `WAYPOINTS`, `EDGES`, `Idempotent Default POI Seeding`, `Admin POI Translation Text Download` (+79 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 342 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 345 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **45 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `lucide-react` connect `Web Map Rendering` to `Web Audio Playback`, `Web UI Dependencies`, `Animal Details and Audio`, `Language and Settings`, `Admin Dashboard`, `Web API Client`, `Web App Session`, `Web Layout Navigation`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
 - **What connects `expo/tsconfig.base`, `WAYPOINTS`, `EDGES` to the rest of the system?**
   _84 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `ZooMap.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.11612903225806452 - nodes in this community are weakly interconnected._
-- **Why does `react-native` connect `ExploreScreen.tsx` to `ZooMap.tsx`, `HomeScreen.tsx`, `Zoo Waypoint Routing`, `AppTabs.tsx`, `Mobile Theme Tokens`, `request`, `dependencies`, `MapCanvas.tsx`, `Mobile TypeScript Tooling`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Should `Translation Model Service` be split into smaller, more focused modules?**
-  _Cohesion score 0.06038961038961039 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05336951605608322 - nodes in this community are weakly interconnected._
+- **Why does `react-native` connect `ExploreScreen.tsx` to `AnimalDetailPopup.tsx`, `HomeScreen.tsx`, `AppTabs.tsx`, `Mobile Theme Tokens`, `ZooMap.tsx`, `map.ts`, `dependencies`, `offlineReader.ts`, `Mobile TypeScript Tooling`, `MapCanvas.tsx`?**
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+- **Should `Zoo Waypoint Routing` be split into smaller, more focused modules?**
+  _Cohesion score 0.06294326241134751 - nodes in this community are weakly interconnected._
 - **Why does `MARKERS` connect `Web Map Rendering` to `Database and Route Seeding`, `Animal Details and Audio`?**
   _High betweenness centrality (0.042) - this node is a cross-community bridge._
-- **Should `Zoo Waypoint Routing` be split into smaller, more focused modules?**
-  _Cohesion score 0.08637873754152824 - nodes in this community are weakly interconnected._
+- **Should `poi.controller.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.10676532769556026 - nodes in this community are weakly interconnected._

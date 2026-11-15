@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
-import { gpsToMapCoordinates, mapToGpsCoordinates } from '../src/utils/gpsMapCalibration.ts';
-import { walkPosition } from '../src/utils/simulatedWalk.ts';
+import { gpsToMapCoordinates } from '../src/utils/gpsMapCalibration.ts';
 import { buildGraph, shortestPath, EDGES } from '../../../app/FE/src/components/map/mapGraph.js';
 
 const results = [];
@@ -19,23 +18,6 @@ await check('GPS-01', 'Known GPS maps to expected image center (synthetic fixtur
   const point = gpsToMapCoordinates(10.5, 106.5, anchors);
   assert.ok(point && Math.abs(point.x - 50) < 1e-7 && Math.abs(point.y - 50) < 1e-7);
 });
-await check('SIMGPS-01', 'Known map center produces expected synthetic latitude and longitude', () => {
-  const fix = mapToGpsCoordinates(50, 50, anchors);
-  assert.ok(fix && Math.abs(fix.latitude - 10.5) < 1e-7 && Math.abs(fix.longitude - 106.5) < 1e-7);
-});
-await check('SIMGPS-02', 'Reject absent calibration and invalid map input', () => {
-  assert.equal(mapToGpsCoordinates(50, 50, []), null);
-  assert.equal(mapToGpsCoordinates(NaN, 50, anchors), null);
-  assert.equal(mapToGpsCoordinates(-1, 50, anchors), null);
-});
-await check('SIMGPS-03', '401 synthetic GPS fixes use forward projection without changing the route', () => {
-  for (let i = 0; i <= 400; i++) {
-    const expected = { x: 20 + i / 10, y: 30 + i / 10 };
-    const fix = mapToGpsCoordinates(expected.x, expected.y, anchors);
-    const actual = gpsToMapCoordinates(fix.latitude, fix.longitude, anchors);
-    assert.ok(actual && Math.hypot(actual.x - expected.x, actual.y - expected.y) < 1e-7);
-  }
-});
 await check('GPS-02', 'Reject non-finite GPS coordinates', () => {
   for (const value of [NaN, Infinity, -Infinity]) assert.equal(gpsToMapCoordinates(value, 106, anchors), null);
 });
@@ -45,31 +27,12 @@ await check('GPS-05', 'Reject point projected outside image', () => assert.equal
 await check('GPS-06', 'Reject invalid calibration values', () => assert.equal(gpsToMapCoordinates(10, 106, anchors.map(a => ({ ...a, x: NaN }))), null));
 buildGraph([]);
 const route = shortestPath('w47', 'w16');
-await check('MAP-01', 'Default simulation route exists and uses real graph edges', () => {
+await check('MAP-01', 'Waypoint route exists and uses connected graph edges', () => {
   assert.ok(route && route.path.length > 2);
   for (let i = 1; i < route.path.length; i++) assert.ok(EDGES.some(([a,b]) => a === route.path[i-1].id && b === route.path[i].id || b === route.path[i-1].id && a === route.path[i].id));
   return `${route.stepsCount} connected segments`;
 });
 await check('MAP-02', 'Unknown route endpoint returns null', () => assert.equal(shortestPath('missing', 'w16'), null));
-await check('SIM-01', 'Simulation begins and ends at the route endpoints', () => {
-  assert.deepEqual(walkPosition(route.path, 0), { x: route.path[0].x, y: route.path[0].y });
-  assert.deepEqual(walkPosition(route.path, 1), { x: route.path.at(-1).x, y: route.path.at(-1).y });
-});
-await check('SIM-02', '401 samples stay on the route polyline', () => {
-  for (let i = 0; i <= 400; i++) {
-    const p = walkPosition(route.path, i / 400);
-    assert.ok(p && p.x >= 0 && p.x <= 100 && p.y >= 0 && p.y <= 100);
-    assert.ok(route.path.slice(1).some((b,j) => {
-      const a = route.path[j];
-      return Math.abs(Math.hypot(p.x-a.x,p.y-a.y) + Math.hypot(b.x-p.x,b.y-p.y) - Math.hypot(b.x-a.x,b.y-a.y)) < 1e-7;
-    }));
-  }
-});
-await check('SIM-03', 'Movement uses distance rather than vertex count', () => assert.deepEqual(walkPosition([{x:0,y:0},{x:10,y:0},{x:10,y:30}], .5), {x:10,y:10}));
-await check('SIM-04', 'Empty and zero-length paths handled', () => {
-  assert.equal(walkPosition([], 0), null);
-  assert.deepEqual(walkPosition([{x:1,y:2},{x:1,y:2}], .5), {x:1,y:2});
-});
 let pois = [];
 for (const [id, name, url] of [
   ['HTTP-01','Backend health','http://localhost:5000/api/health'],
@@ -96,7 +59,6 @@ await check('CAL-01', 'Configured anchor fit within provisional QA tolerance of 
 for (const [id,name,detail] of [
  ['UI-01','Click GPS and permission flow','BLOCKED: Edge not connected to automation'],
  ['UI-02','Visible map, zoom, pan and marker interaction','BLOCKED: no controllable browser/device'],
- ['UI-03','Play, pause, reset, close simulation using UI','BLOCKED: no controllable browser/device'],
  ['GPS-07','Live location updates while walking','BLOCKED: watchPositionAsync implemented; real-device/UI movement test still requires a connected device'],
  ['GPS-08','Device GPS accuracy on site','BLOCKED: no phone/emulator or surveyed ground truth'],
 ]) results.push({id,name,status:'BLOCKED',detail});

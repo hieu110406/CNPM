@@ -16,15 +16,10 @@ import AppIcon from '@/components/ui/AppIcon';
 import PoiAudioControl from '@/components/audio/PoiAudioControl';
 import AnimalThumbnail from '@/components/ui/AnimalThumbnail';
 import AnimalDetailPopup from '@/components/explore/AnimalDetailPopup';
-import useGpsSimulation from './useGpsSimulation';
 import { createPositionWatcher } from '@/utils/positionWatcher';
-import { gpsToMapCoordinates, mapToGpsCoordinates } from '@/utils/gpsMapCalibration';
+import { gpsToMapCoordinates } from '@/utils/gpsMapCalibration';
 
 const CURRENT_LOCATION_ID = 'current_location';
-
-// Tọa độ dùng riêng cho DEMO — tuyệt đối không thay thế vị trí GPS thật.
-const DEMO_GATE_GPS = { latitude: 10.787366007101104, longitude: 106.70500295127725 };
-const DEMO_OUTSIDE_GPS = { latitude: 10.76, longitude: 106.66 };
 
 const GPS_FIXED_ANCHORS = [
     {
@@ -119,12 +114,6 @@ export default function ZooMap() {
             },
         ];
     }, [points]);
-    const simulation = useGpsSimulation(gpsAnchors);
-    const simulatedCoordinates = simulation.gps
-        ? gpsToMapCoordinates(simulation.gps.latitude, simulation.gps.longitude, gpsAnchors) : null;
-    const simulatedNode: MapNode | null = simulatedCoordinates ? {
-        id: CURRENT_LOCATION_ID, name: t('gpsSimulation'), category: 'current_location', ...simulatedCoordinates,
-    } : null;
     const [location, setLocation] = useState<DeviceMapLocation | null>(null);
     const locationRef = useRef<DeviceMapLocation | null>(null);
     const [locationLoading, setLocationLoading] = useState(false);
@@ -149,9 +138,9 @@ export default function ZooMap() {
     const pointsVersion = useRef(0);
     const items = useMemo(() => points.filter(item => (zone === 'all' || item.category === zone) &&
         normalizeSearch(item.name).includes(normalizeSearch(query))), [points, zone, query]);
-    const activeLocationNode = simulation.active ? simulatedNode : location?.node;
+    const activeLocationNode = location?.node;
     const routePoints = activeLocationNode ? [...points, activeLocationNode] : points;
-    const gpsAvailable = !!activeLocationNode && (simulation.active || locationTracking);
+    const gpsAvailable = !!activeLocationNode && locationTracking;
     const gpsRouting = routeMode && gpsAvailable;
     const routeStartId = gpsRouting ? CURRENT_LOCATION_ID :
         (manualRouteStartId !== routeEndId ? manualRouteStartId : '');
@@ -165,7 +154,7 @@ export default function ZooMap() {
     const currentRouteResult = gpsRouting ? gpsRouteResult : routeResult?.path[0]?.id === routeStartId &&
         routeResult.path[routeResult.path.length - 1]?.id === routeEndId ? routeResult : null;
     const startPointName = gpsRouting
-        ? (simulation.active ? t('gpsSimulation') : t('myLocation'))
+        ? t('myLocation')
         : points.find(p => p.id === manualRouteStartId)?.name || '';
     const endPointName = points.find(p => p.id === routeEndId)?.name || '';
     const mapMarkers: MapMarker[] = [
@@ -174,7 +163,7 @@ export default function ZooMap() {
             x: point.x, y: point.y, color: point.id === 'gate_main' ? '#397C63' : '#205E48',
         })),
         ...(activeLocationNode ? [{
-            id: activeLocationNode.id, title: simulatedNode ? t('gpsSimulation') : t('myLocation'), emoji: '●',
+            id: activeLocationNode.id, title: t('myLocation'), emoji: '●',
             x: activeLocationNode.x, y: activeLocationNode.y, color: '#2563EB',
         }] : []),
     ];
@@ -305,14 +294,14 @@ export default function ZooMap() {
         map.current?.reset();
 
         let hasGps = gpsAvailable;
-        if (!hasGps && !simulation.active && !locationTracking) {
+        if (!hasGps && !locationTracking) {
             hasGps = await startLocationTracking(false);
         }
 
         if (hasGps || gpsAvailable) {
             setRouteEndId(destinationId || null);
             if (destinationId) {
-                const activeNode = simulation.active ? simulatedNode : locationRef.current?.node;
+                const activeNode = locationRef.current?.node;
                 if (activeNode) {
                     buildGraph([...points, activeNode]);
                     const result = shortestPath(CURRENT_LOCATION_ID, destinationId);
@@ -341,7 +330,6 @@ export default function ZooMap() {
 
     function stopNavigation() {
         leaveRouteMode();
-        simulation.stop();
         setSelected(null);
         setExpanded(false);
     }
@@ -366,31 +354,6 @@ export default function ZooMap() {
         setSelectingTarget('start');
     }
 
-    // Demo chỉ dùng tọa độ giả lập. Tất cả đường đi vẫn sử dụng thuật toán hiện tại.
-    function startSimulation(initialGps = DEMO_GATE_GPS) {
-        const demo = currentRouteResult?.path.length
-            ? currentRouteResult.path
-            : shortestPath('w47', 'w16')?.path;
-        if (!demo || demo.length < 2 || gpsAnchors.length < 4 ||
-            !mapToGpsCoordinates(demo[0].x, demo[0].y, gpsAnchors)) {
-            setLocationError('Không thể khởi động Demo GPS: chưa đủ dữ liệu bản đồ hoặc điểm hiệu chỉnh.');
-            return;
-        }
-        stopLocationTracking();
-        locationRef.current = null;
-        setLocation(null);
-        simulation.start(demo);
-        simulation.inject(initialGps);
-        setLocationError('');
-        setExpanded(false);
-        map.current?.reset();
-    }
-
-    function stopSimulationAndUseRealGps() {
-        simulation.stop();
-        setLocationError('');
-        void startLocationTracking(true);
-    }
 
     function selectMapMarker(id: string) {
         Keyboard.dismiss();
@@ -469,7 +432,7 @@ export default function ZooMap() {
         setExpanded(true);
     }
 
-    const pathNodes = currentRouteResult?.path ?? simulation.path;
+    const pathNodes = currentRouteResult?.path ?? [];
     const routeCaption = [routeStartId, routeEndId].map(id => routePoints.find(point => point.id === id)?.name).filter(Boolean).join(' → ');
     const navigating = routeMode && !!currentRouteResult;
 
@@ -512,41 +475,15 @@ export default function ZooMap() {
                 <Text style={styles.locationStatusIcon}>!</Text>
                 <Text style={styles.locationStatusText}>{locationError}</Text>
             </View>}
-            {simulation.active && <View style={styles.simulationPanel}>
-                <View style={styles.sheetHeader}>
-                    <Text style={styles.demoTitle}>🧪 DEMO GPS — VỊ TRÍ MÔ PHỎNG</Text>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Tắt mô phỏng GPS" onPress={stopSimulationAndUseRealGps} style={styles.clear}><Text>×</Text></Pressable>
-                </View>
-                <Text style={styles.demoNotice}>Không phải vị trí GPS thật của điện thoại.</Text>
-                {simulation.gps && <Text selectable style={styles.caption}>Lat {simulation.gps.latitude.toFixed(7)} / Lng {simulation.gps.longitude.toFixed(7)}</Text>}
-                <Text style={styles.caption}>{simulatedCoordinates
-                    ? `Trên bản đồ: X ${simulatedCoordinates.x.toFixed(2)}% · Y ${simulatedCoordinates.y.toFixed(2)}%`
-                    : 'Tọa độ nằm ngoài phạm vi Thảo Cầm Viên — không hiển thị chấm vị trí.'}</Text>
-                <View style={styles.simulationActions}>
-                    <Pressable accessibilityRole="button" onPress={() => simulation.inject(DEMO_GATE_GPS)} style={styles.demoAction}><Text style={styles.swapText}>📍 Cổng</Text></Pressable>
-                    <Pressable accessibilityRole="button" onPress={() => simulation.inject({ latitude: GPS_ZEBRA_ANCHOR.latitude, longitude: GPS_ZEBRA_ANCHOR.longitude })} style={styles.demoAction}><Text style={styles.swapText}>🦓 Ngựa vằn</Text></Pressable>
-                    <Pressable accessibilityRole="button" onPress={() => simulation.inject(DEMO_OUTSIDE_GPS)} style={styles.demoAction}><Text style={styles.swapText}>↗ Ngoài khu</Text></Pressable>
-                </View>
-                <View style={styles.simulationActions}>
-                    <Pressable accessibilityRole="button" onPress={() => {
-                        const demo = currentRouteResult?.path.length ? currentRouteResult.path : shortestPath('w47', 'w16')?.path;
-                        if (demo && demo.length >= 2) simulation.start(demo);
-                    }} style={styles.demoAction}><Text style={styles.swapText}>▶ Chạy tuyến demo</Text></Pressable>
-                    {simulation.running && <Pressable accessibilityRole="button" onPress={simulation.toggle} style={styles.demoAction}><Text style={styles.swapText}>Ⅱ Tạm dừng</Text></Pressable>}
-                    <Pressable accessibilityRole="button" onPress={stopSimulationAndUseRealGps} style={styles.demoRealAction}><Text style={styles.demoRealText}>◎ GPS thật</Text></Pressable>
-                </View>
-            </View>}
+
         </View>
 
         <View style={[styles.tools, { top: insets.top + (routeMode ? 72 : 194) }]}>
             <Control label={t('zoomIn')} symbol="+" onPress={() => map.current?.zoomBy(0.5)} />
             <Control label={t('zoomOut')} symbol="−" onPress={() => map.current?.zoomBy(-0.5)} />
             <Control label={t('resetMap')} symbol="⌖" onPress={() => map.current?.reset()} />
-            {!navigating && <Control label={locationTracking ? t('locationStopTracking') : t('myLocation')} symbol={locationLoading ? '…' : locationTracking ? '■' : '◎'} disabled={locationLoading || simulation.active} onPress={() => void toggleLocationTracking()} />}
-            {!navigating && !simulation.active && <Pressable accessibilityRole="button" accessibilityLabel="Bật chế độ Demo GPS mô phỏng" disabled={loadingPoints || pointsError || locationLoading}
-                onPress={() => startSimulation()} style={[styles.demoTrigger, (loadingPoints || pointsError || locationLoading) && { opacity: 0.45 }]}>
-                <Text style={styles.demoTriggerText}>DEMO GPS</Text>
-            </Pressable>}
+            {!navigating && <Control label={locationTracking ? t('locationStopTracking') : t('myLocation')} symbol={locationLoading ? '…' : locationTracking ? '■' : '◎'} disabled={locationLoading} onPress={() => void toggleLocationTracking()} />}
+
         </View>
 
         {navigating ? (
@@ -754,15 +691,6 @@ function Control({ label, symbol, onPress, disabled }: { label: string; symbol: 
 
 const styles = StyleSheet.create({
     stopNavigation: { position: 'absolute', alignSelf: 'center', minHeight: 48, paddingHorizontal: 28, borderRadius: 24, backgroundColor: '#285A46', alignItems: 'center', justifyContent: 'center', elevation: 4 },
-    simulationPanel: { backgroundColor: '#FFF', borderRadius: 16, padding: 12, gap: 8, marginRight: 44, borderWidth: 1, borderColor: '#BFDBFE', elevation: 4 },
-    simulationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    demoTitle: { flex: 1, color: '#1E40AF', fontSize: 13, fontWeight: '800' },
-    demoNotice: { color: '#B45309', fontSize: 12, fontWeight: '600' },
-    demoAction: { minHeight: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: '#EFF6FF', paddingHorizontal: 12 },
-    demoRealAction: { minHeight: 40, justifyContent: 'center', alignItems: 'center', borderRadius: 12, backgroundColor: '#205E48', paddingHorizontal: 12 },
-    demoRealText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
-    demoTrigger: { minHeight: 44, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1E40AF', borderRadius: 15, paddingHorizontal: 8, elevation: 3 },
-    demoTriggerText: { color: '#FFF', fontWeight: '800', fontSize: 10, letterSpacing: 0.1 },
     selectedOverview: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     detailLink: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingVertical: 8 },
     detailLinkText: { color: a.forest, fontSize: 14, fontWeight: '600' },

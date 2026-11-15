@@ -16,15 +16,25 @@ type StoredPackage = {
     savedAt: number;
 };
 
+export type OfflinePackageMetadata = {
+    contentVersion: string;
+    version?: string;
+    pois?: number;
+    images?: number;
+    audios?: number;
+    languages?: string[];
+};
+
 function validateLanguage(language: string): void {
     if (!['vi', 'en', 'zh'].includes(language)) {
         throw new Error('Ngôn ngữ offline không hợp lệ.');
     }
 }
 
-// Xác định địa chỉ Backend
+// Xác định địa chỉ Backend.
 function getApiBaseUrl(): string {
-    const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
+    const configured =
+        process.env.EXPO_PUBLIC_API_URL?.trim();
 
     if (configured) {
         return configured.replace(/\/+$/, '');
@@ -35,29 +45,83 @@ function getApiBaseUrl(): string {
         Platform.OS === 'web' &&
         typeof window !== 'undefined'
     ) {
-        return `${window.location.protocol}//${window.location.hostname}:5000/api`;
+        return (
+            `${window.location.protocol}//` +
+            `${window.location.hostname}:5000/api`
+        );
     }
 
     const host = Constants.expoConfig?.hostUri;
 
     if (__DEV__ && host) {
-        const hostname = new URL(`http://${host}`).hostname;
+        const hostname = new URL(
+            `http://${host}`
+        ).hostname;
+
         return `http://${hostname}:5000/api`;
     }
 
-    throw new Error('Chưa cấu hình EXPO_PUBLIC_API_URL');
+    throw new Error(
+        'Chưa cấu hình EXPO_PUBLIC_API_URL'
+    );
 }
 
-// IndexedDB dành riêng cho Safari/Chrome
+// Lấy phiên bản nội dung Offline trên server.
+// Hàm này chỉ kiểm tra metadata, không tải ZIP.
+export async function getOfflinePackageMetadata(
+    language: string
+): Promise<OfflinePackageMetadata> {
+    validateLanguage(language);
+
+    const url =
+        `${getApiBaseUrl()}/offline` +
+        `?lang=${encodeURIComponent(language)}`;
+
+    const response = await fetch(url, {
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(
+            `Không thể kiểm tra bản cập nhật Offline ` +
+            `(HTTP ${response.status}).`
+        );
+    }
+
+    const data: unknown = await response.json();
+
+    if (
+        !data ||
+        typeof data !== 'object' ||
+        !('contentVersion' in data) ||
+        typeof data.contentVersion !== 'string' ||
+        !data.contentVersion.trim()
+    ) {
+        throw new Error(
+            'Server chưa hỗ trợ kiểm tra phiên bản Offline.'
+        );
+    }
+
+    return data as OfflinePackageMetadata;
+}
+
+// IndexedDB dành cho Safari/Chrome.
 function openOfflineDatabase(): Promise<IDBDatabase> {
     if (typeof indexedDB === 'undefined') {
         return Promise.reject(
-            new Error('Trình duyệt không hỗ trợ lưu dữ liệu Offline.')
+            new Error(
+                'Trình duyệt không hỗ trợ lưu dữ liệu Offline.'
+            )
         );
     }
 
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        const request = indexedDB.open(
+            DB_NAME,
+            DB_VERSION
+        );
 
         request.onupgradeneeded = () => {
             const db = request.result;
@@ -69,17 +133,20 @@ function openOfflineDatabase(): Promise<IDBDatabase> {
             }
         };
 
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+            resolve(request.result);
+        };
 
-        request.onerror = () => reject(
-            request.error ??
-            new Error('Không mở được bộ nhớ Offline.')
-        );
+        request.onerror = () => {
+            reject(
+                request.error ??
+                new Error('Không mở được bộ nhớ Offline.')
+            );
+        };
     });
 }
 
 // Đọc ZIP đã lưu trên Web.
-// File offlineReader.ts sẽ sử dụng hàm này ở bước tiếp theo.
 export async function getWebOfflinePackage(
     language: string
 ): Promise<Blob | null> {
@@ -92,35 +159,42 @@ export async function getWebOfflinePackage(
     const db = await openOfflineDatabase();
 
     try {
-        return await new Promise<Blob | null>((resolve, reject) => {
-            const transaction = db.transaction(
-                STORE_NAME,
-                'readonly'
-            );
+        return await new Promise<Blob | null>(
+            (resolve, reject) => {
+                const transaction = db.transaction(
+                    STORE_NAME,
+                    'readonly'
+                );
 
-            const request = transaction
-                .objectStore(STORE_NAME)
-                .get(language);
+                const request = transaction
+                    .objectStore(STORE_NAME)
+                    .get(language);
 
-            request.onsuccess = () => {
-                const record = request.result as
-                    | StoredPackage
-                    | undefined;
+                request.onsuccess = () => {
+                    const record = request.result as
+                        | StoredPackage
+                        | undefined;
 
-                resolve(record?.blob ?? null);
-            };
+                    resolve(record?.blob ?? null);
+                };
 
-            request.onerror = () => reject(
-                request.error ??
-                new Error('Không đọc được gói Offline.')
-            );
-        });
+                request.onerror = () => {
+                    reject(
+                        request.error ??
+                        new Error(
+                            'Không đọc được gói Offline.'
+                        )
+                    );
+                };
+            }
+        );
     } finally {
         db.close();
     }
 }
 
-// Lưu ZIP vào IndexedDB
+// Lưu ZIP vào IndexedDB.
+// put() thay thế bản cũ có cùng language.
 async function saveWebOfflinePackage(
     language: string,
     blob: Blob
@@ -140,31 +214,46 @@ async function saveWebOfflinePackage(
                 savedAt: Date.now(),
             } satisfies StoredPackage);
 
-            transaction.oncomplete = () => resolve();
+            transaction.oncomplete = () => {
+                resolve();
+            };
 
-            transaction.onerror = () => reject(
-                transaction.error ??
-                new Error('Không thể lưu dữ liệu Offline.')
-            );
+            transaction.onerror = () => {
+                reject(
+                    transaction.error ??
+                    new Error(
+                        'Không thể lưu dữ liệu Offline.'
+                    )
+                );
+            };
 
-            transaction.onabort = () => reject(
-                transaction.error ??
-                new Error('Bộ nhớ Offline đã hủy thao tác lưu.')
-            );
+            transaction.onabort = () => {
+                reject(
+                    transaction.error ??
+                    new Error(
+                        'Bộ nhớ Offline đã hủy thao tác lưu.'
+                    )
+                );
+            };
         });
     } finally {
         db.close();
     }
 }
 
-// Đường dẫn lưu ZIP trên Android/iOS
-export function offlinePackagePath(language: string): string {
+// Đường dẫn ZIP trên Android/iOS.
+export function offlinePackagePath(
+    language: string
+): string {
     validateLanguage(language);
 
-    return `${FileSystem.documentDirectory}zoo-offline-${language}.zip`;
+    return (
+        `${FileSystem.documentDirectory}` +
+        `zoo-offline-${language}.zip`
+    );
 }
 
-// Kiểm tra đã tải gói chưa
+// Kiểm tra gói Offline đã được tải hay chưa.
 export async function hasOfflinePackage(
     language: string
 ): Promise<boolean> {
@@ -172,6 +261,7 @@ export async function hasOfflinePackage(
 
     if (Platform.OS === 'web') {
         const blob = await getWebOfflinePackage(language);
+
         return !!blob && blob.size > 0;
     }
 
@@ -182,7 +272,7 @@ export async function hasOfflinePackage(
     return info.exists && (info.size ?? 0) > 0;
 }
 
-// Xóa gói Offline
+// Xóa gói Offline.
 export async function removeOfflinePackage(
     language: string
 ): Promise<void> {
@@ -192,28 +282,40 @@ export async function removeOfflinePackage(
         const db = await openOfflineDatabase();
 
         try {
-            await new Promise<void>((resolve, reject) => {
-                const transaction = db.transaction(
-                    STORE_NAME,
-                    'readwrite'
-                );
+            await new Promise<void>(
+                (resolve, reject) => {
+                    const transaction = db.transaction(
+                        STORE_NAME,
+                        'readwrite'
+                    );
 
-                transaction
-                    .objectStore(STORE_NAME)
-                    .delete(language);
+                    transaction
+                        .objectStore(STORE_NAME)
+                        .delete(language);
 
-                transaction.oncomplete = () => resolve();
+                    transaction.oncomplete = () => {
+                        resolve();
+                    };
 
-                transaction.onerror = () => reject(
-                    transaction.error ??
-                    new Error('Không thể xóa gói Offline.')
-                );
+                    transaction.onerror = () => {
+                        reject(
+                            transaction.error ??
+                            new Error(
+                                'Không thể xóa gói Offline.'
+                            )
+                        );
+                    };
 
-                transaction.onabort = () => reject(
-                    transaction.error ??
-                    new Error('Không thể xóa gói Offline.')
-                );
-            });
+                    transaction.onabort = () => {
+                        reject(
+                            transaction.error ??
+                            new Error(
+                                'Không thể xóa gói Offline.'
+                            )
+                        );
+                    };
+                }
+            );
         } finally {
             db.close();
         }
@@ -225,9 +327,46 @@ export async function removeOfflinePackage(
         offlinePackagePath(language),
         { idempotent: true }
     );
+
+    // Xóa cả media cache liên quan.
+    if (FileSystem.cacheDirectory) {
+        await FileSystem.deleteAsync(
+            `${FileSystem.cacheDirectory}` +
+            `zoo-offline/${language}`,
+            { idempotent: true }
+        );
+    }
 }
 
-// Tải ZIP trên Safari/Chrome
+// Kiểm tra manifest chung cho gói mới.
+function validateManifest(
+    manifest: unknown,
+    language: string
+): void {
+    if (
+        !manifest ||
+        typeof manifest !== 'object' ||
+        !('schemaVersion' in manifest) ||
+        manifest.schemaVersion !== 1 ||
+        !('language' in manifest) ||
+        manifest.language !== language ||
+        !('pois' in manifest) ||
+        !Array.isArray(manifest.pois) ||
+        !('audio' in manifest) ||
+        !Array.isArray(manifest.audio) ||
+        !('map' in manifest) ||
+        typeof manifest.map !== 'string' ||
+        !('contentVersion' in manifest) ||
+        typeof manifest.contentVersion !== 'string' ||
+        !manifest.contentVersion.trim()
+    ) {
+        throw new Error(
+            'Nội dung hoặc phiên bản gói Offline không hợp lệ.'
+        );
+    }
+}
+
+// Tải ZIP trên Safari/Chrome.
 async function downloadWebPackage(
     language: string,
     onProgress: (progress: number) => void
@@ -241,7 +380,8 @@ async function downloadWebPackage(
 
     if (!response.ok) {
         throw new Error(
-            `Không thể tải gói Offline (HTTP ${response.status}).`
+            `Không thể tải gói Offline ` +
+            `(HTTP ${response.status}).`
         );
     }
 
@@ -250,14 +390,19 @@ async function downloadWebPackage(
     );
 
     if (contentLength > MAX_PACKAGE_BYTES) {
-        throw new Error('Gói Offline vượt quá giới hạn 150 MB.');
+        throw new Error(
+            'Gói Offline vượt quá giới hạn 150 MB.'
+        );
     }
 
     if (!response.body) {
-        throw new Error('Trình duyệt không đọc được dữ liệu tải về.');
+        throw new Error(
+            'Trình duyệt không đọc được dữ liệu tải về.'
+        );
     }
 
     const reader = response.body.getReader();
+
     const chunks: Uint8Array<ArrayBuffer>[] = [];
     let downloadedBytes = 0;
 
@@ -266,21 +411,24 @@ async function downloadWebPackage(
             const { done, value } = await reader.read();
 
             if (done) break;
-
             if (!value) continue;
 
             downloadedBytes += value.byteLength;
 
             if (downloadedBytes > MAX_PACKAGE_BYTES) {
                 await reader.cancel();
+
                 throw new Error(
                     'Gói Offline vượt quá giới hạn 150 MB.'
                 );
             }
 
-            // Tạo bản sao ArrayBuffer để dùng ổn định với Blob.
-            const buffer = new ArrayBuffer(value.byteLength);
+            const buffer = new ArrayBuffer(
+                value.byteLength
+            );
+
             new Uint8Array(buffer).set(value);
+
             chunks.push(new Uint8Array(buffer));
 
             if (contentLength > 0) {
@@ -288,7 +436,10 @@ async function downloadWebPackage(
                     Math.min(
                         95,
                         Math.floor(
-                            (downloadedBytes / contentLength) * 95
+                            (
+                                downloadedBytes /
+                                contentLength
+                            ) * 95
                         )
                     )
                 );
@@ -299,14 +450,15 @@ async function downloadWebPackage(
     }
 
     if (downloadedBytes === 0) {
-        throw new Error('Gói Offline tải về bị rỗng.');
+        throw new Error(
+            'Gói Offline tải về bị rỗng.'
+        );
     }
 
     const blob = new Blob(chunks, {
         type: 'application/zip',
     });
 
-    // Kiểm tra ZIP và manifest trước khi lưu.
     onProgress(96);
 
     let zip: JSZip;
@@ -316,50 +468,53 @@ async function downloadWebPackage(
             checkCRC32: true,
         });
     } catch {
-        throw new Error('File Offline bị lỗi hoặc không phải ZIP hợp lệ.');
+        throw new Error(
+            'File Offline bị lỗi hoặc không phải ZIP hợp lệ.'
+        );
     }
 
     const manifestFile = zip.file('manifest.json');
 
     if (!manifestFile) {
-        throw new Error('Gói Offline thiếu manifest.json.');
+        throw new Error(
+            'Gói Offline thiếu manifest.json.'
+        );
     }
 
-    const manifestText = await manifestFile.async('string');
     let manifest: unknown;
 
     try {
+        const manifestText =
+            await manifestFile.async('string');
+
         manifest = JSON.parse(manifestText);
     } catch {
-        throw new Error('Manifest Offline không phải JSON hợp lệ.');
+        throw new Error(
+            'Không đọc được manifest Offline.'
+        );
     }
 
-    if (
-        !manifest ||
-        typeof manifest !== 'object' ||
-        !('schemaVersion' in manifest) ||
-        manifest.schemaVersion !== 1 ||
-        !('language' in manifest) ||
-        manifest.language !== language ||
-        !('pois' in manifest) ||
-        !Array.isArray(manifest.pois) ||
-        !('audio' in manifest) ||
-        !Array.isArray(manifest.audio) ||
-        !('map' in manifest) ||
-        typeof manifest.map !== 'string'
-    ) {
-        throw new Error('Nội dung gói Offline không hợp lệ.');
-    }
+    validateManifest(manifest, language);
 
     onProgress(98);
 
-    await saveWebOfflinePackage(language, blob);
+    // ZIP cũ chỉ được thay thế sau khi ZIP mới
+    // đã tải xong và kiểm tra thành công.
+    await saveWebOfflinePackage(
+        language,
+        blob
+    );
 
-    // Đảm bảo đọc lại được sau khi lưu.
-    const savedBlob = await getWebOfflinePackage(language);
+    const savedBlob =
+        await getWebOfflinePackage(language);
 
-    if (!savedBlob || savedBlob.size !== blob.size) {
-        throw new Error('Không xác nhận được gói Offline đã lưu.');
+    if (
+        !savedBlob ||
+        savedBlob.size !== blob.size
+    ) {
+        throw new Error(
+            'Không xác nhận được gói Offline đã lưu.'
+        );
     }
 
     onProgress(100);
@@ -367,7 +522,7 @@ async function downloadWebPackage(
     return `indexeddb://zoo-offline-${language}`;
 }
 
-// Tải ZIP trên Android/iOS
+// Tải ZIP trên Android/iOS.
 async function downloadNativePackage(
     language: string,
     onProgress: (progress: number) => void
@@ -380,8 +535,25 @@ async function downloadNativePackage(
         `?lang=${encodeURIComponent(language)}` +
         `&platform=${platform}`;
 
+    const cacheDirectory = FileSystem.cacheDirectory;
+
+    if (!cacheDirectory) {
+        throw new Error(
+            'Không tìm thấy thư mục cache của thiết bị.'
+        );
+    }
+
     const tempPath =
-        `${FileSystem.cacheDirectory}zoo-offline-${language}.part`;
+        `${cacheDirectory}zoo-offline-${language}.part`;
+
+    const destination =
+        offlinePackagePath(language);
+
+    const backup =
+        `${destination}.backup`;
+
+    const mediaCache =
+        `${cacheDirectory}zoo-offline/${language}`;
 
     await FileSystem.deleteAsync(tempPath, {
         idempotent: true,
@@ -398,10 +570,12 @@ async function downloadNativePackage(
             if (totalBytesExpectedToWrite > 0) {
                 onProgress(
                     Math.min(
-                        99,
+                        95,
                         Math.floor(
-                            (totalBytesWritten /
-                                totalBytesExpectedToWrite) * 100
+                            (
+                                totalBytesWritten /
+                                totalBytesExpectedToWrite
+                            ) * 95
                         )
                     )
                 );
@@ -414,32 +588,147 @@ async function downloadNativePackage(
 
         if (!result || result.status !== 200) {
             throw new Error(
-                `Download thất bại: ${result?.status ?? 'UNKNOWN'}`
+                `Download thất bại: ` +
+                `${result?.status ?? 'UNKNOWN'}`
             );
         }
 
         if (!result.uri) {
-            throw new Error('Không tìm thấy file đã tải.');
+            throw new Error(
+                'Không tìm thấy file đã tải.'
+            );
         }
 
-        const fileInfo = await FileSystem.getInfoAsync(result.uri);
+        const fileInfo =
+            await FileSystem.getInfoAsync(result.uri);
 
-        if (!fileInfo.exists || (fileInfo.size ?? 0) === 0) {
-            throw new Error('Package tải về bị rỗng.');
+        if (
+            !fileInfo.exists ||
+            (fileInfo.size ?? 0) === 0
+        ) {
+            throw new Error(
+                'Package tải về bị rỗng.'
+            );
         }
 
-        const destination = offlinePackagePath(language);
+        if (
+            (fileInfo.size ?? 0) >
+            MAX_PACKAGE_BYTES
+        ) {
+            throw new Error(
+                'Gói Offline vượt quá giới hạn 150 MB.'
+            );
+        }
 
-        await FileSystem.deleteAsync(destination, {
+        // Kiểm tra ZIP trên thiết bị trước khi
+        // thay thế gói cũ.
+        onProgress(96);
+
+        try {
+            const base64 =
+                await FileSystem.readAsStringAsync(
+                    result.uri,
+                    {
+                        encoding:
+                            FileSystem.EncodingType.Base64,
+                    }
+                );
+
+            const zip = await JSZip.loadAsync(
+                base64,
+                {
+                    base64: true,
+                    checkCRC32: true,
+                }
+            );
+
+            const manifestFile =
+                zip.file('manifest.json');
+
+            if (!manifestFile) {
+                throw new Error(
+                    'Gói Offline thiếu manifest.json.'
+                );
+            }
+
+            const manifestText =
+                await manifestFile.async('string');
+
+            validateManifest(
+                JSON.parse(manifestText),
+                language
+            );
+        } catch {
+            throw new Error(
+                'Gói Offline mới bị lỗi hoặc không hợp lệ.'
+            );
+        }
+
+        onProgress(98);
+
+        // Sao lưu bản cũ trước khi ghi bản mới.
+        await FileSystem.deleteAsync(backup, {
             idempotent: true,
         });
 
-        await FileSystem.moveAsync({
-            from: result.uri,
-            to: destination,
+        const oldPackage =
+            await FileSystem.getInfoAsync(destination);
+
+        if (oldPackage.exists) {
+            await FileSystem.moveAsync({
+                from: destination,
+                to: backup,
+            });
+        }
+
+        try {
+            await FileSystem.moveAsync({
+                from: result.uri,
+                to: destination,
+            });
+        } catch (error) {
+            // Khôi phục gói cũ nếu thay thế lỗi.
+            const backupInfo =
+                await FileSystem.getInfoAsync(backup);
+
+            if (backupInfo.exists) {
+                await FileSystem.deleteAsync(
+                    destination,
+                    { idempotent: true }
+                );
+
+                await FileSystem.moveAsync({
+                    from: backup,
+                    to: destination,
+                });
+            }
+
+            throw error;
+        }
+
+        // Gói mới đã được lưu.
+        // Xóa cache media cũ để lần đọc tiếp theo
+        // lấy nội dung từ ZIP mới.
+        try {
+            await FileSystem.deleteAsync(
+                mediaCache,
+                { idempotent: true }
+            );
+        } catch (error) {
+            if (__DEV__) {
+                console.warn(
+                    'Không thể xóa media cache:',
+                    error
+                );
+            }
+        }
+
+        await FileSystem.deleteAsync(backup, {
+            idempotent: true,
         });
 
         onProgress(100);
+
         return destination;
     } catch (error) {
         await FileSystem.deleteAsync(tempPath, {
@@ -450,7 +739,9 @@ async function downloadNativePackage(
     }
 }
 
-// Hàm chung cho Web, Android và iOS
+// Hàm chung cho Web, Android và iOS.
+// Khi language đã có gói ZIP, bản tải mới sẽ
+// thay thế gói cũ sau khi tải thành công.
 export async function downloadOfflinePackage(
     language: string,
     onProgress: (progress: number) => void
@@ -458,8 +749,14 @@ export async function downloadOfflinePackage(
     validateLanguage(language);
 
     if (Platform.OS === 'web') {
-        return downloadWebPackage(language, onProgress);
+        return downloadWebPackage(
+            language,
+            onProgress
+        );
     }
 
-    return downloadNativePackage(language, onProgress);
+    return downloadNativePackage(
+        language,
+        onProgress
+    );
 }

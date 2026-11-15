@@ -30,6 +30,11 @@ export type OfflineAudio = {
 export type OfflineManifest = {
     schemaVersion: number;
     language: string;
+
+    // Phiên bản nội dung để kiểm tra cập nhật Offline.
+    // Tùy chọn để vẫn đọc được các ZIP đã tải trước đây.
+    contentVersion?: string;
+
     map: string;
     pois: OfflinePoi[];
     audio: OfflineAudio[];
@@ -179,6 +184,20 @@ export async function readOfflinePackage(
         throw new Error('Manifest Offline không hợp lệ.');
     }
 
+    // Gói cũ có thể chưa có contentVersion.
+    // Nếu có, trường này phải là chuỗi hợp lệ.
+    if (
+        'contentVersion' in manifest &&
+        (
+            typeof manifest.contentVersion !== 'string' ||
+            !manifest.contentVersion.trim()
+        )
+    ) {
+        throw new Error(
+            'Phiên bản gói Offline không hợp lệ.'
+        );
+    }
+
     return manifest as OfflineManifest;
 }
 
@@ -226,7 +245,7 @@ async function getWebOfflineMediaUri(
         type: getMediaMimeType(mediaPath),
     });
 
-    // URL blob có thể dùng trong <img>, Image và audio Web.
+    // URL blob có thể dùng trong img, Image và audio Web.
     return URL.createObjectURL(blob);
 }
 

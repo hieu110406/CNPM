@@ -74,32 +74,73 @@ function extensionFor(url, kind) {
     return ext || (kind === 'audio' ? 'mp3' : 'jpg');
 }
 
+// Stable fingerprint of data that can affect the offline ZIP.
+// This is a content-change marker, not a security checksum.
+// Include the map graph and related media metadata so changes
+// other than a POI's updated_at are also detected.
+async function getOfflineContentVersion() {
+    const { rows } = await query(`
+        SELECT md5(concat_ws('|',
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(p) ORDER BY p.poi_id)::text
+                FROM poi p
+            ), '[]'),
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(c) ORDER BY c.category_id)::text
+                FROM category c
+            ), '[]'),
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(t) ORDER BY t.translation_id)::text
+                FROM poi_translation t
+            ), '[]'),
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(i) ORDER BY i.poi_image_id)::text
+                FROM poi_image i
+            ), '[]'),
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(a) ORDER BY a.audio_id)::text
+                FROM audio_track a
+            ), '[]'),
+            COALESCE((
+                SELECT jsonb_agg(to_jsonb(n) ORDER BY n.node_id)::text
+                FROM map_node n
+            ), '[]')
+        )) AS content_version
+    `);
+
+    return rows[0].content_version;
+}
+
 // API: Lấy thông tin package
 export async function getOfflineMetadata(req, res) {
     try {
-        const [{ rows: pois }, { rows: media }] =
-            await Promise.all([
-                query(`
+        const [
+            { rows: pois },
+            { rows: media },
+            contentVersion
+        ] = await Promise.all([
+            query(`
           SELECT COUNT(*)::int AS count,
                  MAX(updated_at) AS updated
           FROM poi
           WHERE is_active = TRUE
         `),
-
-                query(`
+            query(`
           SELECT
             (SELECT COUNT(*) FROM poi_image) AS images,
             (SELECT COUNT(*)
              FROM audio_track
              WHERE file_url IS NOT NULL) AS audios
-        `)
-            ]);
+        `),
+            getOfflineContentVersion()
+        ]);
 
         res.json({
             format: 'zip',
             version: pois[0].updated
                 ? new Date(pois[0].updated).toISOString().slice(0, 10)
                 : '1',
+            contentVersion,
             pois: pois[0].count,
             images: Number(media[0].images),
             audios: Number(media[0].audios),
@@ -126,7 +167,8 @@ export async function downloadOfflinePackage(req, res) {
         const [
             { rows: pois },
             { rows: audio },
-            { rows: graph }
+            { rows: graph },
+            contentVersion
         ] = await Promise.all([
             query(`
         SELECT
@@ -171,7 +213,6 @@ export async function downloadOfflinePackage(req, res) {
         WHERE p.is_active = TRUE
         ORDER BY p.poi_id
       `, [language]),
-
             query(`
         SELECT
           p.code AS id,
@@ -188,12 +229,12 @@ export async function downloadOfflinePackage(req, res) {
             ELSE 1
           END
       `, [language]),
-
             query(`
         SELECT node_id, name, x, y, category
         FROM map_node
         ORDER BY node_id
-      `)
+      `),
+            getOfflineContentVersion()
         ]);
 
         const files = [];
@@ -216,6 +257,7 @@ export async function downloadOfflinePackage(req, res) {
             schemaVersion: 1,
             language,
             generatedAt: new Date().toISOString(),
+            contentVersion,
             map: 'map/zoo_map.png',
             pois,
             graph,

@@ -176,8 +176,10 @@ def health() -> dict[str, bool]:
 
 
 def get_translation_model() -> ChatOllama:
+    model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
     return ChatOllama(
-        model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        model=model,
+        reasoning=False if model.startswith("qwen3.5:") else None,
         base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0,
         format="json",

@@ -1,6 +1,5 @@
 export type GpsMapAnchor = { latitude: number; longitude: number; x: number; y: number };
 export type MapCoordinates = { x: number; y: number };
-export type GpsCoordinates = { latitude: number; longitude: number };
 
 type Axis = { longitude: number; latitude: number; offset: number };
 function fitCalibration(anchors: readonly GpsMapAnchor[]) {
@@ -39,19 +38,4 @@ export function gpsToMapCoordinates(latitude: number, longitude: number, anchors
   const x = project(fit.x), y = project(fit.y);
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) return null;
   return { x, y };
-}
-
-/** Generates synthetic GPS fixes from a map route; does not measure field accuracy. */
-export function mapToGpsCoordinates(x: number, y: number, anchors: readonly GpsMapAnchor[]): GpsCoordinates | null {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) return null;
-  const fit = fitCalibration(anchors);
-  if (!fit) return null;
-  const determinant = fit.x.longitude * fit.y.latitude - fit.x.latitude * fit.y.longitude;
-  const scale = Math.hypot(fit.x.longitude, fit.x.latitude) * Math.hypot(fit.y.longitude, fit.y.latitude);
-  if (!scale || Math.abs(determinant) / scale < 1e-8) return null;
-  const dx = x - fit.x.offset, dy = y - fit.y.offset;
-  const longitude = fit.meanLongitude + (dx * fit.y.latitude - dy * fit.x.latitude) / determinant;
-  const latitude = fit.meanLatitude + (dy * fit.x.longitude - dx * fit.y.longitude) / determinant;
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null;
-  return { latitude, longitude };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import { useSettings } from "../../context/SettingsContext";
 
@@ -22,7 +22,8 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
 
   const [usageId, setUsageId] = useState(null);
   const [completedLogged, setCompletedLogged] = useState(false);
-
+  const listenTimer = useRef(null);
+  const loggedRef = useRef(false);
   useEffect(() => {
     if (!isAvailable) return undefined;
 
@@ -40,27 +41,52 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
     };
   }, [isAvailable, marker?.id, audioLanguage, requestKey]);
 
-  useEffect(() => {
-    setUsageId(null);
-    setCompletedLogged(false);
-  }, [marker?.id, track?.fileUrl]);
+useEffect(() => {
+  loggedRef.current = false;
+  setUsageId(null);
+  setCompletedLogged(false);
 
-  if (!isAvailable) return null;
-
-  const handlePlay = () => {
-    if (!usageId) {
-      api.logAudioUsage({
-        poiId: marker?.poiId || marker?.dbId || marker?.id,
-        languageCode: track?.language || audioLanguage,
-        triggerType: "manual",
-        completed: false,
-      }).then((res) => {
-        if (res?.usageId) setUsageId(res.usageId);
-      }).catch((err) => {
-        console.error("Lỗi logAudioUsage:", err);
-      });
+  return () => {
+    if (listenTimer.current !== null) {
+      clearTimeout(listenTimer.current);
+      listenTimer.current = null;
     }
   };
+}, [marker?.id, track?.fileUrl]);
+  if (!isAvailable) return null;
+
+
+const handlePlay = () => {
+  if (loggedRef.current || listenTimer.current !== null) return;
+
+  listenTimer.current = setTimeout(() => {
+    listenTimer.current = null;
+
+    if (loggedRef.current) return;
+    loggedRef.current = true;
+
+    api.logAudioUsage({
+      poiId: marker?.poiId || marker?.dbId || marker?.id,
+      languageCode: track?.language || audioLanguage,
+      triggerType: "manual",
+      completed: false,
+    })
+      .then((res) => {
+        if (res?.usageId) setUsageId(res.usageId);
+      })
+      .catch((err) => {
+        console.error("Lỗi ghi lượt nghe:", err);
+      });
+  }, 3000);
+};
+
+const handlePause = () => {
+  if (listenTimer.current !== null) {
+    clearTimeout(listenTimer.current);
+    listenTimer.current = null;
+  }
+};
+
 
   const handleTimeUpdate = (e) => {
     const audio = e.currentTarget;
@@ -101,6 +127,7 @@ export default function PoiAudioControl({ marker, language = "vi" }) {
             src={track.fileUrl}
             aria-label={`${t("map.infoCard.listenAudio", "Nghe thuyết minh")} ${track.language}`}
             onPlay={handlePlay}
+            onPause={handlePause}
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
           />

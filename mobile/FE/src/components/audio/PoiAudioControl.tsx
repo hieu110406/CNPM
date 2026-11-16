@@ -37,13 +37,32 @@ function TrackPlayer({ track, poiId }: { track: PoiAudio; poiId: string }) {
   const [waiting, setWaiting] = useState(false);
   const logged = useRef(false);
   // Log only after playback actually starts. Pausing/resuming does not add listens.
-  useEffect(() => {
-    if (!status.playing || logged.current) return;
+ 
+
+// Chỉ tính lượt nghe nếu audio phát liên tục đủ 3 giây.
+useEffect(() => {
+  if (!status.playing || logged.current) return;
+
+  const timer = setTimeout(() => {
+    if (logged.current) return;
+
     logged.current = true;
-    void request('/analytics/usage', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ poiId, languageCode: track.language, triggerType: 'manual', completed: false }),
+
+    void request('/analytics/usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poiId,
+        languageCode: track.language,
+        triggerType: 'manual',
+        completed: false,
+      }),
     }).catch(() => {});
-  }, [status.playing, poiId, track.language]);
+  }, 3000);
+
+  return () => clearTimeout(timer);
+}, [status.playing, poiId, track.language]);
+
   useEffect(() => {
     if (!waiting || status.playing || status.didJustFinish) return;
     const timeout = setTimeout(() => { setError(true); setWaiting(false); player.pause(); }, 20000);
